@@ -1,1 +1,42 @@
+# PyCharm
+.idea/
+JSONFILE/
+math.txt
 config.ini
+
+# Environnements virtuels
+venv/
+.env/
+
+# Fichiers de compilation Python
+__pycache__/
+*.py[cod]
+
+# Dépendances installées
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Logs et fichiers temporaires
+*.log
+*.tmp
+*.swp
+
+# Sorties de tests
+htmlcov/
+.coverage
+*.cover
+*.py,cover
+.cache
+nosetests.xml
+coverage.xml
+*.mo
+*.pot
+
+# Base de données SQLite
+*.sqlite3
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Dump SQL
+*.sql
