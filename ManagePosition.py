@@ -23,7 +23,7 @@ def generate_positions(df):
 
     return positions
 
-curs.execute("SELECT id,x,y,z FROM concepts")
+curs.execute("SELECT id,x,y,z FROM concepts ORDER BY id ")
 pos = curs.fetchall()
 posC = generate_positions(pos)
 print(posC)

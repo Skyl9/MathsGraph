@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import psycopg2
 import psycopg2.extras
 from starlette.middleware.cors import CORSMiddleware
@@ -16,7 +16,7 @@ app.add_middleware(
 def get_concepts():
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cursor.execute("SELECT id, nom,type, x, y, z FROM concepts")
+    cursor.execute("SELECT id, nom,type, x, y, z FROM concepts ORDER BY id")
     concepts = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return concepts
@@ -44,3 +44,47 @@ def read_concepts():
         L.append(dictio)
     a = {'nodes':L,"edges":[],}
     return a
+
+@app.get("/getAlldatabaseInfo")
+def giveAllDatabaseInfo():
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute("SELECT * FROM concepts ORDER BY id")
+    allInfo = [dict(row) for row in cursor.fetchall()]
+    return allInfo
+
+
+@app.get("/getNode/{id}")
+def getNode(id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute("SELECT * FROM concepts WHERE id = %s", (id,))
+    return dict(cursor.fetchone())
+
+
+@app.patch("/updateNodes/{id}")
+async def updateNodes(id: int, data: dict):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Vérifier si l'ID existe
+    cursor.execute("SELECT id FROM concepts WHERE id = %s;", (id,))
+    if cursor.fetchone() is None:
+        raise HTTPException(status_code=404, detail="ID not found")
+
+    # Construction dynamique de la requête SQL
+    keys = data.keys()
+    for key in keys:
+        set_clause =  key + " = %s"  # Ex: "x = %s, y = %s"
+        sql = f"UPDATE concepts SET {set_clause} WHERE id = %s;"
+        cursor.execute(sql, (data[key],id))
+
+    # Exécution de la requête
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return {"message": "Mise à jour réussie", "updated_fields": data}
+
