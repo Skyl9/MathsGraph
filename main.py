@@ -8,8 +8,7 @@ from database import get_db_connection
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://mathsgraphfrontend-production.up.railway.app",
-                   "http://localhost:3000"],  # Autorise uniquement React (⚠️ sécuriser en prod)
+    allow_origins=["*"],  # Autorise uniquement React (⚠️ sécuriser en prod)
     allow_credentials=True,
     allow_methods=["*"],  # Autorise toutes les méthodes (GET, POST, etc.)
     allow_headers=["*"],  # Autorise tous les headers
