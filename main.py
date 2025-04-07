@@ -14,12 +14,36 @@ app.add_middleware(
     allow_headers=["*"],  # Autorise tous les headers
 )
 def get_concepts():
+    """Récupère les informations des concepts et leurs positions."""
     conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cursor.execute("SELECT id, nom,type, x, y, z FROM concepts ORDER BY id")
-    concepts = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    return concepts
+    cur = conn.cursor()
+
+    # Récupérer les informations de base des concepts
+    cur.execute("SELECT id, nom, type FROM concepts;")
+    concepts = cur.fetchall()
+
+    # Récupérer les positions des concepts
+    cur.execute("SELECT concept_id, vue, x, y, z FROM positions WHERE vue IN ('grille', 'arbre');")
+    positions = cur.fetchall()
+
+    # Créer un dictionnaire de positions par concept_id
+    positions_dict = {}
+    for concept_id, vue, x, y, z in positions:
+        if concept_id not in positions_dict:
+            positions_dict[concept_id] = {}
+        positions_dict[concept_id][vue] = {"x": x, "y": y, "z": z}
+
+    # Construire le dictionnaire final
+    result = []
+    for concept_id, nom, concept_type in concepts:
+        result.append({
+            "id": concept_id,
+            "nom": nom,
+            "typeMath": concept_type,
+            "position": positions_dict.get(concept_id, {})
+        })
+
+    return result
 
 
 @app.get("/")
@@ -38,11 +62,8 @@ async def say_hello(name: str):
 @app.get("/concepts")
 def read_concepts():
     data = get_concepts()
-    L = []
-    for i in data:
-        dictio = {"id":i["id"],'nom':i["nom"],'typeMath':i['type'],'position':[i["x"],i["y"],i["z"]]}
-        L.append(dictio)
-    a = {'nodes':L,"edges":[],}
+
+    a = {'nodes':data,"edges":[]}
     return a
 
 @app.get("/getAlldatabaseInfo")
