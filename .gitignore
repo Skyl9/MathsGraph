@@ -41,3 +41,8 @@ coverage.xml
 # Dump SQL
 *.sql
 !/.env
+
+test_main.http
+Sandbox.py
+.env
+
