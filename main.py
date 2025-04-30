@@ -1,7 +1,4 @@
-from pprint import pprint
-
 from fastapi import FastAPI, HTTPException
-import psycopg2
 import psycopg2.extras
 from starlette.middleware.cors import CORSMiddleware
 
@@ -367,7 +364,15 @@ async def get_type():
     cursor = conn.cursor()
     cursor.execute("SELECT nom FROM categories")
     listToReturn = cursor.fetchall()
-    print(listToReturn)
+    conn.close()
+    return listToReturn
+
+@app.get("/getAllNodesNames")
+async def get_name():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT nom FROM concepts Order by nom")
+    listToReturn = cursor.fetchall()
     conn.close()
     return listToReturn
 
@@ -408,6 +413,56 @@ async def add_categories(data:dict):
     if cursor.fetchone() is not None:
         raise HTTPException(status_code=409, detail="Type already exists")
     cursor.execute("INSERT INTO mathematiciens (nom) VALUES  (%s);", (data["value"],))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+@app.post("/createAlias")
+async def add_alias(data:dict):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    print(data)
+    cursor.execute("SELECT id FROM aliases WHERE alias = %s;", (data["value"],))
+    if cursor.fetchone() is not None:
+        raise HTTPException(status_code=409, detail="Alias already exists")
+    cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES  (%s,%s);", (data["id"],data["value"]))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+@app.post("/createRelation")
+async def add_relation(data:dict):
+    data = data["value"]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    print(data["théo1"].strip(),data["théo2"])
+    cursor.execute("SELECT id FROM concepts WHERE TRIM(nom) = %s;", (data["théo1"],))
+    theo1 = cursor.fetchone()
+    cursor.execute("SELECT id FROM concepts WHERE TRIM(nom) = %s;", (data["théo2"],))
+    theo2 = cursor.fetchone()
+    cursor.execute("SELECT id FROM relations WHERE concept_source = %s AND concept_cible = %s;", (theo1,theo2))
+    if cursor.fetchone() is not None:
+        raise HTTPException(status_code=409, detail="Relation already exists")
+    if theo1 is None or theo2 is None:
+        print(theo1,theo2)
+        raise HTTPException(status_code=404, detail="Concept not found")
+    cursor.execute("INSERT INTO relations (concept_source, concept_cible, type_relation, description) VALUES  (%s,%s,%s,%s);", (theo1[0],theo2[0], data["relation"], data["desc"]))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+@app.post("/createSource")
+async def add_source(data:dict):
+    data = data["value"]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    print(data)
+    cursor.execute("SELECT id FROM sources WHERE titre = %s;", (data["source"],))
+    if cursor.fetchone() is not None:
+        raise HTTPException(status_code=409, detail="Source already exists")
+    cursor.execute("INSERT INTO sources (titre,auteur,annee,url,type) VALUES  (%s,%s,%s,%s,%s) RETURNING id;", (data["source"],data["auteur"],data["annee"],data["url"],data["type"]))
+    source_id = cursor.fetchone()[0]
+    cursor.execute("INSERT INTO concepts_sources (concept_id, source_id) VALUES  (%s,%s);", (data["id"],source_id))
     conn.commit()
     cursor.close()
     conn.close()
