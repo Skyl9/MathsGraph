@@ -1,0 +1,23 @@
+-- Améliorer les performances de recherche
+CREATE INDEX idx_concepts_verification ON concepts(verification);
+CREATE INDEX idx_concepts_type ON concepts(type);
+CREATE INDEX idx_concepts_date_modification ON concepts(date_modification);
+CREATE INDEX idx_foreign_name_langue ON foreign_name(langue);
+CREATE INDEX idx_mathematiciens_domaine ON mathematiciens(domaine);
+CREATE INDEX idx_user_contributions_created_at ON user_contributions(created_at);
+
+
+ALTER TABLE relations
+ADD COLUMN strength INTEGER CHECK (strength BETWEEN 1 AND 5),
+ADD COLUMN validated_by INTEGER REFERENCES users(id),
+ADD COLUMN validation_date TIMESTAMP WITH TIME ZONE;
+
+
+
+ALTER TABLE sources
+ADD COLUMN doi VARCHAR(255),
+ADD COLUMN isbn VARCHAR(13),
+ADD COLUMN date_publication DATE,
+ADD COLUMN editeur VARCHAR(255),
+ADD COLUMN langue VARCHAR(10) DEFAULT 'fr',
+ADD COLUMN abstract TEXT;

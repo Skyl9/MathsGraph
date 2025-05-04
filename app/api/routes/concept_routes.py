@@ -1,41 +1,59 @@
-from fastapi import FastAPI, HTTPException
-import psycopg2.extras
-from starlette.middleware.cors import CORSMiddleware
+import psycopg2
+from fastapi import APIRouter, HTTPException, Depends
 
-from database import get_db_connection
+from app.core.deps import get_current_active_user
+from app.core.exceptions import ConceptException
+from app.db.database import get_db_connection
+from app.schemas import CategorieBase
+from app.schemas.EditableClass import EditableField
+from app.schemas.GraphData import Nodes, GraphData
+from app.schemas.Views import Views
+from app.schemas.concept import ConceptCreate, ConceptResponse
+from app.schemas.mathematicien import MathematicienResponse
+from app.schemas.pathcClass import UpdateCategoryDict, CreateData, CreateAlias, CreateRelation, CreateSource
+from app.schemas.response import Response
+from app.services.concept_service import ConceptService
+from typing import List
 
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Autorise uniquement React (⚠️ sécuriser en prod)
-    allow_credentials=True,
-    allow_methods=["*"],  # Autorise toutes les méthodes (GET, POST, etc.)
-    allow_headers=["*"],  # Autorise tous les headers
-)
+#TODO Modifier updateOneCategory pour prendre en compte si utilisateur + historique
 
-def get_mathematiciens(conn):
+router = APIRouter(prefix="", tags=["concepts"])
+
+
+def get_mathematiciens(conn) -> MathematicienResponse:
     with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
         cur.execute("SELECT * FROM mathematiciens")
         return cur.fetchall()
 
 
-def get_categories(conn):
+def get_categories(conn) -> CategorieBase:
     with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
         cur.execute("SELECT * FROM categories")
         return cur.fetchall()
 
-def get_concept_info(concept_id, connection):
+
+def get_concept_info(concept_id, connection) -> ConceptResponse:
     with connection.cursor() as cursor:
         # Récupérer les informations de base sur le concept
         cursor.execute("""
-            SELECT c.id, c.nom, t.type, c.enonce, c.demonstration, c.verification, c.date_modification,
-                   m.id, m.nom, cat.id, cat.nom
-            FROM concepts c
-            LEFT JOIN mathematiciens m ON c.mathematicien_id = m.id
-            LEFT JOIN categories cat ON c.categorie_id = cat.id
-            LEFT JOIN type t ON c.type_id = t.id
-            WHERE c.id = %s ORDER BY c.id ASC
-        """, (concept_id,))
+                       SELECT c.id,
+                              c.nom,
+                              t.type,
+                              c.enonce,
+                              c.demonstration,
+                              c.verification,
+                              c.date_modification,
+                              m.id,
+                              m.nom,
+                              cat.id,
+                              cat.nom
+                       FROM concepts c
+                                LEFT JOIN mathematiciens m ON c.mathematicien_id = m.id
+                                LEFT JOIN categories cat ON c.categorie_id = cat.id
+                                LEFT JOIN type t ON c.type_id = t.id
+                       WHERE c.id = %s
+                       ORDER BY c.id ASC
+                       """, (concept_id,))
         result = cursor.fetchone()
 
         if not result:
@@ -48,12 +66,12 @@ def get_concept_info(concept_id, connection):
             "enonce": result[3],
             "demonstration": result[4],
             "verification": result[5],
-            "date_ajout": result[6],
-            "mathematicien":  {"id" : result[7],"mathematicien" :result[8]}
+            "date_modification": result[6],
+            "mathematicien": {"id": result[7], "mathematicien": result[8]}
             if result[7] else None,
-            "categorie": {"id":result[9], "category":result[10]}
+            "categorie": {"id": result[9], "category": result[10]}
             if result[9] else None,
-            }
+        }
 
         # Récupérer les alias du concept
         cursor.execute("SELECT alias FROM aliases WHERE concept_id = %s", (concept_id,))
@@ -61,11 +79,11 @@ def get_concept_info(concept_id, connection):
 
         # Récupérer les sources liées au concept
         cursor.execute("""
-            SELECT DISTINCT s.id, s.titre, s.auteur, s.annee, s.url, s."type"
-            FROM sources s
-            JOIN concepts_sources cs ON s.id = cs.source_id
-            WHERE cs.concept_id = %s
-        """, (concept_id,))
+                       SELECT DISTINCT s.id, s.titre, s.auteur, s.annee, s.url, s."type"
+                       FROM sources s
+                                JOIN concepts_sources cs ON s.id = cs.source_id
+                       WHERE cs.concept_id = %s
+                       """, (concept_id,))
         concept["sources"] = [
             {
                 "id": row[0],
@@ -79,35 +97,35 @@ def get_concept_info(concept_id, connection):
 
         # Récupérer les relations du concept (sources ou cibles)
         cursor.execute("""
-        SELECT
-        r.id,
-        r.concept_source,
-        c_source.nom AS nom_source,
-        r.concept_cible,
-        c_cible.nom AS nom_cible,
-        r.type_relation,
-        r.description,
-        r.date_relation
-        FROM relations r
-        JOIN concepts c_source ON r.concept_source = c_source.id
-        JOIN concepts c_cible ON r.concept_cible = c_cible.id
-        WHERE concept_source = %s OR concept_cible = %s
-        """, (concept_id, concept_id))
+                       SELECT r.id,
+                              r.concept_source,
+                              c_source.nom AS nom_source,
+                              r.concept_cible,
+                              c_cible.nom  AS nom_cible,
+                              r.type_relation,
+                              r.description,
+                              r.date_relation
+                       FROM relations r
+                                JOIN concepts c_source ON r.concept_source = c_source.id
+                                JOIN concepts c_cible ON r.concept_cible = c_cible.id
+                       WHERE concept_source = %s
+                          OR concept_cible = %s
+                       """, (concept_id, concept_id))
         concept["relations"] = [
             {
                 "id": row[0],
-                "concept_source": {"id":row[1],"nom":row[2]},
-                "concept_cible": {"id":row[3],"nom":row[4]},
+                "concept_source": {"id": row[1], "nom": row[2]},
+                "concept_cible": {"id": row[3], "nom": row[4]},
                 "type_relation": row[5],
-                "description":row[6],
+                "description": row[6],
             } for row in cursor.fetchall()
         ]
         cursor.execute("""
-        SELECT id, "Nom_francais", "Nom_étranger", langue
-        FROM foreign_name
-        WHERE "Nom_francais" = (SELECT nom FROM concepts WHERE id = %s)
-        
-        """, (concept_id,))
+                       SELECT id, "Nom_francais", "Nom_étranger", langue
+                       FROM foreign_name
+                       WHERE "Nom_francais" = (SELECT nom FROM concepts WHERE id = %s)
+
+                       """, (concept_id,))
         concept["noms_etrangers"] = [
             {
                 "id": row[0],
@@ -117,11 +135,10 @@ def get_concept_info(concept_id, connection):
             } for row in cursor.fetchall()
         ]
 
-
         return concept
 
 
-def get_conceptsAdmin(conn):
+def get_conceptsAdmin(conn) -> List[ConceptResponse]:
     with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
         # Récupérer les concepts
         cur.execute("SELECT * FROM concepts ORDER BY id ")
@@ -129,25 +146,28 @@ def get_conceptsAdmin(conn):
 
         # Récupération des sources liées aux concepts
         cur.execute("""
-        SELECT cs.concept_id, s.* FROM concepts_sources cs
-        JOIN sources s ON cs.source_id = s.id
-        """)
+                    SELECT cs.concept_id, s.*
+                    FROM concepts_sources cs
+                             JOIN sources s ON cs.source_id = s.id
+                    """)
         sources = {}
         for row in cur.fetchall():
             sources.setdefault(row['concept_id'], []).append(dict(row))
 
         # Récupération des alias
         cur.execute("""
-        SELECT concept_id, alias FROM aliases
-        """)
+                    SELECT concept_id, alias
+                    FROM aliases
+                    """)
         aliases = {}
         for row in cur.fetchall():
             aliases.setdefault(row['concept_id'], []).append({'alias': row['alias']})
 
         # Récupération des noms étrangers
         cur.execute("""
-        SELECT "Nom_francais", "Nom_étranger", langue FROM foreign_name
-        """)
+                    SELECT "Nom_francais", "Nom_étranger", langue
+                    FROM foreign_name
+                    """)
         noms_etrangers = {}
         for row in cur.fetchall():
             noms_etrangers.setdefault(row['Nom francais'], []).append({
@@ -157,8 +177,9 @@ def get_conceptsAdmin(conn):
 
         # Récupération des relations
         cur.execute("""
-        SELECT * FROM relations
-        """)
+                    SELECT *
+                    FROM relations
+                    """)
         relations = {}
         for row in cur.fetchall():
             relations.setdefault(row['concept_source'], []).append(dict(row))
@@ -191,8 +212,7 @@ def get_conceptsAdmin(conn):
         return result_concepts
 
 
-
-def get_concepts():
+def get_concepts() -> Nodes:
     """Récupère les informations des concepts et leurs positions."""
     conn = get_db_connection()
     cur = conn.cursor()
@@ -225,71 +245,59 @@ def get_concepts():
     return result
 
 
-import psycopg2
-
-
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
-
-
-
-
-
-@app.get("/concepts")
-def read_concepts():
+@router.get("/concepts", response_model=GraphData)
+async def read_concepts():
     data = get_concepts()
 
-    a = {'nodes':data,"edges":[]}
+    a = {'nodes': data, "edges": []}
     return a
 
-@app.get("/getAlldatabaseInfo")
+
+@router.get("/getAlldatabaseInfo", response_model=List[ConceptResponse])
 def giveAllDatabaseInfo():
     conn = get_db_connection()
     return get_conceptsAdmin(conn)
 
 
-@app.get("/getNode/{id}")
-def getNode(id: int):
+@router.get("/getNode/{concept_id}", response_model=ConceptResponse)
+def getNode(concept_id: int):
     conn = get_db_connection()
-    a = get_concept_info(id, conn)
-    return a
+    concept = get_concept_info(concept_id, conn)
+    if not concept:
+        raise HTTPException(status_code=404, detail="Concept non trouvé")
+    return concept
 
-@app.patch("/updateOneCategory/{id}")
-async def updateOneCategory(id: int,data: dict):
+
+@router.patch("/updateOneCategory/{concept_id}")
+async def updateOneCategory(concept_id: int, data: UpdateCategoryDict):
     conn = get_db_connection()
     cursor = conn.cursor()
     # Vérifier si l'ID existe
-    cursor.execute("SELECT id FROM concepts WHERE id = %s;", (id,))
+    cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
     if cursor.fetchone() is None:
         raise HTTPException(status_code=404, detail="ID not found")
 
-    if data["field"] in ["nom","enonce","demonstration","verification","date_ajout"]:
+    if data["field"] in ["nom", "enonce", "demonstration", "verification", "date_ajout"]:
         set_clause = data["field"] + " = %s"  # Ex: "x = %s, y = %s"
         sql = f"UPDATE concepts SET {set_clause} WHERE id = %s;"
-        cursor.execute(sql, (data["value"], id))
+        cursor.execute(sql, (data["value"], concept_id))
 
     elif data["field"] == "type":
-        cursor.execute("UPDATE concepts SET type_id = (SELECT id FROM type WHERE type = %s ) WHERE id = %s;", (data["value"], id))
+        cursor.execute("UPDATE concepts SET type_id = (SELECT id FROM type WHERE type = %s ) WHERE id = %s;",
+                       (data["value"], concept_id))
 
     elif data["field"] == "categorie":
         sql = f"UPDATE concepts SET categorie_id = (SELECT id FROM categories WHERE nom = %s ) WHERE id = %s;"
-        cursor.execute(sql, (data["value"], id))
+        cursor.execute(sql, (data["value"], concept_id))
 
 
     elif data["field"] == "mathematicien":
         sql = f"UPDATE concepts SET mathematicien_id = (SELECT id FROM mathematiciens WHERE nom = %s ) WHERE id = %s;"
-        cursor.execute(sql, (data["value"], id))
+        cursor.execute(sql, (data["value"], concept_id))
 
 
     elif data["field"] == "relations":
-        cursor.execute("DELETE FROM relations WHERE concept_source = %s OR concept_cible = %s;", (id, id))
+        cursor.execute("DELETE FROM relations WHERE concept_source = %s OR concept_cible = %s;", (concept_id, concept_id))
         for relation in data["value"]:
             cursor.execute("""
                 INSERT INTO relations (concept_source, concept_cible, type_relation, description)
@@ -306,16 +314,33 @@ async def updateOneCategory(id: int,data: dict):
             cursor.execute("UPDATE sources SET titre = %s,auteur = %s,annee = %s,url = %s,type = %s  WHERE id = %s ;", (source["titre"], source["auteur"], source["annee"], source["url"], source["type"],source["id"]))
 
     elif data["field"] == "aliases":
-        cursor.execute("DELETE FROM aliases WHERE concept_id = %s;", (id,))
+        cursor.execute("DELETE FROM aliases WHERE concept_id = %s;", (concept_id,))
         for alias in data["value"]:
-            cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES (%s, %s);", (id, alias))
+            cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES (%s, %s);", (concept_id, alias))
     conn.commit()
 
     cursor.close()
     conn.close()
 
-@app.get("/getEditableFieldsOptions/{id}")
-def getEditableFieldsOptions(id: int):
+@router.get("/concepts/{concept_id}/views",response_model=Views)
+async def get_concept_views(concept_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) as view_count,
+                   COUNT(DISTINCT user_id) as unique_viewers
+            FROM concept_views
+            WHERE concept_id = %s
+        """, (concept_id,))
+        result = cursor.fetchone()
+        return {"total_views": result[0], "unique_viewers": result[1]}
+    finally:
+        cursor.close()
+        conn.close()
+
+@router.get("/getEditableFieldsOptions",response_model=EditableField)
+def getEditableFieldsOptions():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT type FROM type")
@@ -329,13 +354,24 @@ def getEditableFieldsOptions(id: int):
             "type": type_concept}
     return data
 
-@app.patch("/updateNodes/{id}")
-async def updateNodes(id: int, data: dict):
+
+
+"""
+@router.get("/{concept_id}", response_model=ConceptResponse)
+async def get_node(concept_id: int):
+    concept = ConceptService.get_concept_by_id(concept_id)
+    if not concept:
+        raise HTTPException(status_code=404, detail="Concept non trouvé")
+    return concept
+
+"""
+@router.patch("/updateNodes/{id}",response_model=Response)
+async def updateNodes(concept_id: int, data: dict):
     conn = get_db_connection()
     cursor = conn.cursor()
     print(data)
     # Vérifier si l'ID existe
-    cursor.execute("SELECT id FROM concepts WHERE id = %s;", (id,))
+    cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
     if cursor.fetchone() is None:
         raise HTTPException(status_code=404, detail="ID not found")
 
@@ -343,11 +379,11 @@ async def updateNodes(id: int, data: dict):
     keys = data.keys()
     for key in keys:
         if key == "type":
-            cursor.execute("UPDATE concepts SET type_id = (SELECT id FROM type WHERE type = %s ) WHERE id = %s;", (data[key], id))
+            cursor.execute("UPDATE concepts SET type_id = (SELECT id FROM type WHERE type = %s ) WHERE id = %s;", (data[key], concept_id))
         else:
             set_clause =  key + " = %s"  # Ex: "x = %s, y = %s"
             sql = f"UPDATE concepts SET {set_clause} WHERE id = %s;"
-            cursor.execute(sql, (data[key],id))
+            cursor.execute(sql, (data[key], concept_id))
 
     # Exécution de la requête
 
@@ -356,30 +392,30 @@ async def updateNodes(id: int, data: dict):
     cursor.close()
     conn.close()
 
-    return {"message": "Mise à jour réussie", "updated_fields": data}
+    return {"message": "Mise à jour réussie", "status":404,"data": data}
 
-@app.get("/type")
-async def get_type():
+@router.get("/type",response_model=List[str])
+async def get_type_names():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT nom FROM categories")
-    listToReturn = cursor.fetchall()
+    listNameCategory = cursor.fetchall()
     conn.close()
-    return listToReturn
+    return listNameCategory
 
-@app.get("/getAllNodesNames")
-async def get_name():
+@router.get("/getAllNodesNames",response_model=List[str])
+async def get_nodes_names():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT nom FROM concepts Order by nom")
-    listToReturn = cursor.fetchall()
+    conceptNameList = cursor.fetchall()
     conn.close()
-    return listToReturn
+    return conceptNameList
 
 
 
-@app.post("/createCategory")
-async def add_categories(data:dict):
+@router.post("/createCategory")
+async def add_categories(data:CreateData):
     conn = get_db_connection()
     cursor = conn.cursor()
     print(data)
@@ -391,11 +427,10 @@ async def add_categories(data:dict):
     cursor.close()
     conn.close()
 
-@app.post("/createType")
-async def add_categories(data:dict):
+@router.post("/createType")
+async def add_categories(data:CreateData):
     conn = get_db_connection()
     cursor = conn.cursor()
-    print(data)
     cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
     if cursor.fetchone() is not None:
         raise HTTPException(status_code=409, detail="Type already exists")
@@ -404,11 +439,10 @@ async def add_categories(data:dict):
     cursor.close()
     conn.close()
 
-@app.post("/createMathematicien")
-async def add_categories(data:dict):
+@router.post("/createMathematicien")
+async def add_categories(data:CreateData):
     conn = get_db_connection()
     cursor = conn.cursor()
-    print(data)
     cursor.execute("SELECT id FROM mathematiciens WHERE nom = %s;", (data["value"],))
     if cursor.fetchone() is not None:
         raise HTTPException(status_code=409, detail="Type already exists")
@@ -417,11 +451,10 @@ async def add_categories(data:dict):
     cursor.close()
     conn.close()
 
-@app.post("/createAlias")
-async def add_alias(data:dict):
+@router.post("/createAlias")
+async def add_alias(data: CreateAlias):
     conn = get_db_connection()
     cursor = conn.cursor()
-    print(data)
     cursor.execute("SELECT id FROM aliases WHERE alias = %s;", (data["value"],))
     if cursor.fetchone() is not None:
         raise HTTPException(status_code=409, detail="Alias already exists")
@@ -430,8 +463,8 @@ async def add_alias(data:dict):
     cursor.close()
     conn.close()
 
-@app.post("/createRelation")
-async def add_relation(data:dict):
+@router.post("/createRelation")
+async def add_relation(data:CreateRelation):
     data = data["value"]
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -451,8 +484,8 @@ async def add_relation(data:dict):
     cursor.close()
     conn.close()
 
-@app.post("/createSource")
-async def add_source(data:dict):
+@router.post("/createSource")
+async def add_source(data:CreateSource):
     data = data["value"]
     conn = get_db_connection()
     cursor = conn.cursor()

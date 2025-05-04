@@ -175,7 +175,7 @@ def ListeTheo():
             theoremes.append(a_tag.attrs['title'])
 
     # Enregistrer les noms des théorèmes dans un fichier JSON
-    with open('JSONFILE/theoremes.json', 'w', encoding='utf-8') as json_file:
+    with open('../JSONFILE/theoremes.json', 'w', encoding='utf-8') as json_file:
         json.dump(theoremes, json_file, ensure_ascii=False, indent=4)
 
     print("Liste des théorèmes enregistrée dans 'theoremes.json'")
@@ -208,7 +208,7 @@ def ListeLemme():
             lemme.append(a_tag.attrs['title'])
 
     # Enregistrer les noms des théorèmes dans un fichier JSON
-    with open('JSONFILE/lemme.json', 'w', encoding='utf-8') as json_file:
+    with open('../JSONFILE/lemme.json', 'w', encoding='utf-8') as json_file:
         json.dump(lemme, json_file, ensure_ascii=False, indent=4)
 
     print("Liste des lemme enregistrée dans 'lemme.json'")
@@ -216,7 +216,7 @@ def ListeLemme():
 
 # Sépare en Deux la liste des théorèmes en fonction de l'existence de leur page wikipédia
 def SeparationThoreme():
-    theoremeCODE = open("JSONFILE/theoremes.json")
+    theoremeCODE = open("../JSONFILE/theoremes.json")
     theoremes = json.load(theoremeCODE)
     theoremeListe1 = []
     theoremeListe2 = []
@@ -228,14 +228,14 @@ def SeparationThoreme():
         else:
             theoremeListe2.append(i)
 
-    with open('JSONFILE/theoremesExiste.json', 'w', encoding='utf-8') as json_file:
+    with open('../JSONFILE/theoremesExiste.json', 'w', encoding='utf-8') as json_file:
         json.dump(theoremeListe1, json_file, ensure_ascii=False, indent=4)
-    with open('JSONFILE/theoremesPageVide.json', 'w', encoding='utf-8') as json_file:
+    with open('../JSONFILE/theoremesPageVide.json', 'w', encoding='utf-8') as json_file:
         json.dump(theoremeListe2, json_file, ensure_ascii=False, indent=4)
     return
 
 def SeparationLemme():
-    lemmeCode = open("JSONFILE/lemme.json")
+    lemmeCode = open("../JSONFILE/lemme.json")
     lemme = json.load(lemmeCode)
     theoremeListe1 = []
     theoremeListe2 = []
@@ -247,9 +247,9 @@ def SeparationLemme():
         else:
             theoremeListe2.append(i)
 
-    with open('JSONFILE/lemmeExiste.json', 'w', encoding='utf-8') as json_file:
+    with open('../JSONFILE/lemmeExiste.json', 'w', encoding='utf-8') as json_file:
         json.dump(theoremeListe1, json_file, ensure_ascii=False, indent=4)
-    with open('JSONFILE/lemmePageVide.json', 'w', encoding='utf-8') as json_file:
+    with open('../JSONFILE/lemmePageVide.json', 'w', encoding='utf-8') as json_file:
         json.dump(theoremeListe2, json_file, ensure_ascii=False, indent=4)
     return
 
@@ -310,7 +310,7 @@ def AutomatisationLemmeJson(file):
         print(i)
 
 
-AutomatisationLemmeJson(open("JSONFILE/lemmeExiste.json"))
+AutomatisationLemmeJson(open("../JSONFILE/lemmeExiste.json"))
 # Fonction pour obtenir le vrai nom d'une page en cas de redirection
 
 
@@ -348,7 +348,7 @@ conn.commit()  # Valide la transaction
 
 
 
-with open('JSONFILE/LemmeRestant.json', 'w', encoding='utf-8') as json_file:
+with open('../JSONFILE/LemmeRestant.json', 'w', encoding='utf-8') as json_file:
     json.dump(L, json_file, ensure_ascii=False, indent=4)
 
 # Fermeture de la connexion

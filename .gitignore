@@ -1,7 +1,7 @@
 # PyCharm
 .idea/
 JSONFILE/
-math.txt
+Bunch of thing/math.txt
 config.ini
 
 # Environnements virtuels
@@ -42,7 +42,7 @@ coverage.xml
 *.sql
 !/.env
 
-test_main.http
+Bunch of thing/test_main.http
 Sandbox.py
 .env
 
