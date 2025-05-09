@@ -1,22 +1,38 @@
 from psycopg2 import sql
+from unicodedata import category
 
 from app.db.database import get_db_connection
 from app.schemas.categorie import CategoryUpdate
 from app.schemas.categorie import CategorieBase
 
-
-def get_one_category(id_type: int) -> CategorieBase:
+def get_all_categories()->list[CategorieBase]:
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM categories WHERE id = %s", (id_type,))
-    concept_type = cur.fetchone()
-    typeDict = {
-        "id": concept_type[0],
-        "nom": concept_type[1],
-        "description":concept_type[2],
+    cur.execute("SELECT * FROM categories")
+    categories = cur.fetchall()
+    categoryF = []
+    for i in categories:
+        categoryDict ={
+            "id":i[0],
+            "nom":i[1],
+            "description":i[2],
+        }
+        categoryF.append(categoryDict)
+    conn.close()
+    return categoryF
+
+def get_one_category(id_category: int) -> CategorieBase:
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM categories WHERE id = %s", (id_category,))
+    category = cur.fetchone()
+    categoryDict = {
+        "id": category[0],
+        "nom": category[1],
+        "description":category[2],
     }
     conn.close()
-    return typeDict
+    return categoryDict
 
 
 def update_category(id_type: int, data: CategoryUpdate):
