@@ -1,17 +1,17 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from pydantic import BaseModel
 
 class Position(BaseModel):
-    x:int
-    y:int
-    z:int
+    x:Optional[int]
+    y:Optional[int]
+    z:Optional[int]
 
 class Nodes(BaseModel):
     id: int
     nom: str
     typeMath:str
-    position: Position
+    position: Dict[str, Position]
 
 
 class GraphData(BaseModel):

@@ -27,12 +27,12 @@ class Mathematicien(BaseModel):
 
 class Categorie(BaseModel):
     id: int
-    categorie: str
+    category: str
 
 class ConceptResponse(ConceptBase):
     id: int
     mathematicien: Optional[Mathematicien] = None
-    categorie: Optional[Categorie] = None
+    categories: Optional[Categorie] = None
     sources: Optional[List["SourceResponse"]] = []
     aliases: Optional[List[str]] = []
     relations: Optional[List["RelationResponse"]] = []

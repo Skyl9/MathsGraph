@@ -1,12 +1,9 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
-from app.schemas import CategorieBase
-from app.schemas.mathematicien import MathematicienResponse
-
 
 class EditableField(BaseModel):
-    mathematicien : MathematicienResponse
-    categorie : CategorieBase
-    type : Optional[str] = None
+    mathematicien : List[str]
+    categorie : List[str]
+    type : Optional[List[str]] = None

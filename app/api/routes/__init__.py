@@ -3,6 +3,7 @@ from .concept_routes import router as concept_router
 from .auth_routes import router as auth_router
 from .mathematicien_routes import router as mathematicien_router
 from .categorie_routes import router as categorie_router
+from .type_routes import router as type_router
 
 api_router = APIRouter()
 
@@ -20,12 +21,17 @@ api_router.include_router(
 
 api_router.include_router(
     mathematicien_router,
-    prefix="/mathematiciens",
-    tags=["mathematiciens"]
+    prefix="/mathematicien",
+    tags=["mathematicien"]
 )
 
 api_router.include_router(
     categorie_router,
-    prefix="/categories",
-    tags=["categories"]
+    prefix="/category",
+    tags=["category"]
+)
+api_router.include_router(
+    type_router,
+    prefix="/type",
+    tags=["type"]
 )

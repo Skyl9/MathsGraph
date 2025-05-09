@@ -6,7 +6,7 @@ class SourceBase(BaseModel):
     titre: str
     auteur: Optional[str] = None
     annee: Optional[int] = None
-    url: Optional[HttpUrl] = None
+    url: Optional[str] = None
     type: Optional[str] = None  # livre, article, web, etc.
     details: Optional[str] = None
 

@@ -46,3 +46,5 @@ Bunch of thing/test_main.http
 Sandbox.py
 .env
 
+/.junie/
+!/structure.txt

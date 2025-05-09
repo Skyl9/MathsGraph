@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import psycopg2
 from fastapi import APIRouter, HTTPException, Depends
 
@@ -69,7 +71,7 @@ def get_concept_info(concept_id, connection) -> ConceptResponse:
             "date_modification": result[6],
             "mathematicien": {"id": result[7], "mathematicien": result[8]}
             if result[7] else None,
-            "categorie": {"id": result[9], "category": result[10]}
+            "categories": {"id": result[9], "category": result[10]}
             if result[9] else None,
         }
 
@@ -365,7 +367,7 @@ async def get_node(concept_id: int):
     return concept
 
 """
-@router.patch("/updateNodes/{id}",response_model=Response)
+@router.patch("/updateNodes/{concept_id}",response_model=Response)
 async def updateNodes(concept_id: int, data: dict):
     conn = get_db_connection()
     cursor = conn.cursor()

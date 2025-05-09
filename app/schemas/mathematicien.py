@@ -1,10 +1,10 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List,Any
 from datetime import date
 from .base import TimestampModel
 
 class MathematicienBase(BaseModel):
-    nom: str
+    nom: Optional[str] = None
     biographie: Optional[str] = None
     date_naissance: Optional[date] = None
     date_deces: Optional[date] = None
@@ -23,3 +23,7 @@ class MathematicienCreate(MathematicienBase):
 class MathematicienXConcept(MathematicienBase, TimestampModel):
     id: int
     nombre_concepts: int = 0
+
+class MathematicienUpdate(BaseModel):
+    field:str
+    value: Any

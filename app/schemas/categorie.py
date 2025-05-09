@@ -5,3 +5,7 @@ class CategorieBase(BaseModel):
     id:int
     nom: str
     description: Optional[str] = None
+
+class CategoryUpdate(BaseModel):
+    field:str
+    value:dict
