@@ -1,6 +1,8 @@
+from fastapi import HTTPException
 from psycopg2 import sql
 
 from app.db.database import get_db_connection
+from app.schemas import CreateData, UpdateConceptDict
 from app.schemas.mathematicien import MathematicienResponse, MathematicienUpdate
 
 
@@ -47,6 +49,7 @@ class MathematicienService:
     def update_mathematicien(id_mathematicien: int, data: MathematicienUpdate):
         conn = get_db_connection()
         cur = conn.cursor()
+        data = data.model_dump() if isinstance(data, MathematicienUpdate) else data
 
         # Liste des colonnes autorisées pour éviter les problèmes d'injection SQL
         allowed_fields = {"nom", "date_naissance", "date_deces", "biographie", "nationalite", "domaine", "url",
@@ -80,3 +83,15 @@ class MathematicienService:
         mathematiciens = cur.fetchall()
         conn.close()
         return mathematiciens
+
+    @staticmethod
+    def add_mathematicien(data: CreateData):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        data = data.model_dump() if isinstance(data, CreateData) else data
+        cursor.execute("SELECT id FROM mathematiciens WHERE nom = %s;", (data["value"],))
+        if cursor.fetchone() is not None:
+            raise HTTPException(status_code=409, detail="Type already exists")
+        cursor.execute("INSERT INTO mathematiciens (nom) VALUES  (%s);", (data["value"],))
+        conn.commit()
+        conn.close()

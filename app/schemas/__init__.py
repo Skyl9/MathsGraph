@@ -9,7 +9,7 @@ from .GraphData import GraphData,Nodes,Position
 from .Views import Views
 from .EditableClass import EditableField
 from .response import Response
-from .pathcClass import UpdateCategoryDict,CreateData,CreateAlias,Relation,CreateRelation,Source,CreateSource
+from .pathcClass import UpdateConceptDict,CreateData,CreateAlias,Relation,CreateRelation,Source,CreateSource
 
 # Reconstruire les modèles après avoir tout importé
 ConceptResponse.model_rebuild()
@@ -32,5 +32,5 @@ __all__ = [
     "Views",
     "EditableField",
     "Response",
-    "CreateData", "CreateAlias", "Relation", "CreateRelation", "Source", "CreateSource",
+    "CreateData", "CreateAlias", "Relation", "CreateRelation", "Source", "CreateSource","UpdateConceptDict"
 ]

@@ -35,7 +35,7 @@ class ConceptName(BaseModel):
 class ConceptResponse(ConceptBase):
     id: int
     mathematicien: Optional[Mathematicien] = None
-    categories: Optional[Categorie] = None
+    categorie: Optional[Categorie] = None
     sources: Optional[List["SourceResponse"]] = []
     aliases: Optional[List[str]] = []
     relations: Optional[List["RelationResponse"]] = []

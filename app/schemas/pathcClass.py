@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class UpdateCategoryDict(BaseModel):
+class UpdateConceptDict(BaseModel):
     field: str
     value: str
 

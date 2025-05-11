@@ -1,7 +1,9 @@
+from fastapi import HTTPException
 from psycopg2 import sql
 
 from app.core.exceptions import NotFoundException
 from app.db.database import get_db_connection
+from app.schemas import CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
 
 class TypeService:
@@ -55,3 +57,16 @@ class TypeService:
             raise e
         finally:
             conn.close()
+
+    @staticmethod
+    def add_type(data: CreateData):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        data = data.model_dump() if isinstance(data, CreateData) else data
+        cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
+        if cursor.fetchone() is not None:
+            raise HTTPException(status_code=409, detail="Type already exists")
+        cursor.execute("INSERT INTO type (type) VALUES  (%s);", (data["value"],))
+        conn.commit()
+        cursor.close()
+        conn.close()

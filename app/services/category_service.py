@@ -1,6 +1,8 @@
+from fastapi import HTTPException
 from psycopg2 import sql
 
 from app.db.database import get_db_connection
+from app.schemas import CreateData
 from app.schemas.categorie import CategorieBase
 from app.schemas.categorie import CategoryUpdate
 
@@ -64,3 +66,16 @@ class CategoryService:
             raise e
         finally:
             conn.close()
+
+    @staticmethod
+    def add_category(data: CreateData):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        data = data.model_dump() if isinstance(data, CreateData) else data
+        cursor.execute("SELECT id FROM categories WHERE nom = %s;", (data["value"],))
+        if cursor.fetchone() is not None:
+            raise HTTPException(status_code=409, detail="Category already exists")
+        cursor.execute("INSERT INTO categories (nom) VALUES  (%s);", (data["value"],))
+        conn.commit()
+        cursor.close()
+        conn.close()

@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.schemas import CreateData
 from app.schemas.categorie import CategorieBase
 from app.services import CategoryService
 
@@ -20,3 +21,7 @@ async def update_category_E(id_category: int, data: dict):
 @router.get("/", response_model=list[CategorieBase])
 async def all_category():
     return CategoryService.get_all_categories()
+
+@router.post("/create")
+async def create_category(data:CreateData):
+    return CategoryService.add_category(data)
