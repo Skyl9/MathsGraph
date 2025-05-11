@@ -10,12 +10,13 @@ from app.schemas import CategorieBase
 from app.schemas.EditableClass import EditableField
 from app.schemas.GraphData import Nodes, GraphData
 from app.schemas.Views import Views
-from app.schemas.concept import ConceptCreate, ConceptResponse
+from app.schemas.concept import ConceptCreate, ConceptResponse, ConceptName
 from app.schemas.mathematicien import MathematicienResponse
 from app.schemas.pathcClass import UpdateCategoryDict, CreateData, CreateAlias, CreateRelation, CreateSource
 from app.schemas.response import Response
-from app.services.concept_service import ConceptService
 from typing import List
+
+from app.services.concept_service import get_all_concepts_name
 
 #TODO Modifier updateOneCategory pour prendre en compte si utilisateur + historique
 
@@ -396,7 +397,7 @@ async def updateNodes(concept_id: int, data: dict):
 
     return {"message": "Mise à jour réussie", "status":404,"data": data}
 
-@router.get("/type",response_model=List[str])
+@router.get("/typeC",response_model=List[str])
 async def get_type_names():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -501,3 +502,7 @@ async def add_source(data:CreateSource):
     conn.commit()
     cursor.close()
     conn.close()
+
+@router.get("/getAllConceptName",response_model=List[ConceptName])
+async def get_all_concept_name_R():
+    return get_all_concepts_name()

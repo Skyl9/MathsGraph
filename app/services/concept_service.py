@@ -2,8 +2,9 @@ from app.core.exceptions import NotFoundException
 from app.db.database import get_db_connection
 import psycopg2.extras
 
+from app.schemas.concept import ConceptName
 
-
+"""
 class ConceptService:
     @staticmethod
     def get_all_concepts():
@@ -39,3 +40,20 @@ class ConceptService:
         finally:
             cursor.close()
             conn.close()
+"""
+
+
+def get_all_concepts_name()->list[ConceptName]:
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id,nom FROM concepts")
+
+    concepts = cur.fetchall()
+    conceptList =[]
+    for i in concepts:
+        categoryDict = {
+            "id":i[0],
+            "nom":i[1],
+        }
+        conceptList.append(categoryDict)
+    return conceptList

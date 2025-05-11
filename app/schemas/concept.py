@@ -28,6 +28,9 @@ class Mathematicien(BaseModel):
 class Categorie(BaseModel):
     id: int
     category: str
+class ConceptName(BaseModel):
+    nom: str
+    id: int
 
 class ConceptResponse(ConceptBase):
     id: int

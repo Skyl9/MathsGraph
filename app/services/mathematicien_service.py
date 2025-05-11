@@ -12,6 +12,21 @@ def get_all_mathematicien_info():
     conn.close()
     return mathematiciens
 
+def get_all_mathematicien_name():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id,nom FROM mathematiciens")
+    mathematiciens = cur.fetchall()
+    mathematicienF = []
+    for i in mathematiciens:
+        categoryDict = {
+            "id": i[0],
+            "nom": i[1],
+        }
+        mathematicienF.append(categoryDict)
+    conn.close()
+    return mathematicienF
+
 def get_one_mathematicien(id_mathematicien:int)->MathematicienResponse:
     conn = get_db_connection()
     cur = conn.cursor()

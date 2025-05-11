@@ -1,9 +1,23 @@
 from psycopg2 import sql
 
 from app.db.database import get_db_connection
-from app.schemas.type import TypeResponse, TypeUpdate
+from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
 
 
+def get_all_type_name()->list[TypeNom]:
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, type FROM type")
+    typeFetched = cur.fetchall()
+    print(typeFetched)
+    typeF = []
+    for i in typeFetched:
+        categoryDict = {
+            "id": i[0],
+            "type": i[1],
+        }
+        typeF.append(categoryDict)
+    return typeF
 def get_one_type(id_type: int) -> TypeResponse:
     conn = get_db_connection()
     cur = conn.cursor()
