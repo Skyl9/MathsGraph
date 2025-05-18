@@ -8,6 +8,8 @@ from .source_routes import router as source_router
 from .relation_routes import router as relation_router
 from .alias_routes import router as alias_router
 from .graph_routes import router as graph_router
+from .user_routes import router as user_router
+
 
 api_router = APIRouter()
 
@@ -58,4 +60,9 @@ api_router.include_router(
     type_router,
     prefix="/type",
     tags=["type"]
+)
+api_router.include_router(
+    user_router,
+    prefix="/user",
+    tags=["user"]
 )

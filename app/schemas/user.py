@@ -5,9 +5,9 @@ from .base import TimestampModel
 class UserBase(BaseModel):
     username: str
     email: EmailStr
-    full_name: Optional[str] = None
     is_active: bool = True
-    is_superuser: bool = False
+    role: Optional[str] = None
+
 
 class UserCreate(UserBase):
     password: str
@@ -15,8 +15,19 @@ class UserCreate(UserBase):
 class UserUpdate(UserBase):
     password: Optional[str] = None
 
-class UserResponse(UserBase, TimestampModel):
+class UserResponse(UserBase,TimestampModel):
     id: int
+    created_at: str
+    preferred_language: Optional[str] = None
+    avatar_url :Optional[str] = None
+    bio:Optional[str] = None
+
 
 class UserInDB(UserResponse):
     hashed_password: str
+
+class UserId(BaseModel):
+    id: int
+class UpdateUser(BaseModel):
+    field:str
+    value:str

@@ -14,3 +14,10 @@ class User(BaseModel):
     username: str
     email: str
     is_active: bool
+
+class PasswordResetRequestSchema(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirmSchema(BaseModel):
+    new_password: str
+    token: str

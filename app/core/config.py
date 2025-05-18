@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev_secret_key")  # A fallback value for local testing
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    RESET_URL : str = "http://localhost:3000"
 
     # Database
     DB_USER: str = os.getenv("DB_USER", "postgres")
@@ -28,6 +29,11 @@ class Settings(BaseSettings):
     DB_PORT: str = os.getenv("DB_PORT", "5432")
     DB_NAME: str = os.getenv("DB_NAME", "app_db")
     DBTESTLINK: str | None = os.getenv("DBTESTLINK")  # Optional during testing
+
+    SMTP_HOST:str = os.getenv("SMTP_HOST")
+    SMTP_PORT:str = os.getenv("SMTP_PORT")
+    SMTP_USER:str = os.getenv("SMTP_USER")
+    SMTP_PASSWORD:str = os.getenv("SMTP_PASSWORD")
 
     @property
     def DATABASE_URL(self) -> str:
@@ -55,6 +61,7 @@ def get_settings() -> Settings:
         settings.DEBUG = True
         settings.TESTING = False
     else:  # production
+        settings.RESET_URL= ["https://mathsgraph-production.up.railway.app:3000"]
         settings.DEBUG = False
         settings.TESTING = False
 
