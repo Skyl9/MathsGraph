@@ -16,24 +16,32 @@ from app.services.tags_service import TagsService
 def format_alias(alias):
     string_alias = ""
     for i in alias:
-        string = i[2] + ", "
+        string = i + "\n"
         string_alias += string
-    return alias
+    return string_alias
 
 
 def format_relation(relation):
     string_relation = ""
     for i in relation:
-        string = i["concept_source"]["nom"] + " -> " + i["concept_cible"]["nom"] + " : " + i["type_relation"] + " - " + \
-                 i["description"] + "\n"
+        string = i["concept_source"]+ " -> " + i["concept_cible"] + ", Relation : " + i["type_relation"]
+        if i["description"]:
+            string += " - " + str(i["description"]) + "\n"
+        else :
+            string+= "\n"
         string_relation += string
+
     return string_relation
 
 
 def format_source(source):
     string_source = ""
     for i in source:
-        string = i[1] + " - " + i[2] + " - " + str(i[3]) + " - " + i[4] + " - " + i[5] + "\n"
+        string = "Titre : " + i["titre"] + " - Auteur : " + i["auteur"] + " - année " + str(i["annee"]) + " - type : "+ i["type"]
+        if i["url"]:
+            string += " - url : " + i["url"]+ "\n"
+        else :
+            string+= "\n"
         string_source += string
     return string_source
 
@@ -180,6 +188,131 @@ class ConceptService:
                            ORDER BY version_number DESC
                            """, (concept_id,))
             versions = cursor.fetchall()
+            cursor.close()
+
+        try :
+            cursor = conn.cursor()
+            for v in versions:
+                if v["field_modified"] == "mathematicien":
+                    old_id = v["old_value"]
+                    new_id = v["new_value"]
+                    cursor.execute("""
+                                   SELECT nom
+                                   FROM mathematiciens
+                                   WHERE id = %s
+                                   """, (str(old_id),))
+                    v["old_value"] = cursor.fetchone()[0]
+                    cursor.execute("""SELECT nom FROM mathematiciens WHERE id = %s""", (str(new_id),))
+                    v["new_value"] = cursor.fetchone()[0]
+
+
+                if v["field_modified"] == "categorie":
+                    old_id = v["old_value"]
+                    new_id = v["new_value"]
+                    cursor.execute("""
+                                   SELECT nom
+                                   FROM categories
+                                   WHERE id = %s
+                                   """, (str(old_id),))
+                    v["old_value"] = cursor.fetchone()[0]
+                    cursor.execute("""SELECT nom FROM categories WHERE id = %s""", (str(new_id),))
+                    v["new_value"] = cursor.fetchone()[0]
+
+                if v["field_modified"] == "type":
+                    old_id = v["old_value"]
+                    new_id = v["new_value"]
+                    cursor.execute("""
+                                   SELECT type
+                                   FROM type Where id =%s
+                    """,(str(old_id),))
+                    v["old_value"] = cursor.fetchone()[0]
+                    cursor.execute("""SELECT type FROM type WHERE id = %s""", (str(new_id),))
+                    v["new_value"] = cursor.fetchone()[0]
+
+                if v["field_modified"] == "sources":
+                    json_old_value = json.loads(v["old_value"])
+                    json_new_value = json.loads(v["new_value"])
+                    v["old_value"] = format_source(json_old_value)
+                    v["new_value"] = format_source(json_new_value)
+
+                if v["field_modified"] == "aliases":
+                    json_old_value = json.loads(v["old_value"])
+                    json_new_value = json.loads(v["new_value"])
+                    v["old_value"] = format_alias(json_old_value)
+                    v["new_value"] = format_alias(json_new_value)
+
+                if v["field_modified"] == "tags":
+
+
+                    json_old_value = json.loads(v["old_value"])
+                    json_new_value = json.loads(v["new_value"])
+
+
+                    for t in json_old_value :
+
+                        if t :
+                            cursor.execute(""" SELECT name
+                                               FROM tags
+                                               WHERE id = %s """, (t,))
+                            t = cursor.fetchone()[0]
+
+                    for t in json_new_value :
+
+                        if t :
+                            cursor.execute(""" SELECT name
+                                               FROM tags
+                                               WHERE id = %s """, (t,))
+                            t = cursor.fetchone()[0]
+                    print(json_old_value,json_new_value)
+
+                    v["old_value"] = format_tags(json_old_value)
+                    v["new_value"] = format_tags(json_new_value)
+                if v["field_modified"] == "noms_etrangers":
+                    json_old_value = json.loads(v["old_value"])
+                    json_new_value = json.loads(v["new_value"])
+                    v["old_value"] = format_foreign_name(json_old_value)
+                    v["new_value"] = format_foreign_name(json_new_value)
+
+                if v["field_modified"] == "relations":
+                    json_old_value = json.loads(v["old_value"])
+                    json_new_value = json.loads(v["new_value"])
+                    for i in json_old_value:
+                        concept_source_id = i["concept_source"]
+                        cursor.execute(""" SELECT nom
+                                           FROM concepts
+                                           WHERE id = %s """, (concept_source_id,))
+                        nom_source = cursor.fetchone()[0]
+                        i["concept_source"] = nom_source
+                        concept_cible_id = i["concept_cible"]
+                        cursor.execute(""" SELECT nom
+                                           FROM concepts
+                                           WHERE id = %s """, (concept_cible_id,))
+                        nom_cible = cursor.fetchone()[0]
+
+                        i["concept_cible"] = nom_cible
+                    for j in json_new_value:
+                        concept_source_id = j["concept_source"]
+                        cursor.execute(""" SELECT nom
+                                           FROM concepts
+                                           WHERE id = %s """, (concept_source_id,))
+                        nom_source = cursor.fetchone()[0]
+                        j["concept_source"] = nom_source
+                        concept_cible_id = j["concept_cible"]
+                        cursor.execute(""" SELECT nom
+                                           FROM concepts
+                                           WHERE id = %s """, (concept_cible_id,))
+                        nom_cible = cursor.fetchone()[0]
+                        j["concept_cible"] = nom_cible
+
+
+                    v["old_value"] = format_relation(json_old_value)
+                    v["new_value"] = format_relation(json_new_value)
+
+#TODO Finir pour les tag et foreign name, problème à l'ajout très probablement
+
+        except Exception as e:
+            raise e
+
         return versions
 
     @staticmethod
