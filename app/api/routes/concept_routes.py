@@ -6,6 +6,7 @@ from app.schemas import CategorieBase
 from app.schemas.EditableClass import EditableField
 from app.schemas.GraphData import Nodes, GraphData
 from app.schemas.concept import ConceptResponse, ConceptName
+from app.schemas.history import History
 from app.schemas.mathematicien import MathematicienResponse
 from app.schemas.pathcClass import UpdateConceptDict
 from app.schemas.response import Response
@@ -16,6 +17,7 @@ from app.services.concept_service import ConceptService
 #TODO Modifier updateOneCategory pour prendre en compte si utilisateur + historique
 
 router = APIRouter(prefix="", tags=["concepts"])
+
 
 def get_conceptsAdmin(conn) -> List[ConceptResponse]:
     with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -90,6 +92,7 @@ def get_conceptsAdmin(conn) -> List[ConceptResponse]:
 
         return result_concepts
 
+
 @router.get("/getAlldatabaseInfo", response_model=List[ConceptResponse])
 def giveAllDatabaseInfo():
     conn = get_db_connection()
@@ -101,15 +104,21 @@ def getConcept(concept_id: int):
     return ConceptService.get_concept_info(concept_id)
 
 
-@router.get("/getEditableFieldsOptions",response_model=EditableField)
+@router.get("/getEditableFieldsOptions", response_model=EditableField)
 def getEditableFieldsOptions():
     return ConceptService.getEditableFieldsOptions()
 
 
-@router.patch("/update/{concept_id}",response_model=Response)
+@router.get("/concept/history/{concept_id}", response_model=List[History])
+def getHistory(concept_id: int):
+    return ConceptService.get_concept_versions(concept_id)
+
+
+@router.patch("/update/{concept_id}", response_model=Response)
 async def updateConcept(concept_id: int, data: UpdateConceptDict):
     return ConceptService.updateConcept(concept_id, data)
 
-@router.get("/getAllConceptName",response_model=List[ConceptName])
+
+@router.get("/getAllConceptName", response_model=List[ConceptName])
 async def get_all_concept_name_R():
     return ConceptService.get_all_concepts_name()

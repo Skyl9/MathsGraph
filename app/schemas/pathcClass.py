@@ -1,9 +1,12 @@
+from typing import List, Dict,Any
+
 from pydantic import BaseModel
 
 
 class UpdateConceptDict(BaseModel):
     field: str
-    value: str
+    value: Any
+    username:str
 
 class CreateData(BaseModel):
     value:str

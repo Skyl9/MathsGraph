@@ -1,3 +1,4 @@
+from .history import History
 from .concept import ConceptResponse, ConceptCreate, ConceptBase
 from .categorie import  CategorieBase
 from .source import SourceResponse, SourceCreate, SourceBase
@@ -19,6 +20,8 @@ MathematicienXConcept.model_rebuild()
 NomEtrangerResponse.model_rebuild()
 UserResponse.model_rebuild()
 Nodes.model_rebuild()
+History.model_rebuild()
+
 
 __all__ = [
     "ConceptResponse", "ConceptCreate", "ConceptBase",
@@ -32,5 +35,6 @@ __all__ = [
     "Views",
     "EditableField",
     "Response",
+    "History",
     "CreateData", "CreateAlias", "Relation", "CreateRelation", "Source", "CreateSource","UpdateConceptDict"
 ]

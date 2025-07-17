@@ -41,3 +41,4 @@ class ConceptResponse(ConceptBase):
     relations: Optional[List["RelationResponse"]] = []
     noms_etrangers: Optional[List[Dict]] = []
     date_modification: Optional[datetime]
+    tags:Optional[List] = None
