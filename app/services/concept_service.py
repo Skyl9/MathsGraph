@@ -241,32 +241,7 @@ class ConceptService:
                     v["old_value"] = format_alias(json_old_value)
                     v["new_value"] = format_alias(json_new_value)
 
-                if v["field_modified"] == "tags":
 
-
-                    json_old_value = json.loads(v["old_value"])
-                    json_new_value = json.loads(v["new_value"])
-
-
-                    for t in json_old_value :
-
-                        if t :
-                            cursor.execute(""" SELECT name
-                                               FROM tags
-                                               WHERE id = %s """, (t,))
-                            t = cursor.fetchone()[0]
-
-                    for t in json_new_value :
-
-                        if t :
-                            cursor.execute(""" SELECT name
-                                               FROM tags
-                                               WHERE id = %s """, (t,))
-                            t = cursor.fetchone()[0]
-                    print(json_old_value,json_new_value)
-
-                    v["old_value"] = format_tags(json_old_value)
-                    v["new_value"] = format_tags(json_new_value)
                 if v["field_modified"] == "noms_etrangers":
                     json_old_value = json.loads(v["old_value"])
                     json_new_value = json.loads(v["new_value"])
@@ -308,7 +283,6 @@ class ConceptService:
                     v["old_value"] = format_relation(json_old_value)
                     v["new_value"] = format_relation(json_new_value)
 
-#TODO Finir pour les tag et foreign name, problème à l'ajout très probablement
 
         except Exception as e:
             raise e
@@ -495,28 +469,18 @@ class ConceptService:
                 cursor.execute("DELETE FROM aliases WHERE concept_id = %s;", (concept_id,))
                 for alias in data["value"]:
                     cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES (%s, %s);", (concept_id, alias))
-
-            elif data["field"] == "tags":
-                cursor.execute(f"SELECT tag_id FROM concept_tags WHERE concept_id = %s;", (concept_id,))
-                old_value = cursor.fetchall()
-                old_value = [i[0] for i in old_value]
+            elif data["field"] == "noms_etrangers":
+                cursor.execute("""SELECT id, concept_id, "Nom_étranger", langue FROM foreign_name WHERE concept_id = %s;""", (concept_id,))
+                query = cursor.fetchall()
+                old_value = []
+                for i in query:
+                    old_value.append({"id":i[0],'concept_id':i[1],"Nom_étranger":i[2],"langue":i[3]})
+                new_value = []
+                for i in data["value"]:
+                    new_value.append({"id":i["id"],"langue":i["langue"],"Nom_étranger":i["Nom_étranger"],"concept_id":i["concept_id"]})
                 new_value = data["value"]
                 old_value = json.dumps(old_value)
                 new_value = json.dumps(new_value)
-
-                for tags in data["value"]:
-                    cursor.execute("SELECT concept_id FROM concept_tags WHERE concept_id = %s AND tag_id = %s;",
-                                   (concept_id, tags["tag_id"]))
-                    if cursor.fetchone():
-                        raise HTTPException(status_code=409, detail="Relation already exists")
-                    cursor.execute("SELECT id FROM tags WHERE id = %s;", (tags["tag"],))
-                    if cursor.fetchone() is None:
-                        raise HTTPException(status_code=404, detail="Tag not found")
-                    try:
-                        cursor.execute("INSERT INTO concept_tags (concept_id, tag_id) VALUES (%s, %s);",
-                                       (concept_id, tags["tag"]))
-                    except Exception as e:
-                        raise HTTPException(status_code=409, detail="An error occurred: " + str(e))
 
             # Ajouter la version dans l'historique
             ConceptService.add_concept_version(conn,data["username"], concept_id, data["field"], old_value, new_value)
