@@ -9,7 +9,7 @@ from psycopg2.extras import RealDictCursor
 from app.db.database import get_db_connection
 from app.schemas import UpdateConceptDict
 
-from app.schemas.concept import ConceptName, ConceptResponse
+from app.schemas.concept import ConceptName, ConceptResponse, RollbackConcept
 from app.schemas.history import History
 from app.services.tags_service import TagsService
 
@@ -178,6 +178,65 @@ class ConceptService:
         return concept
 
     @staticmethod
+    def rollback_history(concept_id: int, data: RollbackConcept):
+        data = data.model_dump() if isinstance(data, RollbackConcept) else data
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                           SELECT field_modified,old_value,note
+                           FROM concept_versions
+                           WHERE concept_id = %s
+                           AND version_number = %s AND field_modified = %s
+                           """, (concept_id, data["version_number"],data["field_modified"]))
+            version = cursor.fetchone()
+        note = version[2]
+        note = f"Rollback from version number {data['version_number']}" if note is None else f"{note} - Rollback from  {data['version_number']}"
+        value = ConceptService.get_name_by_id(version[1],data["field_modified"]) # Traitement des ids / model dump pour la réutilisation dans updateConcept
+        data={"field":version[0],"value":value,"note":note,"username":data["username"]}
+        print(data)
+        ConceptService.updateConcept(concept_id,data,rollback=True)
+
+    @staticmethod
+    def get_name_by_id(id,type):
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            if type == "mathematicien":
+                cursor.execute("""
+                               SELECT nom
+                               FROM mathematiciens
+                               WHERE id = %s
+                               """, (str(id),))
+                result = cursor.fetchone()
+                if result:
+                    return result[0]
+            if type == "categorie":
+                cursor.execute("""
+                               SELECT nom
+                               FROM categories
+                               WHERE id = %s
+                               """, (str(id),))
+                result = cursor.fetchone()
+                if result:
+                    return result[0]
+            if type == "type":
+                cursor.execute("""
+                               SELECT type.type
+                               FROM type WHERE id = %s
+                """,(str(id),))
+                result = cursor.fetchone()
+                if result:
+                    return result[0]
+            if type == "sources":
+                id = json.loads(id)
+            if type == "aliases":
+                id = json.loads(id)
+            if type == "noms_etrangers":
+                id = json.loads(id)
+            if type == "relations":
+                id = json.loads(id)
+            return id
+
+    @staticmethod
     def get_concept_versions(concept_id: int) -> List[History]:
         conn = get_db_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -291,7 +350,7 @@ class ConceptService:
 
     @staticmethod
     def add_concept_version(conn, username: str, concept_id: int, field_modified: str, old_version, new_version,
-                            note: str = None):
+                            note: str = None,rollback:bool = False,):
         if old_version == new_version:
             return  # pas de changement, donc pas de version à stocker
 
@@ -335,10 +394,10 @@ class ConceptService:
         # Insérer une nouvelle version dans la table
         cursor2.execute("""
                         INSERT INTO concept_versions(modified_by, concept_id, field_modified, old_value, new_value,
-                                                     note, global_version, version_number)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                                                     note, global_version, version_number,is_rollback)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s);
                         """, (user_id, concept_id, field_modified, old_version, new_version, note, global_version,
-                              version_number))
+                              version_number,rollback))
 
 
     @staticmethod
@@ -358,7 +417,7 @@ class ConceptService:
         return conceptList
 
     @staticmethod
-    def updateConcept(concept_id: int, data: UpdateConceptDict):
+    def updateConcept(concept_id: int, data: UpdateConceptDict,rollback:bool = False):
         data = data.model_dump() if isinstance(data, UpdateConceptDict) else data
 
         try:
@@ -370,7 +429,6 @@ class ConceptService:
             cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
             if cursor.fetchone() is None:
                 raise HTTPException(status_code=404, detail="ID not found")
-
             # Champ à mettre à jour
             if data["field"] in ["nom", "enonce", "demonstration", "verification", "date_ajout"]:
                 cursor.execute(f"SELECT {data['field']} FROM concepts WHERE id=%s;", (concept_id,))
@@ -414,27 +472,34 @@ class ConceptService:
                     old_value.append(a)
                 #deepcopy nécessaire pour l'utilisation à l'enregistrement
                 new_value = copy.deepcopy(data["value"])
-                for i in new_value:
-                    i["concept_source"] = i["concept_source"]["id"]
-                    i["concept_cible"] = i["concept_cible"]["id"]
 
-                #Transformation en json str nécessaire
-                old_value = json.dumps(old_value)
-                new_value = json.dumps(new_value)
+                for i in new_value:
+                    # si concept_source est un dict, on remplace par son id
+                    if isinstance(i.get("concept_source"), dict):
+                        i["concept_source"] = i["concept_source"]["id"]
+
+                    # même chose pour concept_cible
+                    if isinstance(i.get("concept_cible"), dict):
+                        i["concept_cible"] = i["concept_cible"]["id"]
+
+
 
 
                 cursor.execute("DELETE FROM relations WHERE concept_source = %s OR concept_cible = %s;",
                                (concept_id, concept_id))
-                for relation in data["value"]:
+                for relation in new_value:
                     cursor.execute("""
                                    INSERT INTO relations (concept_source, concept_cible, type_relation, description)
                                    VALUES (%s, %s, %s, %s);
                                    """, (
-                                       relation["concept_source"]["id"],
-                                       relation["concept_cible"]["id"],
+                                       relation["concept_source"],
+                                       relation["concept_cible"],
                                        relation["type_relation"],
                                        relation.get("description"),
                                    ))
+                #Transformation en json str nécessaire
+                old_value = json.dumps(old_value)
+                new_value = json.dumps(new_value)
 
             elif data["field"] == "sources":
                 cursor.execute(f"SELECT id,titre,auteur,annee,url,type FROM sources WHERE id IN (SELECT source_id FROM concepts_sources WHERE concept_id = %s);", (concept_id,))
@@ -443,13 +508,12 @@ class ConceptService:
                 for i in query:
                     old_value.append({"id":i[0],"titre":i[1],"auteur":i[2],"annee":i[3],"url":i[4],"type":i[5]})
                 new_value = []
+
                 for i in data["value"]:
                     new_value.append({"id":i["id"],"titre":i["titre"],"auteur":i["auteur"],"annee":i["annee"],"url":i["url"],"type":i["type"]})
 
                 old_value = json.dumps(old_value)
                 new_value = json.dumps(new_value)
-
-
 
                 for source in data["value"]:
                     cursor.execute(
@@ -483,11 +547,10 @@ class ConceptService:
                 new_value = json.dumps(new_value)
 
             # Ajouter la version dans l'historique
-            ConceptService.add_concept_version(conn,data["username"], concept_id, data["field"], old_value, new_value)
+            ConceptService.add_concept_version(conn,data["username"], concept_id, data["field"], old_value, new_value,rollback=rollback)
 
             # Log du changement
             console_log = f"Concept {concept_id} modified by {data['username']} : {data['field']} = {new_value} (old value : {old_value})"
-            print(console_log)
 
             conn.commit()
             # Valider la transaction

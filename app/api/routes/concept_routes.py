@@ -5,7 +5,7 @@ from app.db.database import get_db_connection
 from app.schemas import CategorieBase
 from app.schemas.EditableClass import EditableField
 from app.schemas.GraphData import Nodes, GraphData
-from app.schemas.concept import ConceptResponse, ConceptName
+from app.schemas.concept import ConceptResponse, ConceptName, RollbackConcept
 from app.schemas.history import History
 from app.schemas.mathematicien import MathematicienResponse
 from app.schemas.pathcClass import UpdateConceptDict
@@ -103,6 +103,9 @@ def giveAllDatabaseInfo():
 def getConcept(concept_id: int):
     return ConceptService.get_concept_info(concept_id)
 
+@router.patch("/concept/rollback/{concept_id}")
+async def rollbackConcept(concept_id: int,data: RollbackConcept):
+    return ConceptService.rollback_history(concept_id,data)
 
 @router.get("/getEditableFieldsOptions", response_model=EditableField)
 def getEditableFieldsOptions():

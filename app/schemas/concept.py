@@ -17,6 +17,11 @@ class ConceptBase(BaseModel):
     verification: Optional[bool] = False
     type: Optional[str] = None
 
+class RollbackConcept(BaseModel):
+    version_number: int
+    field_modified: str
+    username: str
+
 class ConceptCreate(ConceptBase):
     mathematicien_id: Optional[int]
     categorie_id: Optional[int]
