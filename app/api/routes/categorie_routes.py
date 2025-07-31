@@ -22,6 +22,12 @@ async def update_category_E(id_category: int, data: dict):
 async def all_category():
     return CategoryService.get_all_categories()
 
+
 @router.post("/create")
-async def create_category(data:CreateData):
+async def create_category(data: CreateData):
     return CategoryService.add_category(data)
+
+
+@router.get("/name/{name}", response_model=CategorieBase)
+async def get_category_by_name(name: str):
+    return CategoryService.get_category_id(name)

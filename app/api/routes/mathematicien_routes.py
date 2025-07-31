@@ -27,3 +27,6 @@ async def mathematicienName():
 @router.post('/create')
 async def add_mathematicien(data:CreateData):
     MathematicienService.add_mathematicien(data)
+@router.get("/name/{name}", response_model=MathematicienResponse)
+async def get_mathematicien_by_name(name:str):
+    return MathematicienService.get_mathematicien_id(name)

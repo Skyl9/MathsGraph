@@ -22,3 +22,6 @@ async def get_all_type():
 @router.post("/create")
 async def create_type(data : CreateData):
     return TypeService.add_type(data)
+@router.get("/name/{name}",response_model=TypeResponse)
+async def get_type_by_name(name:str):
+    return TypeService.get_category_id(name)

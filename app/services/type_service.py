@@ -70,3 +70,13 @@ class TypeService:
         conn.commit()
         cursor.close()
         conn.close()
+
+    @staticmethod
+    def get_category_id(nom):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM type WHERE type.type = %s;", (nom,))
+        type = cursor.fetchone()
+        if type is None:
+            return None
+        return {"id":type[0],"type":nom}

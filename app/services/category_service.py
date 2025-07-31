@@ -79,3 +79,12 @@ class CategoryService:
         conn.commit()
         cursor.close()
         conn.close()
+    @staticmethod
+    def get_category_id(name):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM categories WHERE nom = %s;", (name,))
+        category = cursor.fetchone()
+        if category is None:
+            return None
+        return {"id":category[0],"nom":name}

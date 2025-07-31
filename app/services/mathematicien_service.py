@@ -95,3 +95,13 @@ class MathematicienService:
         cursor.execute("INSERT INTO mathematiciens (nom) VALUES  (%s);", (data["value"],))
         conn.commit()
         conn.close()
+
+    @staticmethod
+    def get_mathematicien_id(nom):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM mathematiciens WHERE nom = %s;", (nom,))
+        mathematicien = cursor.fetchone()
+        if mathematicien is None:
+            return None
+        return {"id":mathematicien[0],"nom":nom}
