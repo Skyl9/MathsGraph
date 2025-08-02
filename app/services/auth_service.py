@@ -56,12 +56,12 @@ class AuthService:
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT id, username, password_hash FROM users WHERE username = %s",
+            "SELECT id, username,role, password_hash FROM users WHERE username = %s",
             (form_data.username,)
         )
         user = cursor.fetchone()
 
-        if not user or not verify_password(form_data.password, user[2]):
+        if not user or not verify_password(form_data.password, user[3]):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Nom d'utilisateur ou mot de passe incorrect",
@@ -70,7 +70,7 @@ class AuthService:
 
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user[1]}, expires_delta=access_token_expires
+            data={"sub": user[1],"id":user[0],"role":user[2]}, expires_delta=access_token_expires
         )
 
         return {"access_token": access_token, "token_type": "bearer"}

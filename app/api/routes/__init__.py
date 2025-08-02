@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from . import tags_routes
+from . import tags_routes, comments_routes
 from .concept_routes import router as concept_router
 from .auth_routes import router as auth_router
 from .mathematicien_routes import router as mathematicien_router
@@ -12,6 +12,8 @@ from .alias_routes import router as alias_router
 from .graph_routes import router as graph_router
 from .user_routes import router as user_router
 from .tags_routes import router as tags_router
+from .comments_routes import router as comments_router
+from .admin_routes import router as admin_router
 
 
 api_router = APIRouter()
@@ -73,4 +75,14 @@ api_router.include_router(
     tags_router,
     prefix="/tags",
     tags=["tags"]
+)
+api_router.include_router(
+    comments_router,
+    prefix="/comments",
+    tags=["comments"]
+)
+api_router.include_router(
+    admin_router,
+    prefix="/admin",
+    tags=["admin"]
 )

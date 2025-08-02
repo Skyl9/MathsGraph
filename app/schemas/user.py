@@ -31,3 +31,7 @@ class UserId(BaseModel):
 class UpdateUser(BaseModel):
     field:str
     value:str
+
+class Favorite(BaseModel):
+    type:str
+    user_id:str

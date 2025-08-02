@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import concept_routes, auth_routes, mathematicien_routes, categorie_routes, type_routes, \
-    source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes
+    source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes
 
 app = FastAPI(
     title="Math Concepts API",
@@ -34,3 +34,6 @@ app.include_router(graph_routes.router)
 app.include_router(user_routes.router)
 
 app.include_router(tags_routes.router)
+
+app.include_router(comments_routes.router)
+app.include_router(admin_routes.router)
