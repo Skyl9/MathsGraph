@@ -5,6 +5,7 @@ class CategorieBase(BaseModel):
     id:int
     nom: str
     description: Optional[str] = None
+    parent_id: Optional[int] = None
 
 class CategoryUpdate(BaseModel):
     field:str
