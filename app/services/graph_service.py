@@ -1,23 +1,24 @@
-from app.db.database import get_db_connection
+from psycopg import AsyncConnection
+
 from app.schemas import Nodes
 
 
 class GraphService:
-    @staticmethod
-    def get_graph() -> Nodes:
+    def __init__(self,db:AsyncConnection):
+        self.db = db
+
+    async def get_graph(self) -> Nodes:
         """Récupère les informations des concepts et leurs positions."""
-        conn = get_db_connection()
-        cur = conn.cursor()
+        with self.db.cursor() as cur:
 
-        # Récupérer les informations de base des concepts
-        cur.execute("SELECT c.id, c.nom, t.type FROM concepts c LEFT JOIN type t on type_id = t.id ORDER BY id ;")
-        concepts = cur.fetchall()
+            # Récupérer les informations de base des concepts
+            await cur.execute("SELECT c.id, c.nom, t.type FROM concepts c LEFT JOIN type t on type_id = t.id ORDER BY id ;")
+            concepts = await cur.fetchall()
 
-        # Récupérer les positions des concepts
-        cur.execute("SELECT concept_id, vue, x, y, z FROM positions WHERE vue IN ('grille', 'arbre');")
-        positions = cur.fetchall()
+            # Récupérer les positions des concepts
+            await cur.execute("SELECT concept_id, vue, x, y, z FROM positions WHERE vue IN ('grille', 'arbre');")
+            positions = await cur.fetchall()
 
-        # Créer un dictionnaire de positions par concept_id
         positions_dict = {}
         for concept_id, vue, x, y, z in positions:
             if concept_id not in positions_dict:
@@ -35,3 +36,5 @@ class GraphService:
             })
 
         return {'nodes': result, "edges": []}
+            # Créer un dictionnaire de positions par concept_id
+
