@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
+from psycopg import AsyncConnection
 
+from app.db.database import get_db
 from app.schemas.auth import Token, UserCreate, User, PasswordResetRequestSchema, PasswordResetConfirmSchema
 from app.services import AuthService
 
@@ -8,33 +10,25 @@ router = APIRouter(tags=["authentication"])
 
 
 @router.post("/register", response_model=User)
-async def register_user(user: UserCreate):
-    return AuthService.register_user(user)
+async def register_user(user: UserCreate,db:AsyncConnection = Depends(get_db)):
+    return await AuthService(db).register_user(user)
 
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    return AuthService.login_for_access_token(form_data)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),db:AsyncConnection = Depends(get_db)):
+    return await AuthService(db).login_for_access_token(form_data)
 
 @router.post("/password-reset/request")
-async def request_password_reset(email: PasswordResetRequestSchema
-):
+async def request_password_reset(email: PasswordResetRequestSchema,db:AsyncConnection = Depends(get_db)):
     """
     Route pour obtenir un token de réinitialisation de mot de passe.
     """
-    email = email.email
-    return AuthService.request_password_reset(email)
+    return await AuthService(db).request_password_reset(email.email)
 
 
 @router.post("/password-reset/confirm")
-async def reset_password(reset_data: PasswordResetConfirmSchema):
+async def reset_password(reset_data: PasswordResetConfirmSchema,db:AsyncConnection = Depends(get_db)):
     """
     Route pour réinitialiser le mot de passe via un token valide.
     """
-    reset_data = reset_data.model_dump() if isinstance(reset_data, PasswordResetConfirmSchema) else reset_data
-    if len(reset_data["new_password"]) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail="Le mot de passe doit faire au moins 8 caractères"
-        )
-    return AuthService.reset_password(reset_data["token"], reset_data["new_password"])
+    return await AuthService(db).reset_password(reset_data)
