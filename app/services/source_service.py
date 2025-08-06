@@ -1,7 +1,6 @@
-from fastapi import HTTPException
 from psycopg import AsyncConnection
 
-from app.db.database import get_db_connection
+from app.core.exceptions import ConflictException
 from app.schemas import CreateSource
 
 
@@ -15,7 +14,7 @@ class SourceService:
             async with self.db.cursor() as cursor:
                 await cursor.execute("SELECT id FROM sources WHERE titre = %s;", (data["source"],))
                 if await cursor.fetchone() is not None:
-                    raise HTTPException(status_code=409, detail="Source already exists")
+                    raise ConflictException(detail="Source already exists")
                 await cursor.execute("INSERT INTO sources (titre,auteur,annee,url,type) VALUES  (%s,%s,%s,%s,%s) RETURNING id;",
                                (data["source"], data["auteur"], data["annee"], data["url"], data["type"]))
                 source_id = cursor.fetchone()[0]

@@ -1,10 +1,18 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
+
 from app.api.routes import concept_routes, auth_routes, mathematicien_routes, categorie_routes, type_routes, \
     source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes
 from app.db.database import pool
+from app.core.exceptions import BadRequestException, NotFoundException, AuthenticationException, ForbiddenException, \
+    InternalServerError, ConflictException
+
+
+def error_response(status_code: int, error: str):
+    return {"success": False, "error": error, "data": None}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,6 +39,54 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(BadRequestException)
+async def concept_exception_handler(request: Request, exc: BadRequestException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response(exc.status_code, exc.detail)
+    )
+
+@app.exception_handler(NotFoundException)
+async def not_found_exception_handler(request: Request, exc: NotFoundException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response(exc.status_code, exc.detail)
+    )
+@app.exception_handler(AuthenticationException)
+async def not_found_exception_handler(request: Request, exc: AuthenticationException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response(exc.status_code, exc.detail)
+    )
+@app.exception_handler(ForbiddenException)
+async def not_found_exception_handler(request: Request, exc: ForbiddenException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response(exc.status_code, exc.detail)
+    )
+@app.exception_handler(InternalServerError)
+async def not_found_exception_handler(request: Request, exc: InternalServerError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response(exc.status_code, exc.detail)
+    )
+@app.exception_handler(ConflictException)
+async def not_found_exception_handler(request: Request, exc: ConflictException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response(exc.status_code, exc.detail)
+    )
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    # ici on peut logger exc
+    return JSONResponse(
+        status_code=500,
+        content=error_response(500, "Une erreur inattendue est survenue")
+    )
+
+
 
 # Inclure les routers
 app.include_router(concept_routes.router)

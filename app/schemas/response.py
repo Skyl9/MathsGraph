@@ -1,7 +1,11 @@
-from pydantic import BaseModel
+# app/schemas/response.py
+from typing import Generic, TypeVar, Optional
+from pydantic.generics import GenericModel
+
+T = TypeVar("T")
 
 
-class Response(BaseModel):
-    message: str
-    status: int
-    data: dict
+class Response(GenericModel, Generic[T]):
+    success: bool
+    data: Optional[T]
+    error: Optional[str]

@@ -38,7 +38,7 @@ async def getHistory(concept_id: int,db:AsyncConnection = Depends(get_db)):
     return await ConceptService(db).get_concept_versions(concept_id)
 
 
-@router.patch("/update/{concept_id}", response_model=Response)
+@router.patch("/update/{concept_id}")
 async def updateConcept(concept_id: int, data: UpdateConceptDict,db:AsyncConnection = Depends(get_db)):
     return await ConceptService(db).updateConcept(concept_id, data)
 

@@ -1,13 +1,11 @@
 import copy
 import json
 from typing import List
-import datetime
 
-from fastapi import HTTPException
 from psycopg import AsyncConnection, DatabaseError
-from psycopg2.extras import RealDictCursor
 
 from app.db.database import get_db_connection
+from app.core.exceptions import NotFoundException, InternalServerError
 from app.schemas import UpdateConceptDict
 
 from app.schemas.concept import ConceptName, ConceptResponse, RollbackConcept
@@ -179,10 +177,10 @@ class ConceptService:
                 else:
                     concept["tags"] = None
             if not concept:
-                raise HTTPException(status_code=404, detail="Concept non trouvé")
+                raise NotFoundException(detail="Concept non trouvé")
             return concept
         except DatabaseError as e:
-            raise HTTPException(status_code=500, detail="Erreur DB lors de la récupération du concept")
+            raise InternalServerError(detail="Erreur DB lors de la récupération du concept")
 
 
     async def rollback_history(self,concept_id: int, data: RollbackConcept):
@@ -361,7 +359,7 @@ class ConceptService:
             return versions
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail="Erreur lors de la mise à jour")
+            raise InternalServerError(detail="Erreur lors de la mise à jour")
 
 
     async def add_concept_version(self, username: str, concept_id: int, field_modified: str, old_version, new_version,
@@ -399,7 +397,7 @@ class ConceptService:
                                    WHERE username = %s""", (username,))
                 row = await cursor.fetchone()
                 if not row:
-                    raise ValueError(f"Utilisateur {username} introuvable")
+                    raise NotFoundException(detail = f"Utilisateur {username} introuvable")
                 user_id = row[0]
                 await cursor.execute("""INSERT INTO concept_versions(modified_by, concept_id, field_modified, old_value, new_value,note, global_version, version_number,is_rollback) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s); """, (user_id, concept_id, field_modified, old_version, new_version, note, global_version,version_number,rollback))
 
@@ -427,7 +425,7 @@ class ConceptService:
                     # Vérifier si l'ID existe
                     await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
                     if await cursor.fetchone() is None:
-                        raise HTTPException(status_code=404, detail="ID not found")
+                        raise NotFoundException(detail="ID not found")
                     # Champ à mettre à jour
                     if data["field"] in ["nom", "enonce", "demonstration", "verification", "date_ajout"]:
                         await cursor.execute(f"SELECT {data['field']} FROM concepts WHERE id=%s;", (concept_id,))

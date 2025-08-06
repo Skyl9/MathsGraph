@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException, Depends
 from psycopg import AsyncConnection
 
+from app.core.exceptions import NotFoundException, InternalServerError
 from app.db.database import get_db_connection, get_db
 from app.schemas.user import UserId, UpdateUser, Favorite
 
@@ -16,7 +17,7 @@ class UserService:
             await cursor.execute("SELECT id,username,email,is_active,created_at,role,preferred_language,avatar_url,bio FROM users WHERE id = %s;", (id_user,))
             user = await cursor.fetchone()
         if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise NotFoundException(detail="User not found")
         # Sérialisation du champ created_at
         created_at = user[4]
         if isinstance(created_at, datetime):
@@ -39,7 +40,7 @@ class UserService:
             await cursor.execute("SELECT id FROM users WHERE username = %s;", (username,))
         user = await cursor.fetchone()
         if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise NotFoundException(detail="User not found")
         return {"id":user[0]}
 
     async def patch_user(self,id:str, data: UpdateUser):
@@ -113,7 +114,7 @@ class UserService:
                     elif data["type"] == "type":
                         await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND type_id = %s;", (data["user_id"],general_id))
         except Exception as e:
-            raise e
+            raise InternalServerError(detail=e)
 
 
     async def add_favorite_user(self,general_id:int, data:Favorite):
@@ -132,5 +133,4 @@ class UserService:
                     elif data["type"] == "type":
                         await cursor.execute(f"INSERT INTO user_favorites (user_id, type_id) VALUES (%s, %s);", (data["user_id"],general_id))
         except Exception as e:
-            print(e)
-            raise e
+            raise InternalServerError(detail=e)

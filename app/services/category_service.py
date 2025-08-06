@@ -1,6 +1,6 @@
-from fastapi import HTTPException
 from psycopg import AsyncConnection, sql
 
+from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException
 from app.schemas.categorie import CategorieBase, CategoryUpdate
 from app.schemas import CreateData
 
@@ -34,9 +34,7 @@ class CategoryService:
             row = await cur.fetchone()
 
         if not row:
-            raise HTTPException(
-                status_code=404, detail=f"Category {id_category} not found"
-            )
+            raise NotFoundException(detail=f"Category {id_category} not found")
 
         return {
             "id": row[0],
@@ -50,18 +48,14 @@ class CategoryService:
         data = data.model_dump() if isinstance(data, CategoryUpdate) else data
         field = data["field"]  # si CategoryUpdate hérite de BaseModel
         if field not in allowed_fields:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Le champ '{field}' n'est pas autorisé pour une mise à jour.",
-            )
+            raise ForbiddenException(f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")
 
         query = sql.SQL(f"UPDATE categories SET {field} = %s WHERE id = %s").format(
             field=sql.Identifier(field)
         )
-
-        async with self.db.cursor() as cur:
-            await cur.execute(query, (data["value"], id_category))
-        await self.db.commit()
+        async with self.db.transaction():
+            async with self.db.cursor() as cur:
+                await cur.execute(query, (data["value"], id_category))
 
     async def add_category(self, data: CreateData):
         payload = data.model_dump() if isinstance(data, CreateData) else data
@@ -72,9 +66,7 @@ class CategoryService:
                 "SELECT id FROM categories WHERE nom = %s;", (nom,)
             )
             if await cur.fetchone() is not None:
-                raise HTTPException(
-                    status_code=409, detail="Category already exists"
-                )
+                raise ConflictException(detail=f"Category {nom} already exists")
 
             await cur.execute(
                 "INSERT INTO categories (nom) VALUES (%s);", (nom,)

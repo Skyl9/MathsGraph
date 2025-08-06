@@ -1,9 +1,7 @@
-from datetime import datetime
-
 from psycopg import AsyncConnection
 from psycopg2 import DatabaseError
 
-
+from app.core.exceptions import NotFoundException
 
 
 class CommentsService:
@@ -102,7 +100,7 @@ class CommentsService:
                 )
                 row = await cur.fetchone()
                 if not row or row[0]:
-                    raise ValueError("Commentaire introuvable ou supprimé")
+                    raise NotFoundException(detail="Commentaire introuvable ou supprimé")
 
                 await cur.execute(
                     """
@@ -139,6 +137,6 @@ class CommentsService:
                 row = await cur.fetchone()
 
                 if not row or not row[0]:
-                    raise ValueError("Commentaire introuvable ou déjà supprimé")
+                    raise NotFoundException("Commentaire introuvable ou déjà supprimé")
 
                 await cur.execute("UPDATE public.comments SET is_deleted = %s WHERE id = %s", (True,comment_id,))

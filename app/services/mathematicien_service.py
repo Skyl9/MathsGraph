@@ -1,9 +1,9 @@
-from fastapi import HTTPException
 from psycopg import AsyncConnection
 from psycopg2 import sql
 
 from app.db.database import get_db_connection
-from app.schemas import CreateData, UpdateConceptDict
+from app.core.exceptions import ForbiddenException, InternalServerError, ConflictException
+from app.schemas import CreateData
 from app.schemas.mathematicien import MathematicienResponse, MathematicienUpdate
 
 
@@ -50,7 +50,7 @@ class MathematicienService:
                           "recompenses", "epoque"}
         field = data["field"]
         if field not in allowed_fields:
-            raise ValueError(f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")
+            raise ForbiddenException(detail=f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")
         try:
             async with self.db.transaction():
                 async with self.db.cursor() as cur:
@@ -64,7 +64,7 @@ class MathematicienService:
 
 
         except Exception as e:
-            raise e
+            raise InternalServerError(detail=e)
 
     async def get_all_mathematicien_info(self):
         async with self.db.cursor() as cur:
@@ -77,7 +77,7 @@ class MathematicienService:
         async with self.db.cursor() as cur:
             await cur.execute("SELECT id FROM mathematiciens WHERE nom = %s;", (data["value"],))
             if await cur.fetchone() is not None:
-                raise HTTPException(status_code=409, detail="Type already exists")
+                raise ConflictException(detail="Type already exists")
             await cur.execute("INSERT INTO mathematiciens (nom) VALUES  (%s);", (data["value"],))
 
     async def get_mathematicien_id(self, nom):

@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from psycopg import AsyncConnection
 from psycopg2 import sql
 
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundException, InternalServerError, ForbiddenException, ConflictException
 from app.db.database import get_db_connection
 from app.schemas import CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
@@ -18,7 +18,7 @@ class TypeService:
                 types_fetched = await cur.fetchall()
             return [{"id": i[0], "type": i[1]} for i in types_fetched]
         except Exception as e:
-            raise e
+            raise InternalServerError(detail=e)
 
 
     async def get_one_type(self,id_type: int) -> TypeResponse:
@@ -33,14 +33,14 @@ class TypeService:
                 "type": type_fetched[1],
             }
         except Exception as e:
-            raise e
+            raise InternalServerError(detail=e)
 
     async def update_type(self,id_type: int, data: TypeUpdate):
         allowed_fields = {"type"}
         field = data["field"]
 
         if field not in allowed_fields:
-            raise ValueError(
+            raise ForbiddenException(
                 f"Le champ '{field}' n'est pas autorisé pour une mise à jour."
             )
 
@@ -52,7 +52,7 @@ class TypeService:
                     )
                     await cur.execute(query, (data["value"], id_type))
         except Exception as e:
-            raise e
+            raise InternalServerError(detail=e)
 
     async def add_type(self,data: CreateData):
 
@@ -63,7 +63,7 @@ class TypeService:
                 await cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
 
                 if await cursor.fetchone() is not None:
-                    raise HTTPException(status_code=409, detail="Type already exists")
+                    raise ConflictException(detail="Type already exists")
                 await cursor.execute("INSERT INTO type (type) VALUES  (%s);", (data["value"],))
 
 

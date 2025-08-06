@@ -11,6 +11,7 @@ from psycopg import AsyncConnection
 from app import settings
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.db.database import get_db_connection
+from app.core.exceptions import BadRequestException, AuthenticationException
 from app.schemas import UserCreate
 from app.schemas.auth import PasswordResetConfirmSchema
 
@@ -165,10 +166,7 @@ class AuthService:
         reset_data = reset_data.model_dump() if isinstance(reset_data, PasswordResetConfirmSchema) else reset_data
 
         if len(reset_data["new_password"]) < 8:
-            raise HTTPException(
-                status_code=400,
-                detail="Le mot de passe doit faire au moins 8 caractères"
-            )
+            raise BadRequestException(detail="Le mot de passe doit contenir au moins 8 caractères")
         token = reset_data["token"]
         new_password = reset_data["new_password"]
 
@@ -188,19 +186,14 @@ class AuthService:
                 reset_entry = await cursor.fetchone()
 
                 if not reset_entry:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="Token invalide"
-                    )
+                    raise AuthenticationException(detail="Token invalide")
 
                 user_id, expires_at = reset_entry
 
                     # Comparer l'heure actuelle en UTC (aware) avec expires_at
                 if datetime.now(tz=timezone.utc) > expires_at:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Token expiré"
-                    )
+                    raise AuthenticationException(detail="Token expiré")
+
 
                 # Hasher le nouveau mot de passe
                 hashed_password = get_password_hash(new_password)

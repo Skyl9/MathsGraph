@@ -1,7 +1,6 @@
-from fastapi import HTTPException
 from psycopg import AsyncConnection
 
-from app.db.database import get_db_connection
+from app.core.exceptions import ConflictException
 from app.schemas import CreateAlias
 
 
@@ -15,7 +14,7 @@ class AliasService:
             async with self.db.cursor() as cursor:
                 await cursor.execute("SELECT id FROM aliases WHERE alias = %s;", (data["value"],))
                 if await cursor.fetchone() is not None:
-                    raise HTTPException(status_code=409, detail="Alias already exists")
+                    raise ConflictException(detail="Alias already exists")
                 await cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES  (%s,%s) RETURNING  id;", (data["id"], data["value"]))
                 row = await cursor.fetchone()
                 new_id = row[0]
