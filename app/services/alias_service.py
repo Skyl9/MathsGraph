@@ -1,11 +1,15 @@
+import logging
+
 from psycopg import AsyncConnection
 
 from app.core.exceptions import ConflictException
 from app.schemas import CreateAlias
 
+logger = logging.getLogger(__name__)
+
 
 class AliasService:
-    def __init__(self,db:AsyncConnection):
+    def __init__(self, db: AsyncConnection):
         self.db = db
 
     async def add_alias(self, data: CreateAlias):
@@ -14,8 +18,10 @@ class AliasService:
             async with self.db.cursor() as cursor:
                 await cursor.execute("SELECT id FROM aliases WHERE alias = %s;", (data["value"],))
                 if await cursor.fetchone() is not None:
+                    logger.warning(f"Alias {data['value']} already exists")
                     raise ConflictException(detail="Alias already exists")
-                await cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES  (%s,%s) RETURNING  id;", (data["id"], data["value"]))
+                await cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES  (%s,%s) RETURNING  id;",
+                                     (data["id"], data["value"]))
                 row = await cursor.fetchone()
                 new_id = row[0]
         return {"id": new_id, "alias": data["value"]}

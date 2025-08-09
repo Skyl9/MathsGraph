@@ -6,10 +6,13 @@ from starlette.responses import JSONResponse
 
 from app.api.routes import concept_routes, auth_routes, mathematicien_routes, categorie_routes, type_routes, \
     source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes
+from app.core.logging_config import setup_logging
 from app.db.database import pool
 from app.core.exceptions import BadRequestException, NotFoundException, AuthenticationException, ForbiddenException, \
     InternalServerError, ConflictException
 
+
+setup_logging()
 
 def error_response(status_code: int, error: str):
     return {"success": False, "error": error, "data": None}

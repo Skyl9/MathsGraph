@@ -1,3 +1,5 @@
+import logging
+
 from psycopg import AsyncConnection
 from psycopg2 import sql
 
@@ -6,6 +8,7 @@ from app.core.exceptions import ForbiddenException, InternalServerError, Conflic
 from app.schemas import CreateData
 from app.schemas.mathematicien import MathematicienResponse, MathematicienUpdate
 
+logger = logging.getLogger(__name__)
 
 class MathematicienService:
     def __init__(self, db: AsyncConnection):
