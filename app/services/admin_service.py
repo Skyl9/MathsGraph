@@ -1,6 +1,12 @@
+from typing import List
+
+import logger
 from psycopg import AsyncConnection
 
+from app.schemas.admin import Stat
+from app.schemas.auth import User
 
+logger = logger.get_logger(__name__)
 class AdminService:
     def __init__(self, db: AsyncConnection):
         self.db = db
@@ -41,7 +47,7 @@ class AdminService:
                 for row in data
             ]
 
-    async def get_contents(self):
+    async def get_concepts_admin(self):
         async with self.db.cursor() as cursor:
             await cursor.execute("""
                 SELECT concepts.id, concepts.nom, type.type

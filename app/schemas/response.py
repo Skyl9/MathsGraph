@@ -1,5 +1,5 @@
 # app/schemas/response.py
-from typing import Generic, TypeVar, Optional
+from typing import Generic, TypeVar, Optional, Dict
 
 from pydantic.generics import GenericModel
 
@@ -10,3 +10,4 @@ class Response(GenericModel, Generic[T]):
     success: bool
     data: Optional[T]
     error: Optional[str]
+    meta:Optional[Dict]
