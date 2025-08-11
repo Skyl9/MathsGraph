@@ -1,12 +1,12 @@
 from typing import List
 
-import logger
+import logging
 from psycopg import AsyncConnection
 
 from app.schemas.admin import Stat
 from app.schemas.auth import User
 
-logger = logger.get_logger(__name__)
+logger = logging.get_logger(__name__)
 class AdminService:
     def __init__(self, db: AsyncConnection):
         self.db = db

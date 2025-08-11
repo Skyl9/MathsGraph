@@ -7,6 +7,10 @@ from app.core.exceptions import NotFoundException, InternalServerError
 from app.db.database import get_db_connection, get_db
 from app.schemas.user import UserId, UpdateUser, Favorite
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class UserService:
     def __init__(self,db:AsyncConnection):

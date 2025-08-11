@@ -7,6 +7,10 @@ from app.db.database import get_db_connection
 from app.schemas import CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class TypeService:
     def __init__(self,db:AsyncConnection):
         self.db = db

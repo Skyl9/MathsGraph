@@ -5,6 +5,9 @@ from psycopg import AsyncConnection
 from app.core.exceptions import NotFoundException
 from app.schemas.tags import TagsModel
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TagsService:
     def __init__(self, db: AsyncConnection):

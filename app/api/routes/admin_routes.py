@@ -1,7 +1,7 @@
 from typing import List
 
-from psycopg import AsyncConnection
 from fastapi import APIRouter, Depends
+from psycopg import AsyncConnection
 
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
@@ -12,30 +12,35 @@ from app.services.admin_service import AdminService, logger
 
 router = APIRouter(prefix="/admin", tags=["alias"])
 
-@router.get("/stats",response_model=Response[Stat])
+
+@router.get("/stats", response_model=Response[Stat])
 async def get_stats(db: AsyncConnection = Depends(get_db)):
     try:
-        data:Stat = await AdminService(db).get_stats()
-        logger.debug(f"Route GET /{router.prefix}/stats a renvoyé : ",)
-        return {"error": False, "data": data,"success":True,"meta":None}
+        data: Stat = await AdminService(db).get_stats()
+        logger.debug(f"Route GET /{router.prefix}/stats a renvoyé : ", )
+        return {"error": False, "data": data, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur de Route GET /{router.prefix}/stats : {exc}")
         raise InternalServerError(str(exc)) from exc
 
-@router.get("/users",response_model=Response[List[User]])
+
+@router.get("/users", response_model=Response[List[User]])
 async def get_users(db: AsyncConnection = Depends(get_db)):
     try:
-        data:List[User] = await AdminService(db).get_users()
+        data: List[User] = await AdminService(db).get_users()
         logger.debug(f"Route GET /{router.prefix}/users a renvoyé : {data}")
-        return {"error": False, "data": data,"success":True,"meta":None}
+        return {"error": False, "data": data, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur de Route GET /{router.prefix}/users : {exc}")
-@router.get("/contents",response_model=Response[List[ConceptForAdmin]])
+        raise InternalServerError(str(exc)) from exc
+
+
+@router.get("/contents", response_model=Response[List[ConceptForAdmin]])
 async def get_contents(db: AsyncConnection = Depends(get_db)):
     try:
-        data:List[ConceptForAdmin]= await AdminService(db).get_concepts_admin()
+        data: List[ConceptForAdmin] = await AdminService(db).get_concepts_admin()
         logger.debug(f"Route GET /{router.prefix}/contents a renvoyé : {data} ")
-        return {"error": False, "data": data,"success":True,"meta":None}
+        return {"error": False, "data": data, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route GET /{router.prefix}/contents a : {exc}")
         raise InternalServerError(str(exc)) from exc

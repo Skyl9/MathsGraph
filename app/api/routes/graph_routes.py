@@ -14,7 +14,7 @@ async def get_graph(db: AsyncConnection = Depends(get_db)):
     try:
         graph: GraphData = await GraphService(db).get_graph()
         logger.debug("Route GET /graph a renvoyé %d nœuds", len(graph["nodes"]))
-        return {"success": True, "data": graph, "error": None,"meta": None}
+        return {"success": True, "data": graph, "error": None, "meta": None}
 
     except InternalServerError as exc:
         logger.error("Erreur interne dans GET /graph : %s", exc)

@@ -2,6 +2,10 @@ from psycopg import AsyncConnection
 
 from app.db.database import get_db_connection
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class StatisticsService:
     def __init__(self,db:AsyncConnection):

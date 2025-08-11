@@ -12,6 +12,11 @@ from app.schemas.concept import ConceptName, ConceptResponse, RollbackConcept
 from app.schemas.history import History
 from app.services.tags_service import TagsService
 
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 def format_alias(alias):
     string_alias = ""
     for i in alias:
@@ -183,7 +188,7 @@ class ConceptService:
             raise InternalServerError(detail="Erreur DB lors de la récupération du concept")
 
 
-    async def rollback_history(self,concept_id: int, data: RollbackConcept):
+    async def rollback_history(self,concept_id: int, data: RollbackConcept)->None:
         data = data.model_dump() if isinstance(data, RollbackConcept) else data
         conn = get_db_connection()
 
@@ -202,7 +207,7 @@ class ConceptService:
         await ConceptService.updateConcept(concept_id,data,rollback=True)
 
 
-    async def get_name_by_id(self,id,type):
+    async def get_name_by_id(self,id,type)->int:
         async with self.db.cursor() as cursor:
             if type == "mathematicien":
                 await cursor.execute("""
@@ -415,7 +420,7 @@ class ConceptService:
             conceptList.append(categoryDict)
         return conceptList
 
-    async def updateConcept(self,concept_id: int, data: UpdateConceptDict,rollback:bool = False):
+    async def updateConcept(self,concept_id: int, data: UpdateConceptDict,rollback:bool = False)-> None:
         data = data.model_dump() if isinstance(data, UpdateConceptDict) else data
 
         try:
@@ -551,11 +556,6 @@ class ConceptService:
         except Exception as e:
                 # En cas d'erreur, annuler les changements
                  print(f"Erreur dans updateConcept: {e}")
-
-
-
-        # Retourner la réponse
-        return {"message": "Mise à jour réussie", "status": 200, "data": data}
 
 
     async def getEditableFieldsOptions(self):

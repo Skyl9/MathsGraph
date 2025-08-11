@@ -3,6 +3,9 @@ from psycopg2 import DatabaseError
 
 from app.core.exceptions import NotFoundException
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CommentsService:
 

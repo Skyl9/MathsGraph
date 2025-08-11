@@ -3,6 +3,9 @@ from psycopg import AsyncConnection
 from app.core.exceptions import ConflictException, NotFoundException
 from app.schemas import CreateRelation
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RelationService:
     def __init__(self,db:AsyncConnection):

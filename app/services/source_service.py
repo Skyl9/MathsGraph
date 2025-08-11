@@ -2,7 +2,9 @@ from psycopg import AsyncConnection
 
 from app.core.exceptions import ConflictException
 from app.schemas import CreateSource
+import logging
 
+logger = logging.getLogger(__name__)
 
 class SourceService:
     def __init__(self,db:AsyncConnection):

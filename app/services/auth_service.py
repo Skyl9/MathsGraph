@@ -14,7 +14,9 @@ from app.db.database import get_db_connection
 from app.core.exceptions import BadRequestException, AuthenticationException
 from app.schemas import UserCreate
 from app.schemas.auth import PasswordResetConfirmSchema
+import logging
 
+logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(self,db: AsyncConnection):
