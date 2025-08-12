@@ -13,8 +13,8 @@ router = APIRouter(prefix="/alias", tags=["alias"])
 async def create_alias(data: CreateAlias, db: AsyncConnection = Depends(get_db)):
     try:
         await AliasService(db).add_alias(data)
-        logger.debug(f"Route POST /{router.prefix}/alias : {data} ")
+        logger.debug(f"Route POST /{router.prefix}/alias : {str(data)} ")
         return {"success": True, "data": None, "meta": None, "error": None}
     except InternalServerError as exc:
-        logger.error(f"Route POST /{router.prefix}/alias : {exc}")
+        logger.error(f"Route POST /{router.prefix}/alias : {str(exc)}")
         raise InternalServerError(detail=str(exc))

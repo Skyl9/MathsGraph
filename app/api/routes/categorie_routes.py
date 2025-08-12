@@ -15,11 +15,11 @@ router = APIRouter(prefix="/category", tags=["category"])
 async def get_one_category_E(id_category: int, db: AsyncConnection = Depends(get_db)):
     try:
         category: CategorieBase = await CategoryService(db).get_one_category(id_category)
-        logger.debug(f"Route GET /{router.prefix}/{id_category} a renvoyé correctement la catégorie : , {category}")
+        logger.debug(f"Route GET /{router.prefix}/{id_category} a renvoyé correctement la catégorie : , {str(category)}")
         return {"error": None, "success": True, "data": category, "meta": None}
 
     except InternalServerError as exc:
-        logger.error(f"Route GET /{router.prefix}/{id_category} Erreur : {exc}")
+        logger.error(f"Route GET /{router.prefix}/{id_category} Erreur : {str(exc)}")
         raise InternalServerError(str(exc)) from exc
 
 
@@ -31,7 +31,7 @@ async def update_category_E(id_category: int, data: dict, db: AsyncConnection = 
             f"Route PATCH /{router.prefix}/update/{id_category} a modifié correctement la catégorie {id_category}")
         return {"error": None, "success": True, "data": None, "meta": None}
     except InternalServerError as exc:
-        logger.error(f"Route PATCH /{router.prefix}/update/{id_category} Erreur : {exc}")
+        logger.error(f"Route PATCH /{router.prefix}/update/{id_category} Erreur : {str(exc)}")
         raise InternalServerError(str(exc)) from exc
 
 
@@ -39,11 +39,11 @@ async def update_category_E(id_category: int, data: dict, db: AsyncConnection = 
 async def all_category(db: AsyncConnection = Depends(get_db)):
     try:
         listCat: list[CategorieBase] = CategoryService(db).get_all_categories()
-        logger.debug(f"Route GET /{router.prefix}/ a renvoyé correctement la liste des catégories : , {listCat}")
+        logger.debug(f"Route GET /{router.prefix}/ a renvoyé correctement la liste des catégories : , {str(listCat)}")
         return {"error": None, "success": True, "data": listCat, "meta": None}
 
     except InternalServerError as exc:
-        logger.error(f"Route GET /{router.prefix}/ Erreur : {exc}")
+        logger.error(f"Route GET /{router.prefix}/ Erreur : {str(exc)}")
         raise InternalServerError(str(exc)) from exc
 
 
@@ -51,10 +51,10 @@ async def all_category(db: AsyncConnection = Depends(get_db)):
 async def create_category(data: CreateData, db: AsyncConnection = Depends(get_db)):
     try:
         await CategoryService(db).add_category(data)
-        logger.debug(f"Route POST /{router.prefix}/create a créer correctement la catégorie : ,{data}")
+        logger.debug(f"Route POST /{router.prefix}/create a créer correctement la catégorie : ,{str(data)}")
         return {"error": None, "success": True, "data": None, "meta": None}
     except InternalServerError as exc:
-        logger.error(f"Route POST /{router.prefix}/create Erreur : {exc}")
+        logger.error(f"Route POST /{router.prefix}/create Erreur : {str(exc)}")
         raise InternalServerError(str(exc)) from exc
 
 
@@ -62,8 +62,8 @@ async def create_category(data: CreateData, db: AsyncConnection = Depends(get_db
 async def get_category_by_name(name: str, db: AsyncConnection = Depends(get_db)):
     try:
         cat: CategorieBase = await CategoryService(db).get_category_id_by_name(name)
-        logger.debug(f"Route GET /{router.prefix}/name/{name} a renvoyé correctement la catégorie : , {cat}")
+        logger.debug(f"Route GET /{router.prefix}/name/{name} a renvoyé correctement la catégorie : , {str(cat)}")
         return {"error": None, "success": True, "data": cat, "meta": None}
     except InternalServerError as exc:
-        logger.error(f"Route GET /{router.prefix}/name/{name} Erreur : {exc}")
+        logger.error(f"Route GET /{router.prefix}/name/{name} Erreur : {str(exc)}")
         raise InternalServerError(str(exc)) from exc

@@ -1,12 +1,11 @@
 # app/schemas/response.py
 from typing import Generic, TypeVar, Optional, Dict
 
-from pydantic.generics import GenericModel
-
+from pydantic import BaseModel
 T = TypeVar("T")
 
 
-class Response(GenericModel, Generic[T]):
+class Response(BaseModel, Generic[T]):
     success: bool
     data: Optional[T]
     error: Optional[str]

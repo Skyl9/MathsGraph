@@ -16,10 +16,10 @@ router = APIRouter(tags=["authentication"])
 async def register_user(user: UserCreate, db: AsyncConnection = Depends(get_db)):
     try:
         user: User = await AuthService(db).register_user(user)
-        logger.debug(f"Route POST /register user {user} registered successfully")
+        logger.debug(f"Route POST /register user {str(user)} registered successfully")
         return {"error": None, "success": True, "data": user, "meta": None}
     except InternalServerError as exc:
-        logger.error(f"Route POST /{router.prefix}/register Erreur : {exc}")
+        logger.error(f"Route POST /{router.prefix}/register Erreur : {str(exc)}")
         raise InternalServerError(detail=str(exc))
 
 
@@ -31,7 +31,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         logger.debug(f"Route POST /login a token successfully")
         return {"error": None, "success": True, "data": token, "meta": None}
     except InternalServerError as exc:
-        logger.error(f"Route POST /{router.prefix}/login Erreur : {exc}")
+        logger.error(f"Route POST /{router.prefix}/login Erreur : {str(exc)}")
         raise InternalServerError(detail=str(exc))
 
 
@@ -45,7 +45,7 @@ async def request_password_reset(email: PasswordResetRequestSchema, db: AsyncCon
         logger.debug(f"Route POST /password-request/request Requête envoyé avec succèes")
         return {"error": None, "success": True, "data": message, "meta": None}
     except InternalServerError as exc:
-        logger.error(f"Route POST /password-reset/request Erreur : {exc}")
+        logger.error(f"Route POST /password-reset/request Erreur : {str(exc)}")
         raise InternalServerError(detail=str(exc))
 
 
@@ -58,5 +58,5 @@ async def reset_password(reset_data: PasswordResetConfirmSchema, db: AsyncConnec
         detail: PasswordResetRequestSchema = await AuthService(db).reset_password(reset_data)
         logger.debug(f"Route POST /password-reset/confirm s'est exécuté correctement, {detail.details}")
     except InternalServerError as exc:
-        logger.error(f"Route POST /password-reset/confirm Erreur : {exc}")
+        logger.error(f"Route POST /password-reset/confirm Erreur : {str(exc)}")
         raise InternalServerError(detail=str(exc))

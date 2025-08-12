@@ -90,7 +90,6 @@ class GraphService:
                 "position": positions_dict.get(concept_id, {})
             })
         logger.info(
-            "Graphe extrait avec succès : %d noeuds, %d arêtes",
-            len(nodes))
+            f"Graphe extrait avec succès : {len(nodes)} noeuds,  arêtes")
 
         return {'nodes': nodes, "edges": []}
