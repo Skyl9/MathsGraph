@@ -17,7 +17,7 @@ class CommentResponse(BaseModel):
     content: str
     parent_id: int | None = None
     created_at: datetime
-    updated_at: str
+    updated_at: datetime
     is_deleted: bool
     field:str
     username:str

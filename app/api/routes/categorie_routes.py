@@ -39,7 +39,7 @@ async def update_category_E(id_category: int, data: dict, db: AsyncConnection = 
 @router.get("/", response_model=Response[list[CategorieBase]])
 async def all_category(db: AsyncConnection = Depends(get_db)):
     try:
-        listCat: list[CategorieBase] = CategoryService(db).get_all_categories()
+        listCat: list[CategorieBase] = await CategoryService(db).get_all_categories()
         logger.debug(f"Route GET /{router.prefix}/ a renvoyé correctement la liste des catégories : , {str(listCat)}")
         return {"error": None, "success": True, "data": listCat, "meta": None}
 

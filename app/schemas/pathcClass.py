@@ -1,4 +1,4 @@
-from typing import List, Dict,Any
+from typing import List, Dict, Any, Optional
 
 from pydantic import BaseModel
 
@@ -7,6 +7,7 @@ class UpdateConceptDict(BaseModel):
     field: str
     value: Any
     username:str
+    note:Optional[str] = None
 
 class CreateData(BaseModel):
     value:str

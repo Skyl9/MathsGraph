@@ -71,13 +71,17 @@ class CommentsService:
             parent_id: int | None = None,
 
     ) -> dict:
-        async with self.db.cursor() as cur:
+        async with (self.db.cursor() as cur):
 
             await cur.execute("SELECT id FROM users WHERE username = %s;", (username,))
-            user_id = await cur.fetchone()[0] if username else None
-
+            user_id = await cur.fetchone()
+            user_id=user_id[0] if username else None
+            if not user_id:
+                raise NotFoundException(detail="Utilisateur introuvable")
             parent_id = None if parent_id==0 else parent_id
-
+            await cur.execute("SELECT id FROM concepts WHERE id = %s", (concept_id,))
+            if not await cur.fetchone():
+                raise NotFoundException(detail="Concept introuvable")
             await cur.execute(
                 """
                 INSERT INTO comments (concept_id, user_id, content, parent_id,field)
@@ -110,20 +114,21 @@ class CommentsService:
                     updated_at = NOW()
                 WHERE id = %s
                 RETURNING id, concept_id, user_id, content, created_at, updated_at,
-                    parent_id, is_deleted
+                    parent_id, is_deleted,field
                 """,
                 (content, comment_id),
             )
             data = await cur.fetchone()
             updated = {
                 "id":data[0],
-                "concept_id": row[1],
-                "user_id": row[2],
-                "content": row[3],
-                "created_at": row[4],
-                "updated_at": row[5],
-                "parent_id": row[6],
-                "is_deleted": row[7],
+                "concept_id": data[1],
+                "user_id": data[2],
+                "content": data[3],
+                "created_at": data[4],
+                "updated_at": data[5],
+                "parent_id": data[6],
+                "is_deleted": data[7],
+                "field":data[8]
             }
         return updated
 
@@ -131,12 +136,14 @@ class CommentsService:
     async def delete_comment(self,comment_id: int) -> None:
         async with self.db.cursor() as cur:
             await cur.execute(
-                "SELECT * FROM public.comments WHERE id = %s",
+                "SELECT is_deleted FROM public.comments WHERE id = %s",
                 (comment_id,),
             )
             row = await cur.fetchone()
 
-            if not row or not row[0]:
-                raise NotFoundException("Commentaire introuvable ou déjà supprimé")
+            if not row:
+                raise NotFoundException("Commentaire introuvable")
+            if row[0]:
+                raise NotFoundException("Commentaire déjà supprimé")
 
             await cur.execute("UPDATE public.comments SET is_deleted = %s WHERE id = %s", (True,comment_id,))

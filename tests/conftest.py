@@ -13,6 +13,7 @@ from app.core.security import get_password_hash
 from app.db import database
 from app.db.database import get_db
 from app.main import app
+from app.services.comments_service import CommentsService
 from tests.constants import TEST_PASSWORD, TEST_USER_EMAIL, TEST_USER_NAME
 
 TEST_DB_CONFIG = {
@@ -198,3 +199,120 @@ async def setup_reset_token(transaction:psycopg.AsyncConnection,setup_test_user)
         )
         reset_data= await cur.fetchone()
     yield reset_data
+
+# Fixture pour obtenir une instance du CommentsService avec une connexion transactionnelle
+@pytest.fixture
+def comments_service_instance(transaction: psycopg.AsyncConnection):
+    return CommentsService(transaction)
+
+# Fixture pour créer un commentaire de test (à ajouter à votre conftest.py si ce n'est pas déjà fait)
+@pytest_asyncio.fixture(scope="function")
+async def setup_test_comment(transaction: psycopg.AsyncConnection, setup_test_concept, setup_test_user):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute(
+            """
+            INSERT INTO comments (concept_id, user_id, content, field, parent_id)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id, concept_id, user_id, content, created_at, updated_at, parent_id, is_deleted, field
+            """,
+            (setup_test_concept["id"], setup_test_user["id"], "Initial test comment", "general", None)
+        )
+        comment = await cur.fetchone()
+    yield comment
+
+@pytest_asyncio.fixture(scope="function")
+async def setup_test_source_full(transaction: psycopg.AsyncConnection):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute(
+            "INSERT INTO sources (titre, auteur, annee, url, type) VALUES (%s, %s, %s, %s, %s) RETURNING *",
+            ("Full Test Source", "Full Author", 2020, "http://full.com", "livre")
+        )
+        source = await cur.fetchone()
+    yield source
+
+
+@pytest_asyncio.fixture(scope="function")
+async def setup_full_test_concept(
+        transaction: psycopg.AsyncConnection,
+        setup_test_type,
+        setup_test_categorie,
+        setup_test_mathematicien,
+        setup_test_user,  # Pour les logs d'historique
+        setup_test_source_full  # Utiliser la nouvelle fixture de source complète
+):
+    # Insert a base concept
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute(
+            """
+            INSERT INTO concepts (nom, enonce, demonstration, verification, type_id, categorie_id, mathematicien_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING *
+            """,
+            (
+                "Full Test Concept",
+                "Enonce complet du concept de test.",
+                "Demonstration complete du concept de test.",
+                True,
+                setup_test_type["id"],
+                setup_test_categorie["id"],
+                setup_test_mathematicien["id"]
+            )
+        )
+        concept = await cur.fetchone()
+        concept_id = concept["id"]
+
+        # Add aliases
+        await cur.execute("INSERT INTO aliases (concept_id, alias) VALUES (%s, %s)", (concept_id, "Full Alias A"))
+        await cur.execute("INSERT INTO aliases (concept_id, alias) VALUES (%s, %s)", (concept_id, "Full Alias B"))
+
+        # Link the full source
+        await cur.execute("INSERT INTO concepts_sources (concept_id, source_id) VALUES (%s, %s)",
+                          (concept_id, setup_test_source_full["id"]))
+
+        # Add a foreign name
+        await cur.execute("INSERT INTO foreign_name (concept_id, \"Nom_étranger\", langue) VALUES (%s, %s, %s)",
+                          (concept_id, "Complete Foreign Name", "en"))
+
+        # Add a related concept for relations
+        await cur.execute(
+            "INSERT INTO concepts (nom, enonce, demonstration, type_id) VALUES (%s, %s, %s, %s) RETURNING id",
+            ("Related Concept for Full Test", "Enonce du concept lié", "Demo du concept lié", setup_test_type["id"])
+        )
+        related_concept = await cur.fetchone()
+        related_concept_id = related_concept["id"]
+
+        # Add a relation
+        await cur.execute(
+            "INSERT INTO relations (concept_source, concept_cible, type_relation, description) VALUES (%s, %s, %s, %s)",
+            (concept_id, related_concept_id, "implication", "Description de la relation complète.")
+        )
+
+        # Add an initial history entry (for 'nom' change, simulating an update)
+        # We need the ConceptService.add_concept_version for this, but for API tests,
+        # we usually trigger history via a PATCH call. For this setup, we'll
+        # simulate it if strictly needed for GET history tests.
+        # For now, let's just make sure the fixture returns the concept and associated IDs.
+
+    # Return the main concept and some associated IDs for testing
+    yield {
+        "concept": concept,
+        "aliases": ["Full Alias A", "Full Alias B"],
+        "source": setup_test_source_full,
+        "foreign_name": {"Nom_étranger": "Complete Foreign Name", "langue": "en"},
+        "related_concept_id": related_concept_id,
+        "user_id": setup_test_user["id"],
+        "username": setup_test_user["username"],
+        "type": setup_test_type["type"],
+        "mathematicien": setup_test_mathematicien["nom"],
+        "categorie": setup_test_categorie["nom"]
+    }
+@pytest_asyncio.fixture(scope="function")
+async def setup_graph(transaction,setup_test_concept):
+    node = {"id": setup_test_concept["id"],"nom":setup_test_concept["nom"],"type_id":setup_test_concept["type_id"]}
+    posDict = {"x": 100, "y": 100,"z": 100}
+    node["position"] = posDict
+    async with transaction.cursor() as cur:
+        await cur.execute("INSERT INTO positions (concept_id,x,y,z,vue) VALUES (%s,%s,%s,%s,%s) RETURNING * ", (setup_test_concept["id"],posDict["x"],posDict["y"],posDict["z"],"grille"))
+    yield node
+
+

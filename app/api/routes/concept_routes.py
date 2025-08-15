@@ -75,7 +75,7 @@ async def updateConcept(concept_id: int, data: UpdateConceptDict, db: AsyncConne
 @router.get("/getAllConceptName", response_model=Response[List[ConceptName]])
 async def get_all_concept_name_R(db: AsyncConnection = Depends(get_db)):
     try:
-        conceptNameList:List[ConceptName]= ConceptService(db).get_all_concepts_name()
+        conceptNameList:List[ConceptName]= await ConceptService(db).get_all_concepts_name()
         logger.debug(f'Route /getAllConceptName a renvoyé correctement la liste : {str(conceptNameList)}')
         return {"error":None,"data":conceptNameList,"success":True,"meta":None}
     except InternalServerError as exc:

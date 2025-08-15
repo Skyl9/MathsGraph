@@ -9,7 +9,7 @@ from app.services.graph_service import GraphService, logger
 router = APIRouter(prefix="/graph", tags=["graph"])
 
 
-@router.get("/", response_model=Response[GraphData])
+@router.get("", response_model=Response[GraphData])
 async def get_graph(db: AsyncConnection = Depends(get_db)):
     try:
         graph: GraphData = await GraphService(db).get_graph()

@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from psycopg import AsyncConnection
 
@@ -81,7 +82,7 @@ class GraphService:
             positions_dict[concept_id][vue] = {"x": x, "y": y, "z": z}
 
         # Construire le dictionnaire final
-        nodes: Nodes = []
+        nodes: List[Nodes] = []
         for concept_id, nom, concept_type in concepts:
             nodes.append({
                 "id": concept_id,
