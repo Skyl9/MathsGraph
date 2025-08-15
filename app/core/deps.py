@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from app.db.database import get_db_connection
+from app.db.database import get_db
 from app.core.security import decode_token
 import psycopg2.extras
 
@@ -22,7 +22,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     if username is None:
         raise credentials_exception
 
-    conn = get_db_connection()
+    conn = await get_db()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
         cursor.execute(

@@ -1,6 +1,5 @@
 from psycopg import AsyncConnection
 
-from app.db.database import get_db_connection
 
 import logging
 

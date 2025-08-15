@@ -12,7 +12,8 @@ router = APIRouter(prefix="/relation", tags=["relation"])
 @router.post("/create", summary="Crée une nouvelle relation", response_model=Response)
 async def create_relation(data: CreateRelation, db: AsyncConnection = Depends(get_db)):
     try:
-        await RelationService(db).add_relation(data)
+        async with db.transaction():
+            await RelationService(db).add_relation(data)
         logger.debug(f"Route POST /relation/create a correctement créé une relation")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:

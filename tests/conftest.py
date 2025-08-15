@@ -1,168 +1,200 @@
-import psycopg2
+import asyncio
+import logging
+from datetime import datetime, timedelta
+from logging.config import dictConfig
+
+import psycopg
 import pytest
-from fastapi.testclient import TestClient
-from psycopg2.extras import DictCursor
+import pytest_asyncio
+from httpx import AsyncClient
+from psycopg_pool import AsyncConnectionPool
 
 from app.core.security import get_password_hash
+from app.db import database
+from app.db.database import get_db
 from app.main import app
 from tests.constants import TEST_PASSWORD, TEST_USER_EMAIL, TEST_USER_NAME
 
 TEST_DB_CONFIG = {
-    "dbname": "test_fastapi_db",
     "user": "postgres",
-    "password": "",  # Mettez ici vos informations de connexion
+    "password": "",
+    "database": "test_fastapi_db",
     "host": "localhost",
-    "port": "5432"
+    "port": "5432",
 }
+url = (
+    f"postgresql://{TEST_DB_CONFIG['user']}:{TEST_DB_CONFIG['password']}"
+    f"@{TEST_DB_CONFIG['host']}:{TEST_DB_CONFIG['port']}/{TEST_DB_CONFIG['database']}"
+)
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_logging():
+    """
+    Configure le système de logging pour les tests.
+    Définit le niveau du gestionnaire de console à DEBUG pour afficher tous les logs.
+    """
+    test_logging_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "standard": {
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            }
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "standard",
+                "level": "DEBUG"  # <<<<<< ICI : Défini le niveau du gestionnaire de console à DEBUG
+            },
+            # Si vous voulez également un fichier de log spécifique pour les tests,
+            # vous pouvez le configurer ici. Sinon, vous pouvez supprimer ce gestionnaire.
+            "file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "formatter": "standard",
+                "level": "DEBUG",
+                "filename": "test_app.log", # Nom de fichier de log distinct pour les tests
+                "maxBytes": 10_000_000,
+                "backupCount": 1,
+                "encoding": "utf8"
+            }
+        },
+        "loggers": {
+            "": {                       # logger racine
+                "handlers": ["console", "file"], # Attache les gestionnaires à la racine
+                "level": "DEBUG",      # Le logger racine est aussi au niveau DEBUG
+                "propagate": False
+            },
+            "uvicorn.error": {
+                "level": "WARNING"
+            }
+        }
+    }
+
+    # Applique la configuration de logging spécifique aux tests
+    dictConfig(test_logging_config)
+
+    # Optionnel : log de vérification que le setup est bien appliqué
+    logging.info("Configuration de logging appliquée pour la session de tests (DEBUG console).")
+
+    # `yield` permet aux tests de s'exécuter
+    yield
+
+    # Optionnel : Réinitialiser la configuration de logging après les tests
+    # Cela peut être utile pour éviter des interférences si d'autres parties de votre
+    # environnement de test ou des exécutions ultérieures nécessitent une configuration différente.
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+        handler.close()
+    logging.info("Configuration de logging réinitialisée après la session de tests.")
 
 
+# Event loop session-scoped pour compatibilité fixtures session async
 @pytest.fixture(scope="session")
-def client():
-    return TestClient(app)
+def event_loop():
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 
-@pytest.fixture(scope="function")
-def setup_test_user(setup_test_db: DictCursor):
-    conn = psycopg2.connect(
-        **TEST_DB_CONFIG
-    )
-    cur = conn.cursor(cursor_factory=DictCursor)
-    password_hash = get_password_hash(TEST_PASSWORD)
-    try:
-        cur.execute("INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
-                    (TEST_USER_NAME, TEST_USER_EMAIL, password_hash,))
-        conn.commit()
-        yield cur
-    finally:
-        cur.close()
-        conn.close()
+@pytest_asyncio.fixture(scope="session")
+async def async_db():
+    pool = AsyncConnectionPool(url)
+    await pool.open()
+    yield pool
+    await pool.close()
+
+@pytest_asyncio.fixture(scope="function")
+async def transaction(async_db: AsyncConnectionPool):
+    print("\n--- Début de la transaction (Rollback forcé) ---")
+    async with async_db.connection() as conn:
+        print(f"Connexion obtenue : {conn.info.backend_pid}")
+        await conn.execute("BEGIN")
+        print("\n--- Transaction de test DÉMARRÉE (BEGIN) ---")
+
+        try:
+            yield conn
+        finally:
+            await conn.execute("ROLLBACK")
+            print("--- Transaction de test ANNULÉE (ROLLBACK) ---")
 
 
-@pytest.fixture(scope="function")  # Par test, base transactionnelle.
-def setup_test_db():
-    conn = psycopg2.connect(
-        **TEST_DB_CONFIG
-    )
-    conn.autocommit = False  # Activation des transactions
-    cur = conn.cursor(cursor_factory=DictCursor)
-    print("Connexion à la base de données")
-    try:
-        # Nettoyer les tables avant chaque test
-        # Désactiver temporairement les clés étrangères
-        cur.execute("SET session_replication_role = 'replica';")
+@pytest_asyncio.fixture(scope="function")
+async def async_client(transaction: psycopg.AsyncConnection):
+    # La surcharge doit être un générateur asynchrone qui yield la connexion transactionnelle.
 
-        # Récupérer toutes les tables depuis `information_schema`
-        cur.execute("""
-                    SELECT tablename
-                    FROM pg_tables
-                    WHERE schemaname = 'public';
-                    """)
-        tables = cur.fetchall()
+    async def override_get_db():
+        yield transaction
 
-        # Tronquer toutes les tables
-        for table in tables:
-            cur.execute(f"TRUNCATE TABLE {table[0]} CASCADE;")
+    app.dependency_overrides[get_db] = override_get_db
 
-        # Réactiver les contraintes (fk)
-        cur.execute("SET session_replication_role = 'origin';")
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
 
-        # Commit
-        conn.commit()
-        print("Toutes les données de la base de données ont été supprimées avec succès.")
+    app.dependency_overrides.clear()
 
-        yield cur
-        print("Déconnexion à la base de données")
-        conn.rollback()  # Annuler les modifications après chaque test
 
-    except Exception as e:
-        # Rollback en cas d'erreur
-        if conn:
-            conn.rollback()
-        print("Erreur lors du nettoyage de la base de données :", e)
+@pytest_asyncio.fixture(scope="function")
+async def setup_test_user(transaction: psycopg.AsyncConnection):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        password_hash = get_password_hash(TEST_PASSWORD)
+        await cur.execute(
+            "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (%s, %s, %s, %s, %s) RETURNING *",
+            (TEST_USER_NAME, TEST_USER_EMAIL, password_hash, True, 'user')
+        )
+        user = await cur.fetchone()
+    yield user
 
-    finally:
+@pytest_asyncio.fixture(scope="function")
+async def setup_test_type(transaction: psycopg.AsyncConnection):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute("INSERT INTO type (type) VALUES (%s) RETURNING *", ("Type 1",))
+        type_row = await cur.fetchone()
+    yield type_row
 
-        cur.close()
-        conn.close()
+@pytest_asyncio.fixture(scope="function")
+async def setup_test_concept(transaction: psycopg.AsyncConnection, setup_test_type: psycopg.rows.dict_row):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        type_id = setup_test_type['id']
+        await cur.execute(
+            "INSERT INTO concepts (nom,enonce,demonstration,type_id) VALUES (%s,%s, %s, %s) RETURNING *",
+            ("Concept 1", "Enonce 1", "Demonstration 1", type_id)
+        )
+        concept = await cur.fetchone()
+    yield concept
 
-@pytest.fixture(scope="function")
-def setup_test_concept(setup_test_db: DictCursor,setup_test_type):
-    conn = psycopg2.connect(
-        **TEST_DB_CONFIG
-    )
-    cur = conn.cursor(cursor_factory=DictCursor)
-    try:
-        cur.execute("SELECT id FROM type WHERE type = %s", ("Type 1",))
-        idType = cur.fetchone()["id"]
-        cur.execute("INSERT INTO concepts (nom,enonce,demonstration,type,type_id) VALUES (%s,%s,%s,%s,%s)", (
-            "Concept 1",
-            "Enonce 1",
-            "Demonstration 1",
-            "axiome",
-            idType
-        ))
-        cur.execute("SELECT id FROM concepts WHERE nom = %s", ("Concept 1",))
-        id = cur.fetchone()["id"]
-        conn.commit()
-        yield id
-    finally:
-        cur.close()
-        conn.close()
+@pytest_asyncio.fixture(scope="function")
+async def setup_test_mathematicien(transaction: psycopg.AsyncConnection):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute("INSERT INTO mathematiciens (nom) VALUES (%s) RETURNING *", ("Mathematicien 1",))
+        mat = await cur.fetchone()
+    yield mat
 
-@pytest.fixture(scope="function")
-def setup_test_mathematicien(setup_test_db: DictCursor):
-    conn = psycopg2.connect(
-        **TEST_DB_CONFIG
-    )
-    cur = conn.cursor(cursor_factory=DictCursor)
-    try:
-        cur.execute("INSERT INTO mathematiciens (nom) VALUES (%s)", (
-            "Mathematicien 1"
-        ))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
+@pytest_asyncio.fixture(scope="function")
+async def setup_test_categorie(transaction: psycopg.AsyncConnection):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute("INSERT INTO categories (nom) VALUES (%s) RETURNING *", ("Categorie 1",))
+        cat = await cur.fetchone()
+    yield cat
 
-@pytest.fixture(scope="function")
-def setup_test_categorie(setup_test_db: DictCursor):
-    conn = psycopg2.connect(
-        **TEST_DB_CONFIG
-    )
-    cur = conn.cursor(cursor_factory=DictCursor)
-    try:
-        cur.execute("INSERT INTO categories (nom) VALUES (%s)", (
-            "Categorie 1"
-        ))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
-@pytest.fixture(scope="function")
-def setup_test_type(setup_test_db: DictCursor):
-    conn = psycopg2.connect(
-        **TEST_DB_CONFIG
-    )
-    cur = conn.cursor(cursor_factory=DictCursor)
-    try:
-        cur.execute("INSERT INTO type (type) VALUES (%s)", ("Type 1",))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
+@pytest_asyncio.fixture(scope="function")
+async def setup_test_source(transaction: psycopg.AsyncConnection):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute(
+            "INSERT INTO sources (titre,auteur) VALUES (%s, %s) RETURNING *",
+            ("Source 1", "Auteur 1")
+        )
+        src = await cur.fetchone()
+    yield src
 
-@pytest.fixture(scope="function")
-def setup_test_source(setup_test_db: DictCursor):
-    conn = psycopg2.connect(
-        **TEST_DB_CONFIG
-    )
-    cur = conn.cursor(cursor_factory=DictCursor)
-    try:
-        cur.execute("INSERT INTO sources (titre,auteur,annee,url,type) VALUES (%s,%s,%s,%s,%s)", (
-            "Source 1",
-            "Auteur 1",
-        ))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
+@pytest_asyncio.fixture(scope="function")
+async def setup_reset_token(transaction:psycopg.AsyncConnection,setup_test_user):
+    user = setup_test_user
+    time = datetime.now() + timedelta(days=1)
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute(
+            "INSERT INTO password_reset_tokens (user_id, token,expires_at) VALUES (%s, %s,%s) RETURNING *",
+            (user["id"], "token",time)
+        )
+        reset_data= await cur.fetchone()
+    yield reset_data

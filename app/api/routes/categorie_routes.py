@@ -26,7 +26,8 @@ async def get_one_category_E(id_category: int, db: AsyncConnection = Depends(get
 @router.patch("/update/{id_category}", response_model=Response)
 async def update_category_E(id_category: int, data: dict, db: AsyncConnection = Depends(get_db)):
     try:
-        await CategoryService(db).update_category(id_category, data)
+        async with db.transaction():
+            await CategoryService(db).update_category(id_category, data)
         logger.debug(
             f"Route PATCH /{router.prefix}/update/{id_category} a modifié correctement la catégorie {id_category}")
         return {"error": None, "success": True, "data": None, "meta": None}
@@ -50,7 +51,8 @@ async def all_category(db: AsyncConnection = Depends(get_db)):
 @router.post("/create", response_model=Response)
 async def create_category(data: CreateData, db: AsyncConnection = Depends(get_db)):
     try:
-        await CategoryService(db).add_category(data)
+        async with db.transaction():
+            await CategoryService(db).add_category(data)
         logger.debug(f"Route POST /{router.prefix}/create a créer correctement la catégorie : ,{str(data)}")
         return {"error": None, "success": True, "data": None, "meta": None}
     except InternalServerError as exc:

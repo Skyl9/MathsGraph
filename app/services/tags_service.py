@@ -64,32 +64,30 @@ class TagsService:
 
     async def create_new_tag(self,tag_name: str) -> None:
         try:
-            async with self.db.transaction():
-                async with self.db.cursor() as cursor:
-                    await cursor.execute("SELECT name FROM tags WHERE name = %s;", (tag_name,))
-                    if await cursor.fetchone():
-                        return None
-                    await cursor.execute(
-                        "INSERT INTO tags (name) VALUES (%s);", (tag_name,)
-                    )
+            async with self.db.cursor() as cursor:
+                await cursor.execute("SELECT name FROM tags WHERE name = %s;", (tag_name,))
+                if await cursor.fetchone():
+                    return None
+                await cursor.execute(
+                    "INSERT INTO tags (name) VALUES (%s);", (tag_name,)
+                )
         except Exception as e:
             print(e)
             return None
 
     async def add_tag_to_concept(self,concept_id: int, tag_id: int) -> None:
         try:
-            async with self.db.transaction():
-                async with self.db.cursor() as cursor:
-                    await cursor.execute("SELECT id FROM tags WHERE id = %s;", (tag_id,))
-                    if not await cursor.fetchone():
-                        return None
-                    await cursor.execute("SELECT concept_id FROM concept_tags WHERE concept_id = %s AND tag_id = %s;",
-                                   (concept_id, tag_id))
-                    if await cursor.fetchone():
-                        return None
-                    await cursor.execute(
-                        "INSERT INTO concept_tags (concept_id, tag_id) VALUES (%s, %s);", (concept_id, tag_id)
-                    )
+            async with self.db.cursor() as cursor:
+                await cursor.execute("SELECT id FROM tags WHERE id = %s;", (tag_id,))
+                if not await cursor.fetchone():
+                    return None
+                await cursor.execute("SELECT concept_id FROM concept_tags WHERE concept_id = %s AND tag_id = %s;",
+                               (concept_id, tag_id))
+                if await cursor.fetchone():
+                    return None
+                await cursor.execute(
+                    "INSERT INTO concept_tags (concept_id, tag_id) VALUES (%s, %s);", (concept_id, tag_id)
+                )
         except Exception as e:
             print(e)
             return None
@@ -98,18 +96,17 @@ class TagsService:
     async def remove_tag_from_concept(self,concept_id: int, tag_id: int) -> None:
 
         try:
-            async with self.db.transaction():
-                async with self.db.cursor() as cursor:
-                    await cursor.execute("SELECT id FROM tags WHERE id = %s;", (tag_id,))
-                    if not await cursor.fetchone():
-                        return None
-                    await cursor.execute("SELECT concept_id FROM concept_tags WHERE concept_id = %s AND tag_id = %s;",
-                                   (concept_id, tag_id))
-                    if not await cursor.fetchone():
-                        return None
-                    await cursor.execute(
-                        "DELETE FROM concept_tags WHERE concept_id = %s AND tag_id = %s;", (concept_id, tag_id)
-                    )
+            async with self.db.cursor() as cursor:
+                await cursor.execute("SELECT id FROM tags WHERE id = %s;", (tag_id,))
+                if not await cursor.fetchone():
+                    return None
+                await cursor.execute("SELECT concept_id FROM concept_tags WHERE concept_id = %s AND tag_id = %s;",
+                               (concept_id, tag_id))
+                if not await cursor.fetchone():
+                    return None
+                await cursor.execute(
+                    "DELETE FROM concept_tags WHERE concept_id = %s AND tag_id = %s;", (concept_id, tag_id)
+                )
 
         except Exception as e:
             print(e)

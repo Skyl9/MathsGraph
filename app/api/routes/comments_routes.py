@@ -26,13 +26,14 @@ async def get_comments(concept_id: int, db: AsyncConnection = Depends(get_db)):
 @router.post("/add/{concept_id}", summary="Ajoute un commentaire à un concept", response_model=Response)
 async def post_comment(concept_id: int, data: CommentIn, db: AsyncConnection = Depends(get_db)):
     try:
-        await CommentsService(db).add_comment(
-            concept_id=concept_id,
-            username=data.username,
-            content=data.content,
-            parent_id=data.parent_id,
-            field=data.field
-        )
+        async with db.transaction():
+            await CommentsService(db).add_comment(
+                concept_id=concept_id,
+                username=data.username,
+                content=data.content,
+                parent_id=data.parent_id,
+                field=data.field
+            )
         logger.debug(f"Route POST /comments/add/{concept_id} a correctement ajouté un commentaire au concept d'id : {concept_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
@@ -43,7 +44,8 @@ async def post_comment(concept_id: int, data: CommentIn, db: AsyncConnection = D
 @router.patch("/update/{comment_id}", summary="Met à jour le contenu d'un commentaire", response_model=Response)
 async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnection = Depends(get_db)):
     try:
-        await CommentsService(db).update_comment(comment_id, data.content)
+        async with db.transaction():
+            await CommentsService(db).update_comment(comment_id, data.content)
         logger.debug(f"Route PATCH /comments/update/{comment_id} a correctement mis à jour le commentaire d'id : {comment_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
@@ -54,7 +56,8 @@ async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnecti
 @router.delete("/delete/{comment_id}", summary="Supprime un commentaire", response_model=Response)
 async def delete_comment(comment_id: int, db: AsyncConnection = Depends(get_db)):
     try:
-        await CommentsService(db).delete_comment(comment_id)
+        async with db.transaction():
+            await CommentsService(db).delete_comment(comment_id)
         logger.debug(f"Route DELETE /comments/delete/{comment_id} a correctement supprimé le commentaire d'id : {comment_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:

@@ -17,8 +17,9 @@ router = APIRouter(prefix="/admin", tags=["alias"])
 async def get_stats(db: AsyncConnection = Depends(get_db)):
     try:
         data: Stat = await AdminService(db).get_stats()
-        logger.debug(f"Route GET /{router.prefix}/stats a renvoyé : ",str(data))
-        return {"error": False, "data": data, "success": True, "meta": None}
+        print(data)
+        logger.debug(f"Route GET /{router.prefix}/stats a renvoyé : ,{str(data)}")
+        return {"error": None, "data": data, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur de Route GET /{router.prefix}/stats : {exc}")
         raise InternalServerError(str(exc)) from exc
@@ -29,7 +30,7 @@ async def get_users(db: AsyncConnection = Depends(get_db)):
     try:
         data: List[User] = await AdminService(db).get_users()
         logger.debug(f"Route GET /{router.prefix}/users a renvoyé : {str(data)}")
-        return {"error": False, "data": data, "success": True, "meta": None}
+        return {"error": None, "data": data, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur de Route GET /{router.prefix}/users : {exc}")
         raise InternalServerError(str(exc)) from exc
@@ -40,7 +41,7 @@ async def get_contents(db: AsyncConnection = Depends(get_db)):
     try:
         data: List[ConceptForAdmin] = await AdminService(db).get_concepts_admin()
         logger.debug(f"Route GET /{router.prefix}/contents a renvoyé : {str(data)} ")
-        return {"error": False, "data": data, "success": True, "meta": None}
+        return {"error": None, "data": data, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route GET /{router.prefix}/contents a : {str(exc)}")
         raise InternalServerError(str(exc)) from exc

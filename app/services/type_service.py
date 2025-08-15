@@ -3,7 +3,6 @@ from psycopg import AsyncConnection
 from psycopg2 import sql
 
 from app.core.exceptions import NotFoundException, InternalServerError, ForbiddenException, ConflictException
-from app.db.database import get_db_connection
 from app.schemas import CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
 
@@ -49,26 +48,22 @@ class TypeService:
             )
 
         try:
-            async with self.db.transaction():
-                async with self.db.cursor() as cur:
-                    query = sql.SQL(f"UPDATE type SET {field} = %s WHERE id = %s").format(
-                        field=sql.Identifier(field)
-                    )
-                    await cur.execute(query, (data["value"], id_type))
+            async with self.db.cursor() as cur:
+                query = sql.SQL(f"UPDATE type SET {field} = %s WHERE id = %s").format(
+                    field=sql.Identifier(field)
+                )
+                await cur.execute(query, (data["value"], id_type))
         except Exception as e:
             raise InternalServerError(detail=e)
 
     async def add_type(self,data: CreateData):
-
-
         data = data.model_dump() if isinstance(data, CreateData) else data
-        async with self.db.transaction():
-            async with self.db.cursor() as cursor:
-                await cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
+        async with self.db.cursor() as cursor:
+            await cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
 
-                if await cursor.fetchone() is not None:
-                    raise ConflictException(detail="Type already exists")
-                await cursor.execute("INSERT INTO type (type) VALUES  (%s);", (data["value"],))
+            if await cursor.fetchone() is not None:
+                raise ConflictException(detail="Type already exists")
+            await cursor.execute("INSERT INTO type (type) VALUES  (%s);", (data["value"],))
 
 
 

@@ -12,7 +12,8 @@ router = APIRouter(prefix="/source", tags=["source"])
 @router.post("/create", summary="Crée une nouvelle source", response_model=Response)
 async def create_source(data: CreateSource, db: AsyncConnection = Depends(get_db)):
     try:
-        await SourceService(db).create_source(data)
+        async with db.transaction():
+            await SourceService(db).create_source(data)
         logger.debug(f"Route POST /source/create a correctement créé une source")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:

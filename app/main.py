@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
+from psycopg_pool import AsyncConnectionPool
 from starlette.responses import JSONResponse
 
+from app import settings
 from app.api.routes import concept_routes, auth_routes, mathematicien_routes, categorie_routes, type_routes, \
     source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes
 from app.core.logging_config import setup_logging
@@ -19,7 +21,9 @@ def error_response(status_code: int, error: str):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global pool
     # ⚡ Ouverture du pool au démarrage
+    pool = AsyncConnectionPool(settings.DATABASE_URL,open=False)
     await pool.open()
     try:
         yield
@@ -39,8 +43,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type","Content-Type: application/json"],
 )
 
 @app.exception_handler(BadRequestException)

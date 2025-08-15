@@ -4,7 +4,6 @@ from fastapi import HTTPException, Depends
 from psycopg import AsyncConnection
 
 from app.core.exceptions import NotFoundException, InternalServerError
-from app.db.database import get_db_connection, get_db
 from app.schemas.user import UserId, UpdateUser, Favorite
 
 import logging
@@ -48,12 +47,9 @@ class UserService:
         return {"id":user[0]}
 
     async def patch_user(self,id:str, data: UpdateUser):
-        conn = get_db_connection()
-        cursor = conn.cursor()
         data = data.model_dump() if isinstance(data, UpdateUser) else data
-        async with self.db.transaction():
-            async with self.db.cursor() as cursor:
-                await cursor.execute(f"UPDATE users SET {data["field"]} = %s WHERE id = %s;", (data["value"], id))
+        async with self.db.cursor() as cursor:
+            await cursor.execute(f"UPDATE users SET {data["field"]} = %s WHERE id = %s;", (data["value"], id))
 
     async def get_favorite_user(self, user_id:int):
         try:
@@ -107,16 +103,15 @@ class UserService:
     async def delete_favorite_user(self,general_id:int, data:Favorite):
         data = data.model_dump() if isinstance(data, Favorite) else data
         try:
-            async with self.db.transaction():
-                async with self.db.cursor() as cursor:
-                    if data["type"] == "concept":
-                        await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND concept_id = %s;", (data["user_id"],general_id))
-                    elif data["type"] == "mathematicien":
-                        await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND mathematicien_id = %s;", (data["user_id"],general_id))
-                    elif data["type"] == "category":
-                        await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND category_id = %s;", (data["user_id"],general_id))
-                    elif data["type"] == "type":
-                        await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND type_id = %s;", (data["user_id"],general_id))
+            async with self.db.cursor() as cursor:
+                if data["type"] == "concept":
+                    await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND concept_id = %s;", (data["user_id"],general_id))
+                elif data["type"] == "mathematicien":
+                    await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND mathematicien_id = %s;", (data["user_id"],general_id))
+                elif data["type"] == "category":
+                    await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND category_id = %s;", (data["user_id"],general_id))
+                elif data["type"] == "type":
+                    await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND type_id = %s;", (data["user_id"],general_id))
         except Exception as e:
             raise InternalServerError(detail=e)
 
@@ -125,16 +120,15 @@ class UserService:
         data = data.model_dump() if isinstance(data, Favorite) else data
         data["user_id"]=int(data["user_id"])
         try:
-            async with self.db.transaction():
-                async with self.db.cursor() as cursor:
-                    if data["type"] == "concept":
-                        print("ues")
-                        await cursor.execute(f"INSERT INTO user_favorites (user_id, concept_id) VALUES (%s, %s);", (data["user_id"],general_id))
-                    elif data["type"] == "mathematicien":
-                        await cursor.execute(f"INSERT INTO user_favorites (user_id, mathematicien_id) VALUES (%s, %s);", (data["user_id"],general_id))
-                    elif data["type"] == "category":
-                        await cursor.execute(f"INSERT INTO user_favorites (user_id, category_id) VALUES (%s, %s);", (data["user_id"],general_id))
-                    elif data["type"] == "type":
-                        await cursor.execute(f"INSERT INTO user_favorites (user_id, type_id) VALUES (%s, %s);", (data["user_id"],general_id))
+            print(f"Connexion utilisée par le service : {self.db.info.backend_pid}")
+            async with self.db.cursor() as cursor:
+                if data["type"] == "concept":
+                    await cursor.execute(f"INSERT INTO user_favorites (user_id, concept_id) VALUES (%s, %s);", (data["user_id"],general_id))
+                elif data["type"] == "mathematicien":
+                    await cursor.execute(f"INSERT INTO user_favorites (user_id, mathematicien_id) VALUES (%s, %s);", (data["user_id"],general_id))
+                elif data["type"] == "category":
+                    await cursor.execute(f"INSERT INTO user_favorites (user_id, category_id) VALUES (%s, %s);", (data["user_id"],general_id))
+                elif data["type"] == "type":
+                    await cursor.execute(f"INSERT INTO user_favorites (user_id, type_id) VALUES (%s, %s);", (data["user_id"],general_id))
         except Exception as e:
             raise InternalServerError(detail=e)

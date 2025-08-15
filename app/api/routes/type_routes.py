@@ -26,7 +26,8 @@ async def get_one_type_E(id_type: int, db: AsyncConnection = Depends(get_db)):
 @router.patch("/update/{id_type}", summary="Met à jour un type", response_model=Response)
 async def update_type_E(id_type: int, data: dict, db: AsyncConnection = Depends(get_db)):
     try:
-        await TypeService(db).update_type(id_type, data)
+        async with db.transaction():
+            await TypeService(db).update_type(id_type, data)
         logger.debug(f"Route PATCH /{router.prefix}/update/{id_type} a correctement mis à jour le type d'id : {id_type}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
@@ -48,7 +49,8 @@ async def get_all_type(db: AsyncConnection = Depends(get_db)):
 @router.post("/create", summary="Crée un nouveau type", response_model=Response)
 async def create_type(data: CreateData, db: AsyncConnection = Depends(get_db)):
     try:
-        result = await TypeService(db).add_type(data)
+        async with db.transaction():
+            result = await TypeService(db).add_type(data)
         logger.debug(f"Route POST /{router.prefix}/create a correctement créé un type")
         return {"error": None, "data": result, "success": True, "meta": None}
     except InternalServerError as exc:

@@ -4,7 +4,6 @@ from typing import List
 
 from psycopg import AsyncConnection, DatabaseError
 
-from app.db.database import get_db_connection
 from app.core.exceptions import NotFoundException, InternalServerError
 from app.schemas import UpdateConceptDict
 
@@ -190,7 +189,6 @@ class ConceptService:
 
     async def rollback_history(self,concept_id: int, data: RollbackConcept)->None:
         data = data.model_dump() if isinstance(data, RollbackConcept) else data
-        conn = get_db_connection()
 
         async with self.db.cursor() as cursor:
             await cursor.execute("""
@@ -377,34 +375,33 @@ class ConceptService:
         if not old_version:
             old_version = ""  # Assurer que cette valeur est une chaîne de caractères
 
-        async with self.db.transaction():
-            async with self.db.cursor() as cursor:
-                # Calculer le numéro de version
-                await cursor.execute("""
-                                SELECT COALESCE(MAX(version_number), 0) + 1
-                                FROM concept_versions
-                                WHERE concept_id = %s
-                                  AND field_modified = %s
-                                """, (concept_id, field_modified))
-                version_number = await cursor.fetchone()[0]
+        async with self.db.cursor() as cursor:
+            # Calculer le numéro de version
+            await cursor.execute("""
+                            SELECT COALESCE(MAX(version_number), 0) + 1
+                            FROM concept_versions
+                            WHERE concept_id = %s
+                              AND field_modified = %s
+                            """, (concept_id, field_modified))
+            version_number = await cursor.fetchone()[0]
 
-                # Calculer le numéro de version globale
-                await cursor.execute("""
-                                SELECT COALESCE(MAX(global_version), 0) + 1
-                                FROM concept_versions
-                                WHERE concept_id = %s
-                                """, (concept_id,))
-                global_version = await cursor.fetchone()[0]
+            # Calculer le numéro de version globale
+            await cursor.execute("""
+                            SELECT COALESCE(MAX(global_version), 0) + 1
+                            FROM concept_versions
+                            WHERE concept_id = %s
+                            """, (concept_id,))
+            global_version = await cursor.fetchone()[0]
 
-                # Récupérer l'ID utilisateur
-                await cursor.execute("""SELECT id
-                                   FROM users
-                                   WHERE username = %s""", (username,))
-                row = await cursor.fetchone()
-                if not row:
-                    raise NotFoundException(detail = f"Utilisateur {username} introuvable")
-                user_id = row[0]
-                await cursor.execute("""INSERT INTO concept_versions(modified_by, concept_id, field_modified, old_value, new_value,note, global_version, version_number,is_rollback) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s); """, (user_id, concept_id, field_modified, old_version, new_version, note, global_version,version_number,rollback))
+            # Récupérer l'ID utilisateur
+            await cursor.execute("""SELECT id
+                               FROM users
+                               WHERE username = %s""", (username,))
+            row = await cursor.fetchone()
+            if not row:
+                raise NotFoundException(detail = f"Utilisateur {username} introuvable")
+            user_id = row[0]
+            await cursor.execute("""INSERT INTO concept_versions(modified_by, concept_id, field_modified, old_value, new_value,note, global_version, version_number,is_rollback) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s); """, (user_id, concept_id, field_modified, old_version, new_version, note, global_version,version_number,rollback))
 
 
     async def get_all_concepts_name(self)->list[ConceptName]:
@@ -424,132 +421,131 @@ class ConceptService:
         data = data.model_dump() if isinstance(data, UpdateConceptDict) else data
 
         try:
-            with self.db.transaction():
-                with self.db.cursor() as cursor:
+            with self.db.cursor() as cursor:
 
-                    # Vérifier si l'ID existe
-                    await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
-                    if await cursor.fetchone() is None:
-                        raise NotFoundException(detail="ID not found")
-                    # Champ à mettre à jour
-                    if data["field"] in ["nom", "enonce", "demonstration", "verification", "date_ajout"]:
-                        await cursor.execute(f"SELECT {data['field']} FROM concepts WHERE id=%s;", (concept_id,))
-                        old_value = await cursor.fetchone()[0]
-                        new_value = data["value"]
-                        set_clause = data["field"] + " = %s"  # Ex: "x = %s, y = %s"
-                        sql = f"UPDATE concepts SET {set_clause} WHERE id = %s;"
-                        await cursor.execute(sql, (data["value"], concept_id))
+                # Vérifier si l'ID existe
+                await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
+                if await cursor.fetchone() is None:
+                    raise NotFoundException(detail="ID not found")
+                # Champ à mettre à jour
+                if data["field"] in ["nom", "enonce", "demonstration", "verification", "date_ajout"]:
+                    await cursor.execute(f"SELECT {data['field']} FROM concepts WHERE id=%s;", (concept_id,))
+                    old_value = await cursor.fetchone()[0]
+                    new_value = data["value"]
+                    set_clause = data["field"] + " = %s"  # Ex: "x = %s, y = %s"
+                    sql = f"UPDATE concepts SET {set_clause} WHERE id = %s;"
+                    await cursor.execute(sql, (data["value"], concept_id))
 
-                    elif data["field"] == "type":
-                        await cursor.execute(f"SELECT type_id FROM concepts WHERE id=%s;", (concept_id,))
-                        old_value = await cursor.fetchone()[0]
-                        await cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
-                        new_value = await cursor.fetchone()[0]
-                        await cursor.execute("UPDATE concepts SET type_id = (SELECT id FROM type WHERE type = %s ) WHERE id = %s;",
-                                       (data["value"], concept_id))
+                elif data["field"] == "type":
+                    await cursor.execute(f"SELECT type_id FROM concepts WHERE id=%s;", (concept_id,))
+                    old_value = await cursor.fetchone()[0]
+                    await cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
+                    new_value = await cursor.fetchone()[0]
+                    await cursor.execute("UPDATE concepts SET type_id = (SELECT id FROM type WHERE type = %s ) WHERE id = %s;",
+                                   (data["value"], concept_id))
 
-                    elif data["field"] == "categorie":
-                        await cursor.execute(f"SELECT categorie_id FROM concepts WHERE id=%s;", (concept_id,))
-                        old_value = await cursor.fetchone()[0]
-                        await cursor.execute("SELECT id FROM categories WHERE nom = %s;", (data["value"],))
-                        new_value = await cursor.fetchone()[0]
-                        sql = f"UPDATE concepts SET categorie_id = (SELECT id FROM categories WHERE nom = %s ) WHERE id = %s;"
-                        await cursor.execute(sql, (data["value"], concept_id))
+                elif data["field"] == "categorie":
+                    await cursor.execute(f"SELECT categorie_id FROM concepts WHERE id=%s;", (concept_id,))
+                    old_value = await cursor.fetchone()[0]
+                    await cursor.execute("SELECT id FROM categories WHERE nom = %s;", (data["value"],))
+                    new_value = await cursor.fetchone()[0]
+                    sql = f"UPDATE concepts SET categorie_id = (SELECT id FROM categories WHERE nom = %s ) WHERE id = %s;"
+                    await cursor.execute(sql, (data["value"], concept_id))
 
-                    elif data["field"] == "mathematicien":
-                        await cursor.execute(f"SELECT mathematicien_id FROM concepts WHERE id=%s;", (concept_id,))
-                        old_value = await  cursor.fetchone()[0]
-                        await cursor.execute("SELECT id FROM mathematiciens WHERE nom = %s;", (data["value"],))
-                        new_value = await cursor.fetchone()[0]
-                        sql = f"UPDATE concepts SET mathematicien_id = (SELECT id FROM mathematiciens WHERE nom = %s ) WHERE id = %s;"
-                        await cursor.execute(sql, (data["value"], concept_id))
+                elif data["field"] == "mathematicien":
+                    await cursor.execute(f"SELECT mathematicien_id FROM concepts WHERE id=%s;", (concept_id,))
+                    old_value = await  cursor.fetchone()[0]
+                    await cursor.execute("SELECT id FROM mathematiciens WHERE nom = %s;", (data["value"],))
+                    new_value = await cursor.fetchone()[0]
+                    sql = f"UPDATE concepts SET mathematicien_id = (SELECT id FROM mathematiciens WHERE nom = %s ) WHERE id = %s;"
+                    await cursor.execute(sql, (data["value"], concept_id))
 
-                    elif data["field"] == "relations":
-                        await cursor.execute(f"SELECT concept_source, concept_cible, type_relation, description,date_relation FROM relations WHERE concept_source = %s OR concept_cible = %s;", (concept_id, concept_id))
-                        query_result = await cursor.fetchall()
-                        old_value = []
-                        for relation in query_result:
-                            a= {"id":concept_id,"concept_source": relation[0], "concept_cible": relation[1], "type_relation": relation[2],
-                                "description": relation[3], "date_relation": relation[4]}
-                            old_value.append(a)
-                        #deepcopy nécessaire pour l'utilisation à l'enregistrement
-                        new_value = copy.deepcopy(data["value"])
+                elif data["field"] == "relations":
+                    await cursor.execute(f"SELECT concept_source, concept_cible, type_relation, description,date_relation FROM relations WHERE concept_source = %s OR concept_cible = %s;", (concept_id, concept_id))
+                    query_result = await cursor.fetchall()
+                    old_value = []
+                    for relation in query_result:
+                        a= {"id":concept_id,"concept_source": relation[0], "concept_cible": relation[1], "type_relation": relation[2],
+                            "description": relation[3], "date_relation": relation[4]}
+                        old_value.append(a)
+                    #deepcopy nécessaire pour l'utilisation à l'enregistrement
+                    new_value = copy.deepcopy(data["value"])
 
-                        for i in new_value:
-                            # si concept_source est un dict, on remplace par son id
-                            if isinstance(i.get("concept_source"), dict):
-                                i["concept_source"] = i["concept_source"]["id"]
+                    for i in new_value:
+                        # si concept_source est un dict, on remplace par son id
+                        if isinstance(i.get("concept_source"), dict):
+                            i["concept_source"] = i["concept_source"]["id"]
 
-                            # même chose pour concept_cible
-                            if isinstance(i.get("concept_cible"), dict):
-                                i["concept_cible"] = i["concept_cible"]["id"]
-
+                        # même chose pour concept_cible
+                        if isinstance(i.get("concept_cible"), dict):
+                            i["concept_cible"] = i["concept_cible"]["id"]
 
 
 
-                        await cursor.execute("DELETE FROM relations WHERE concept_source = %s OR concept_cible = %s;",
-                                       (concept_id, concept_id))
-                        for relation in new_value:
-                            await cursor.execute("""
-                                           INSERT INTO relations (concept_source, concept_cible, type_relation, description)
-                                           VALUES (%s, %s, %s, %s);
-                                           """, (
-                                               relation["concept_source"],
-                                               relation["concept_cible"],
-                                               relation["type_relation"],
-                                               relation.get("description"),
-                                           ))
-                        #Transformation en json str nécessaire
-                        old_value = json.dumps(old_value)
-                        new_value = json.dumps(new_value)
 
-                    elif data["field"] == "sources":
-                        await cursor.execute(f"SELECT id,titre,auteur,annee,url,type FROM sources WHERE id IN (SELECT source_id FROM concepts_sources WHERE concept_id = %s);", (concept_id,))
-                        query = await cursor.fetchall()
-                        old_value = []
-                        for i in query:
-                            old_value.append({"id":i[0],"titre":i[1],"auteur":i[2],"annee":i[3],"url":i[4],"type":i[5]})
-                        new_value = []
+                    await cursor.execute("DELETE FROM relations WHERE concept_source = %s OR concept_cible = %s;",
+                                   (concept_id, concept_id))
+                    for relation in new_value:
+                        await cursor.execute("""
+                                       INSERT INTO relations (concept_source, concept_cible, type_relation, description)
+                                       VALUES (%s, %s, %s, %s);
+                                       """, (
+                                           relation["concept_source"],
+                                           relation["concept_cible"],
+                                           relation["type_relation"],
+                                           relation.get("description"),
+                                       ))
+                    #Transformation en json str nécessaire
+                    old_value = json.dumps(old_value)
+                    new_value = json.dumps(new_value)
 
-                        for i in data["value"]:
-                            new_value.append({"id":i["id"],"titre":i["titre"],"auteur":i["auteur"],"annee":i["annee"],"url":i["url"],"type":i["type"]})
+                elif data["field"] == "sources":
+                    await cursor.execute(f"SELECT id,titre,auteur,annee,url,type FROM sources WHERE id IN (SELECT source_id FROM concepts_sources WHERE concept_id = %s);", (concept_id,))
+                    query = await cursor.fetchall()
+                    old_value = []
+                    for i in query:
+                        old_value.append({"id":i[0],"titre":i[1],"auteur":i[2],"annee":i[3],"url":i[4],"type":i[5]})
+                    new_value = []
 
-                        old_value = json.dumps(old_value)
-                        new_value = json.dumps(new_value)
+                    for i in data["value"]:
+                        new_value.append({"id":i["id"],"titre":i["titre"],"auteur":i["auteur"],"annee":i["annee"],"url":i["url"],"type":i["type"]})
 
-                        for source in data["value"]:
-                            await cursor.execute(
-                                "UPDATE sources SET titre = %s, auteur = %s, annee = %s, url = %s, type = %s WHERE id = %s;",
-                                (source["titre"], source["auteur"], source["annee"], source["url"], source["type"],
-                                 source["id"]))
+                    old_value = json.dumps(old_value)
+                    new_value = json.dumps(new_value)
 
-                    elif data["field"] == "aliases":
-                        await cursor.execute(f"SELECT alias FROM aliases WHERE concept_id = %s;", (concept_id,))
-                        old_value = await cursor.fetchall()
-                        old_value = [i[0] for i in old_value]
-                        new_value = data["value"]
-                        old_value = json.dumps(old_value)
-                        new_value = json.dumps(new_value)
+                    for source in data["value"]:
+                        await cursor.execute(
+                            "UPDATE sources SET titre = %s, auteur = %s, annee = %s, url = %s, type = %s WHERE id = %s;",
+                            (source["titre"], source["auteur"], source["annee"], source["url"], source["type"],
+                             source["id"]))
+
+                elif data["field"] == "aliases":
+                    await cursor.execute(f"SELECT alias FROM aliases WHERE concept_id = %s;", (concept_id,))
+                    old_value = await cursor.fetchall()
+                    old_value = [i[0] for i in old_value]
+                    new_value = data["value"]
+                    old_value = json.dumps(old_value)
+                    new_value = json.dumps(new_value)
 
 
-                        await cursor.execute("DELETE FROM aliases WHERE concept_id = %s;", (concept_id,))
-                        for alias in data["value"]:
-                            await cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES (%s, %s);", (concept_id, alias))
-                    elif data["field"] == "noms_etrangers":
-                        await cursor.execute("""SELECT id, concept_id, "Nom_étranger", langue FROM foreign_name WHERE concept_id = %s;""", (concept_id,))
-                        query = await cursor.fetchall()
-                        old_value = []
-                        for i in query:
-                            old_value.append({"id":i[0],'concept_id':i[1],"Nom_étranger":i[2],"langue":i[3]})
-                        new_value = []
-                        for i in data["value"]:
-                            new_value.append({"id":i["id"],"langue":i["langue"],"Nom_étranger":i["Nom_étranger"],"concept_id":i["concept_id"]})
-                        new_value = data["value"]
-                        old_value = json.dumps(old_value)
-                        new_value = json.dumps(new_value)
+                    await cursor.execute("DELETE FROM aliases WHERE concept_id = %s;", (concept_id,))
+                    for alias in data["value"]:
+                        await cursor.execute("INSERT INTO aliases (concept_id, alias) VALUES (%s, %s);", (concept_id, alias))
+                elif data["field"] == "noms_etrangers":
+                    await cursor.execute("""SELECT id, concept_id, "Nom_étranger", langue FROM foreign_name WHERE concept_id = %s;""", (concept_id,))
+                    query = await cursor.fetchall()
+                    old_value = []
+                    for i in query:
+                        old_value.append({"id":i[0],'concept_id':i[1],"Nom_étranger":i[2],"langue":i[3]})
+                    new_value = []
+                    for i in data["value"]:
+                        new_value.append({"id":i["id"],"langue":i["langue"],"Nom_étranger":i["Nom_étranger"],"concept_id":i["concept_id"]})
+                    new_value = data["value"]
+                    old_value = json.dumps(old_value)
+                    new_value = json.dumps(new_value)
 
-                    # Ajouter la version dans l'historique
-                    await ConceptService.add_concept_version(self,data["username"], concept_id, data["field"], old_value, new_value,rollback=rollback)
+                # Ajouter la version dans l'historique
+                await ConceptService.add_concept_version(self,data["username"], concept_id, data["field"], old_value, new_value,rollback=rollback)
 
 
 

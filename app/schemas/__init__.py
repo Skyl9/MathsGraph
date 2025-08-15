@@ -1,3 +1,4 @@
+from .auth import User
 from .history import History
 from .concept import ConceptResponse, ConceptCreate, ConceptBase
 from .categorie import  CategorieBase
@@ -21,6 +22,7 @@ NomEtrangerResponse.model_rebuild()
 UserResponse.model_rebuild()
 Nodes.model_rebuild()
 History.model_rebuild()
+User.model_rebuild()
 
 
 __all__ = [

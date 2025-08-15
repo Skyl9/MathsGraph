@@ -3,7 +3,6 @@ import logging
 from psycopg import AsyncConnection
 from psycopg2 import sql
 
-from app.db.database import get_db_connection
 from app.core.exceptions import ForbiddenException, InternalServerError, ConflictException
 from app.schemas import CreateData
 from app.schemas.mathematicien import MathematicienResponse, MathematicienUpdate
@@ -12,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class MathematicienService:
     def __init__(self, db: AsyncConnection):
-        self.db = get_db_connection()
+        self.db = db
 
     async def get_all_mathematicien_name(self):
         async with self.db.cursor() as cur:
@@ -55,15 +54,14 @@ class MathematicienService:
         if field not in allowed_fields:
             raise ForbiddenException(detail=f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")
         try:
-            async with self.db.transaction():
-                async with self.db.cursor() as cur:
-                    # Vérifiez si le champ est dans la liste autorisée
-                    # Construction sécurisée de la requête
-                    query = sql.SQL(f"UPDATE mathematiciens SET {field} = %s WHERE id = %s").format(
-                        field=sql.Identifier(field)
-                    )
-                    # Exécuter la requête avec des paramètres sûrs
-                    await cur.execute(query, (data["value"], id_mathematicien))
+            async with self.db.cursor() as cur:
+                # Vérifiez si le champ est dans la liste autorisée
+                # Construction sécurisée de la requête
+                query = sql.SQL(f"UPDATE mathematiciens SET {field} = %s WHERE id = %s").format(
+                    field=sql.Identifier(field)
+                )
+                # Exécuter la requête avec des paramètres sûrs
+                await cur.execute(query, (data["value"], id_mathematicien))
 
 
         except Exception as e:

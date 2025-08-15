@@ -9,12 +9,8 @@ from app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 # Initialise un pool de connexions asynchrone
-pool = AsyncConnectionPool(DATABASE_URL, open=False)
+pool: AsyncConnectionPool = None  # Declare the pool but don't initialize it yet
 
 async def get_db():
     async with pool.connection() as conn:
         yield conn
-
-
-def get_db_connection():
-    return psycopg2.connect(settings.DATABASE_URL)

@@ -46,7 +46,8 @@ async def get_all_tag(db: AsyncConnection = Depends(get_db)):
 @router.post("/add/concept", summary="Ajoute un tag à un concept", response_model=Response)
 async def add_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get_db)):
     try:
-        await TagsService(db).add_tag_to_concept(data.concept_id, data.tag_id)
+        async with db.transaction():
+            await TagsService(db).add_tag_to_concept(data.concept_id, data.tag_id)
         logger.debug(f"Route POST /tags/add/concept a correctement ajouté le tag {data.tag_id} au concept {data.concept_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
@@ -57,7 +58,8 @@ async def add_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get_db
 @router.post("/remove/concept", summary="Supprime un tag d'un concept", response_model=Response)
 async def remove_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get_db)):
     try:
-        await TagsService(db).remove_tag_from_concept(data.concept_id, data.tag_id)
+        async with db.transaction():
+            await TagsService(db).remove_tag_from_concept(data.concept_id, data.tag_id)
         logger.debug(f"Route POST /tags/remove/concept a correctement supprimé le tag {data.tag_id} du concept {data.concept_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
@@ -68,7 +70,8 @@ async def remove_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get
 @router.post("/add", summary="Crée un nouveau tag", response_model=Response)
 async def add_new_tag(data: TagsCreate, db: AsyncConnection = Depends(get_db)):
     try:
-        result = await TagsService(db).create_new_tag(data.tag_name)
+        async with db.transaction():
+            result = await TagsService(db).create_new_tag(data.tag_name)
         logger.debug(f"Route POST /tags/add a correctement créé le tag : {data.tag_name}")
         return {"error": None, "data": result, "success": True, "meta": None}
     except InternalServerError as exc:

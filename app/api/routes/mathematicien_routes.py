@@ -27,7 +27,8 @@ async def get_one_mathematicien_E(id_mathematicien: int, db: AsyncConnection = D
 @router.patch("/update/{id_mathematicien}", response_model=Response)
 async def updateOneCategoryMathematicien_E(id_mathematicien: int, data: dict, db: AsyncConnection = Depends(get_db)):
     try:
-        await MathematicienService(db).update_mathematicien(id_mathematicien, data)
+        async with db.transaction():
+            await MathematicienService(db).update_mathematicien(id_mathematicien, data)
         logger.debug(f"Route PATCH /{router.prefix}/update/{id_mathematicien} a été effectué avec succès")
         return {"success": True, data: "", "error": None,"meta": None}
     except InternalServerError as exc:
@@ -49,7 +50,8 @@ async def mathematicienName(db: AsyncConnection = Depends(get_db)):
 @router.post('/create', response_model=Response)
 async def add_mathematicien(data: CreateData, db: AsyncConnection = Depends(get_db)):
     try:
-        await MathematicienService(db).add_mathematicien(data)
+        async with db.transaction():
+            await MathematicienService(db).add_mathematicien(data)
         logger.debug(f"Route Post /{router.prefix}/create a créer avec succès un mathématicien")
         return {"success": True, "data": None, "error": None,"meta": None}
     except InternalServerError as exc:

@@ -11,5 +11,5 @@ class Stat(BaseModel):
 
 class ConceptForAdmin(BaseModel):
     id: int
-    name: str
+    nom: str
     type: str
