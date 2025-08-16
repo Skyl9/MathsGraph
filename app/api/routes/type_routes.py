@@ -6,7 +6,7 @@ from psycopg import AsyncConnection
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response, CreateData
-from app.schemas.type import TypeResponse
+from app.schemas.type import TypeResponse, TypeUpdate
 from app.services.type_service import TypeService, logger
 
 router = APIRouter(prefix="/type", tags=["type"])
@@ -24,7 +24,7 @@ async def get_one_type_E(id_type: int, db: AsyncConnection = Depends(get_db)):
 
 
 @router.patch("/update/{id_type}", summary="Met à jour un type", response_model=Response)
-async def update_type_E(id_type: int, data: dict, db: AsyncConnection = Depends(get_db)):
+async def update_type_E(id_type: int, data: TypeUpdate, db: AsyncConnection = Depends(get_db)):
     try:
         async with db.transaction():
             await TypeService(db).update_type(id_type, data)

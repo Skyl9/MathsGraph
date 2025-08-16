@@ -13,7 +13,7 @@ router = APIRouter(prefix="/statistics", tags=["statistics"])
 async def get_concept_views(concept_id: int, db: AsyncConnection = Depends(get_db)):
     try:
         views = await StatisticsService(db).get_concept_views(concept_id)
-        logger.debug(f'Route GET /{router.prefix}/concepts/{concept_id} a renvoyé correctement : {views}')
+        logger.debug(f'Route GET {router.prefix}/concepts/{concept_id} a renvoyé correctement : {views}')
         return {"error": None, "data": views, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route GET /statistics/concepts/{concept_id} Erreur : {exc}")

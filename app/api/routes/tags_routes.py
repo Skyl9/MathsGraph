@@ -21,7 +21,8 @@ async def get_tags_ids(concept_id: int, db: AsyncConnection = Depends(get_db)):
         raise InternalServerError(str(exc)) from exc
 
 
-@router.get("/name/concept_id/{concept_id}", summary="Récupère les noms et IDs des tags d'un concept", response_model=Response)
+@router.get("/name/concept_id/{concept_id}", summary="Récupère les noms et IDs des tags d'un concept",
+            response_model=Response)
 async def get_tags_name_and_id(concept_id: int, db: AsyncConnection = Depends(get_db)):
     try:
         tags_data = await TagsService(db).get_tags_name_and_id_by_concept_id(concept_id)
@@ -48,7 +49,8 @@ async def add_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get_db
     try:
         async with db.transaction():
             await TagsService(db).add_tag_to_concept(data.concept_id, data.tag_id)
-        logger.debug(f"Route POST /tags/add/concept a correctement ajouté le tag {data.tag_id} au concept {data.concept_id}")
+        logger.debug(
+            f"Route POST /tags/add/concept a correctement ajouté le tag {data.tag_id} au concept {data.concept_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route POST /tags/add/concept Erreur : {exc}")
@@ -60,7 +62,8 @@ async def remove_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get
     try:
         async with db.transaction():
             await TagsService(db).remove_tag_from_concept(data.concept_id, data.tag_id)
-        logger.debug(f"Route POST /tags/remove/concept a correctement supprimé le tag {data.tag_id} du concept {data.concept_id}")
+        logger.debug(
+            f"Route POST /tags/remove/concept a correctement supprimé le tag {data.tag_id} du concept {data.concept_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route POST /tags/remove/concept Erreur : {exc}")

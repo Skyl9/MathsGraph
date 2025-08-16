@@ -11,4 +11,4 @@ class TypeNom(BaseModel):
 
 class TypeUpdate(BaseModel):
     field:str
-    value: dict
+    value: str

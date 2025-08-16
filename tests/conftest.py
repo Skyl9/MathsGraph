@@ -358,3 +358,25 @@ async def setup_two_concepts(transaction: AsyncConnection):
         "concept2_id": concept2_id,
         "concept2_name": concept2_name,
     }
+
+@pytest_asyncio.fixture(scope="function")
+async def setup_tag(transaction: AsyncConnection):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute("INSERT INTO tags (name) VALUES (%s) RETURNING *;", ("Tag 1",))
+        tag = await cur.fetchone()
+    yield tag
+
+@pytest_asyncio.fixture(scope="function")
+async def setup_tag_concept(transaction: AsyncConnection,setup_test_concept):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute("INSERT INTO tags (name) VALUES (%s) RETURNING *;", ("Tag 1",))
+        tag = await cur.fetchone()
+        await cur.execute("INSERT INTO concept_tags (concept_id, tag_id) VALUES (%s, %s) RETURNING *;", (setup_test_concept["id"],tag["id"]))
+    yield tag
+
+@pytest_asyncio.fixture(scope="function")
+async def setup_fav_user(transaction: AsyncConnection,setup_test_user,setup_test_concept):
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute("INSERT INTO user_favorites (user_id, concept_id) VALUES (%s, %s) RETURNING *;", (setup_test_user["id"],setup_test_concept["id"]))
+        fav = await cur.fetchone()
+    yield fav

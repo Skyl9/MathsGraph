@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException, Depends
 from psycopg import AsyncConnection
 
-from app.core.exceptions import NotFoundException, InternalServerError
+from app.core.exceptions import NotFoundException, InternalServerError, BadRequestException
 from app.schemas.user import UserId, UpdateUser, Favorite
 
 import logging
@@ -41,19 +41,28 @@ class UserService:
     async def get_id_by_username(self,username: str) -> UserId :
         async with self.db.cursor() as cursor:
             await cursor.execute("SELECT id FROM users WHERE username = %s;", (username,))
-        user = await cursor.fetchone()
+            user = await cursor.fetchone()
         if user is None:
             raise NotFoundException(detail="User not found")
         return {"id":user[0]}
 
     async def patch_user(self,id:str, data: UpdateUser):
         data = data.model_dump() if isinstance(data, UpdateUser) else data
+        allowed_fields = {"username", "email", "is_active", "role", "preferred_language", "avatar_url", "bio"}
+        field:str = data["field"]
+        if field not in allowed_fields:
+            raise BadRequestException(detail="Mauvais champ donné")
         async with self.db.cursor() as cursor:
-            await cursor.execute(f"UPDATE users SET {data["field"]} = %s WHERE id = %s;", (data["value"], id))
+            await cursor.execute("SELECT id FROM users WHERE id = %s;", (id,))
+            if await cursor.fetchone() is None:
+                raise NotFoundException(detail="User not found")
+            await cursor.execute(f"UPDATE users SET {field} = %s WHERE id = %s;", (data["value"], id))
 
     async def get_favorite_user(self, user_id:int):
-        try:
             async with self.db.cursor() as cursor:
+                await cursor.execute("SELECT id FROM users WHERE id = %s;", (user_id,))
+                if await cursor.fetchone() is None:
+                    raise NotFoundException(detail="User not found")
                 await cursor.execute(f"SELECT c.id, c.nom, m.id, m.nom, cat.id, cat.nom,uf.type_id,type.type FROM user_favorites uf LEFT JOIN concepts c ON uf.concept_id = c.id LEFT JOIN mathematiciens m ON uf.mathematicien_id = m.id LEFT JOIN categories cat ON uf.category_id = cat.id LEFT JOIN type ON uf.type_id=type.id WHERE uf.user_id = %s ;", (user_id,))
                 favorite = await cursor.fetchall()
             if favorite is None:
@@ -96,39 +105,45 @@ class UserService:
 
             return dictList
 
-        except Exception as e:
-            print(f"Erreur a l'obtention des favoris : {e}")
-            return None
-
     async def delete_favorite_user(self,general_id:int, data:Favorite):
         data = data.model_dump() if isinstance(data, Favorite) else data
-        try:
-            async with self.db.cursor() as cursor:
-                if data["type"] == "concept":
-                    await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND concept_id = %s;", (data["user_id"],general_id))
-                elif data["type"] == "mathematicien":
-                    await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND mathematicien_id = %s;", (data["user_id"],general_id))
-                elif data["type"] == "category":
-                    await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND category_id = %s;", (data["user_id"],general_id))
-                elif data["type"] == "type":
-                    await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND type_id = %s;", (data["user_id"],general_id))
-        except Exception as e:
-            raise InternalServerError(detail=e)
+        async with self.db.cursor() as cursor:
+            await cursor.execute("SELECT id FROM users WHERE id = %s;", (data["user_id"],))
+            if await cursor.fetchone() is None:
+                raise NotFoundException(detail="User not found")
+            await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (general_id,))
+            if await cursor.fetchone() is None:
+                raise NotFoundException(detail="Concept not found")
+
+            if data["type"] == "concept":
+                await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND concept_id = %s;", (data["user_id"],general_id))
+            elif data["type"] == "mathematicien":
+                await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND mathematicien_id = %s;", (data["user_id"],general_id))
+            elif data["type"] == "category":
+                await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND category_id = %s;", (data["user_id"],general_id))
+            elif data["type"] == "type":
+                await cursor.execute(f"DELETE FROM user_favorites WHERE user_id = %s AND type_id = %s;", (data["user_id"],general_id))
+
 
 
     async def add_favorite_user(self,general_id:int, data:Favorite):
         data = data.model_dump() if isinstance(data, Favorite) else data
         data["user_id"]=int(data["user_id"])
-        try:
-            print(f"Connexion utilisée par le service : {self.db.info.backend_pid}")
-            async with self.db.cursor() as cursor:
-                if data["type"] == "concept":
-                    await cursor.execute(f"INSERT INTO user_favorites (user_id, concept_id) VALUES (%s, %s);", (data["user_id"],general_id))
-                elif data["type"] == "mathematicien":
-                    await cursor.execute(f"INSERT INTO user_favorites (user_id, mathematicien_id) VALUES (%s, %s);", (data["user_id"],general_id))
-                elif data["type"] == "category":
-                    await cursor.execute(f"INSERT INTO user_favorites (user_id, category_id) VALUES (%s, %s);", (data["user_id"],general_id))
-                elif data["type"] == "type":
-                    await cursor.execute(f"INSERT INTO user_favorites (user_id, type_id) VALUES (%s, %s);", (data["user_id"],general_id))
-        except Exception as e:
-            raise InternalServerError(detail=e)
+        async with self.db.cursor() as cursor:
+
+            await cursor.execute("SELECT id FROM users WHERE id = %s;", (data["user_id"],))
+            if await cursor.fetchone() is None:
+                raise NotFoundException(detail="User not found")
+            await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (general_id,))
+            if await cursor.fetchone() is None:
+                raise NotFoundException(detail="Concept not found")
+
+            if data["type"] == "concept":
+                await cursor.execute(f"INSERT INTO user_favorites (user_id, concept_id) VALUES (%s, %s);", (data["user_id"],general_id))
+            elif data["type"] == "mathematicien":
+                await cursor.execute(f"INSERT INTO user_favorites (user_id, mathematicien_id) VALUES (%s, %s);", (data["user_id"],general_id))
+            elif data["type"] == "category":
+                await cursor.execute(f"INSERT INTO user_favorites (user_id, category_id) VALUES (%s, %s);", (data["user_id"],general_id))
+            elif data["type"] == "type":
+                await cursor.execute(f"INSERT INTO user_favorites (user_id, type_id) VALUES (%s, %s);", (data["user_id"],general_id))
+

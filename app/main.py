@@ -7,7 +7,8 @@ from starlette.responses import JSONResponse
 
 from app import settings
 from app.api.routes import concept_routes, auth_routes, mathematicien_routes, categorie_routes, type_routes, \
-    source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes
+    source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes, \
+    statistics_routes
 from app.core.logging_config import setup_logging
 from app.db.database import pool
 from app.core.exceptions import BadRequestException, NotFoundException, AuthenticationException, ForbiddenException, \
@@ -105,7 +106,7 @@ app.include_router(alias_routes.router)
 app.include_router(relation_routes.router)
 
 app.include_router(source_routes.router)
-
+app.include_router(statistics_routes.router)
 app.include_router(graph_routes.router)
 app.include_router(user_routes.router)
 
