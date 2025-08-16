@@ -17,7 +17,7 @@ router = APIRouter(prefix="/mathematicien", tags=["mathematicien"])
 async def get_one_mathematicien_E(id_mathematicien: int, db: AsyncConnection = Depends(get_db)):
     try:
         oneMathematicien = await MathematicienService(db).get_one_mathematicien(id_mathematicien)
-        logger.debug(f"Route GET /{router.prefix}/{id_mathematicien} a renvoyé %d mathematicien", oneMathematicien)
+        logger.debug(f"Route GET {router.prefix}/{id_mathematicien} a renvoyé {oneMathematicien} mathematicien")
         return {"success": True, "data": oneMathematicien, "error": None,"meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur interne dans GET /{router.prefix}/{id_mathematicien} : %s", exc)
@@ -29,7 +29,7 @@ async def updateOneCategoryMathematicien_E(id_mathematicien: int, data: dict, db
     try:
         async with db.transaction():
             await MathematicienService(db).update_mathematicien(id_mathematicien, data)
-        logger.debug(f"Route PATCH /{router.prefix}/update/{id_mathematicien} a été effectué avec succès")
+        logger.debug(f"Route PATCH {router.prefix}/update/{id_mathematicien} a été effectué avec succès")
         return {"success": True, data: "", "error": None,"meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur interne dans PATCH /{router.prefix}/update/{id_mathematicien} : %s", exc)
@@ -40,7 +40,7 @@ async def updateOneCategoryMathematicien_E(id_mathematicien: int, data: dict, db
 async def mathematicienName(db: AsyncConnection = Depends(get_db)):
     try:
         listMathematicien = await MathematicienService(db).get_all_mathematicien_name()
-        logger.debug(f'Route GET /{router.prefix}/mathematicien/ a renvoyé %d la liste des mathematiciens', )
+        logger.debug(f'Route GET {router.prefix}/mathematicien/ a renvoyé  la liste des mathematiciens')
         return {"success": True, "data": listMathematicien, "error": None,"meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur interne dans GET /mathematicien : %s", exc)
@@ -52,7 +52,7 @@ async def add_mathematicien(data: CreateData, db: AsyncConnection = Depends(get_
     try:
         async with db.transaction():
             await MathematicienService(db).add_mathematicien(data)
-        logger.debug(f"Route Post /{router.prefix}/create a créer avec succès un mathématicien")
+        logger.debug(f"Route Post {router.prefix}/create a créer avec succès un mathématicien")
         return {"success": True, "data": None, "error": None,"meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur interne dans POST /{router.prefix}/create : %s", exc)

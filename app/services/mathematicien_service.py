@@ -3,7 +3,7 @@ import logging
 from psycopg import AsyncConnection
 from psycopg2 import sql
 
-from app.core.exceptions import ForbiddenException, InternalServerError, ConflictException
+from app.core.exceptions import ForbiddenException, InternalServerError, ConflictException, NotFoundException
 from app.schemas import CreateData
 from app.schemas.mathematicien import MathematicienResponse, MathematicienUpdate
 
@@ -30,6 +30,8 @@ class MathematicienService:
         async with self.db.cursor() as cur:
             await cur.execute("SELECT * FROM mathematiciens WHERE id = %s", (id_mathematicien,))
             mathematiciens = await cur.fetchone()
+            if not mathematiciens:
+                raise NotFoundException(f"Mathematicien with ID {id_mathematicien} not found")
             mathematiciensDict = {
                 "id": mathematiciens[0],
                 "nom": mathematiciens[1],

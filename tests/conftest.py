@@ -7,6 +7,7 @@ import psycopg
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from psycopg import AsyncConnection
 from psycopg_pool import AsyncConnectionPool
 
 from app.core.security import get_password_hash
@@ -315,4 +316,45 @@ async def setup_graph(transaction,setup_test_concept):
         await cur.execute("INSERT INTO positions (concept_id,x,y,z,vue) VALUES (%s,%s,%s,%s,%s) RETURNING * ", (setup_test_concept["id"],posDict["x"],posDict["y"],posDict["z"],"grille"))
     yield node
 
+@pytest_asyncio.fixture(scope="function")
+async def setup_two_concepts(transaction: AsyncConnection):
+    """
+    Fixture pour configurer deux concepts pour les tests de relation.
+    Insère deux concepts et s'assure qu'ils sont nettoyés après le test.
+    """
+    concept1_name = "Concept Source Test"
+    concept2_name = "Concept Cible Test"
+    concept1_id = None
+    concept2_id = None
+    type_id = None
+    async with transaction.cursor() as cur:
+        # Assurez-vous qu'un type existe pour les concepts
+        await cur.execute("INSERT INTO type (type) VALUES (%s) RETURNING *;", ("Type de Test",))
 
+        result = await cur.fetchone()
+        if result:
+            type_id = result[0]
+        else:
+            await cur.execute("SELECT id FROM type WHERE type = %s;", ("Type de Test",))
+            type_id = (await cur.fetchone())[0]
+
+        # Insérer le Concept Source
+        await cur.execute(
+            "INSERT INTO concepts (nom, type_id,enonce) VALUES (%s, %s,%s) RETURNING *;",
+            (concept1_name, type_id,"Enonce 1")
+        )
+        concept1_id = (await cur.fetchone())[0]
+
+        # Insérer le Concept Cible
+        await cur.execute(
+            "INSERT INTO concepts (nom, type_id,enonce) VALUES (%s, %s,%s) RETURNING *;",
+            (concept2_name, type_id,"Enonce 2")
+        )
+        concept2_id = (await cur.fetchone())[0]
+        # Commit pour que les concepts soient visibles pour les opérations suivantes dans la même transaction de test
+    yield {
+        "concept1_id": concept1_id,
+        "concept1_name": concept1_name,
+        "concept2_id": concept2_id,
+        "concept2_name": concept2_name,
+    }
