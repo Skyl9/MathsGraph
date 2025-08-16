@@ -177,7 +177,7 @@ class ConceptService:
                         "langue": row[2],
                     } for row in await cursor.fetchall()
                 ]
-                tags = await TagsService.get_tags_name_and_id_by_concept_id(concept_id, False)
+                tags = await TagsService(self.db).get_tags_name_and_id_by_concept_id(concept_id, False)
                 if tags:
                     concept["tags"] = tags
                 else:

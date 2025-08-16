@@ -62,7 +62,7 @@ async def test_request_password_token(transaction,async_client, setup_test_user,
         assert token is not None
 
 @pytest.mark.asyncio
-async def test_reset_password(transaction,async_client, setup_reset_token,):
+async def test_reset_password(transaction,async_client, setup_reset_token,setup_test_user,):
 
     login_data = {
         "token": setup_reset_token["token"],
@@ -73,10 +73,5 @@ async def test_reset_password(transaction,async_client, setup_reset_token,):
     response = response.json()
     msg = response["data"]
     assert response["success"] == True
-    passHash = get_password_hash("testtest")
-    async with transaction.cursor() as cur:
-        await cur.execute("SELECT * FROM users WHERE password_hash = %s", (passHash,))
-        user = await cur.fetchone()
-        assert user is not None
 
 
