@@ -16,10 +16,3 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of your application code into the container
 COPY . .
 
-# Expose the port that your application will run on
-# This should match the port configured in your run command
-EXPOSE 8000
-
-# Command to run your FastAPI application using Uvicorn
-# The format is 'module:app_object --host 0.0.0.0 --port $PORT'
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
