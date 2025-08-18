@@ -22,4 +22,4 @@ EXPOSE 8000
 
 # Command to run your FastAPI application using Uvicorn
 # The format is 'module:app_object --host 0.0.0.0 --port $PORT'
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD uvicorn main:app --host 0.0.0.0 --port $PORT
