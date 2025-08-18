@@ -34,7 +34,9 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",  # URL pour Swagger UI
     redoc_url="/redoc"  # URL pour ReDoc
-    ,lifespan=lifespan
+    ,lifespan=lifespan,
+    redirect_slashes=False
+
 )
 
 app.add_middleware(
