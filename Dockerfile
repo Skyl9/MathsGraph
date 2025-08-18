@@ -22,4 +22,4 @@ COPY ./app /app/app
 
 # Command to run your FastAPI application using Uvicorn
 # The --port $PORT part is crucial for Railway, as it uses a dynamic port
-CMD uvicorn app.main:app --host 0.0.0.0
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
