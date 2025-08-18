@@ -2,18 +2,23 @@ import pytest
 from httpx import AsyncClient
 import psycopg
 
+from tests.utils import create_headers_token
+
+
 @pytest.mark.asyncio
 async def test_get_stats(
     async_client: AsyncClient,
     setup_test_user,
     setup_test_concept,
     setup_test_categorie,
-    setup_test_mathematicien
+    setup_test_mathematicien,
+        setup_user_token_admin
 ):
     """
     Test la route /getAlldatabaseInfo pour s'assurer qu'elle retourne les statistiques correctes.
     """
-    response = await async_client.get("/admin/stats")
+    headers = create_headers_token(setup_user_token_admin)
+    response = await async_client.get("/admin/stats",headers=headers)
     assert response.status_code == 200
     data = response.json()
 
@@ -35,13 +40,14 @@ async def test_get_stats(
 
 
 @pytest.mark.asyncio
-async def test_get_users_admin_route(async_client: AsyncClient, setup_test_user):
+async def test_get_users_admin_route(async_client: AsyncClient, setup_test_user,setup_user_token_admin):
     """
     Test la route /admin/users pour s'assurer qu'elle retourne une liste d'utilisateurs.
     Ce test suppose que l'authentification admin n'est pas strictement requise pour la configuration,
     ou qu'elle est gérée par async_client.
     """
-    response = await async_client.get("/admin/users")
+    headers = create_headers_token(setup_user_token_admin)
+    response = await async_client.get("/admin/users",headers=headers)
     assert response.status_code == 200
     data = response.json()
 
@@ -66,13 +72,15 @@ async def test_get_users_admin_route(async_client: AsyncClient, setup_test_user)
 
 
 @pytest.mark.asyncio
-async def test_get_concepts_admin_route(transaction,async_client: AsyncClient, setup_test_concept):
+async def test_get_concepts_admin_route(transaction,async_client: AsyncClient, setup_test_concept,setup_user_token_admin):
     """
     Test la route /admin/concepts pour s'assurer qu'elle retourne une liste de concepts avec des détails d'administration.
     Ce test suppose que l'authentification admin n'est pas strictement requise pour la configuration,
     ou qu'elle est gérée par async_client.
     """
-    response = await async_client.get("/admin/contents")
+    headers = create_headers_token(setup_user_token_admin)
+
+    response = await async_client.get("/admin/contents",headers=headers)
     assert response.status_code == 200
     data = response.json()
 

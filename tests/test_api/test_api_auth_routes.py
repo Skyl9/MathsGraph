@@ -1,8 +1,6 @@
-import psycopg
 import pytest
 from psycopg import rows
 
-from app.core.security import get_password_hash
 from tests.constants import TEST_USER_EMAIL, TEST_PASSWORD, TEST_USER_NAME
 
 

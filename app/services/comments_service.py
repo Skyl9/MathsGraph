@@ -1,5 +1,5 @@
 from psycopg import AsyncConnection
-from psycopg2 import DatabaseError
+from psycopg import DatabaseError
 
 from app.core.exceptions import NotFoundException
 

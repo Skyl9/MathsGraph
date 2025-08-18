@@ -1,11 +1,11 @@
-import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
-import bcrypt  # Ajout de l'importation de bcrypt
+import bcrypt
 
 from app.core.config import settings
+from app.schemas.TokenType import TokenPayload
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -31,7 +31,7 @@ def get_password_hash(password: str) -> str:
     return hashed_password_bytes.decode("utf-8")
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: TokenPayload, expires_delta: Optional[timedelta] = None) -> str:
     """Crée un token JWT"""
     to_encode = data.copy()
     now = datetime.now(timezone.utc)  # Obtenez un datetime avec timezone UTC

@@ -11,6 +11,25 @@ router = APIRouter(prefix="/alias", tags=["alias"])
 
 @router.post("/create", response_model=Response)
 async def create_alias(data: CreateAlias, db: AsyncConnection = Depends(get_db)):
+    """Crée un alias à partir d'un nom d'utilisateur et d'un prénom.
+
+    Cette fonction crée un nouvel alias en utilisant les données
+    fournies et les stocke dans la base de données. Elle gère la
+    connexion à la base de données de manière asynchrone et
+    s'assure que l'opération est atomique.
+
+    Args:
+        data: Les informations nécessaires pour créer un alias.
+            Inclut `username` et `first_name`.
+        db: La connexion asynchrone à la base de données.
+
+    Returns:
+        Un dictionnaire représentant une réponse standard de l'API.
+
+    Raises:
+        InternalServerError: Si une erreur survient lors de la
+            création de l'alias dans la base de données.
+    """
     try:
         async with db.transaction():
             await AliasService(db).add_alias(data)

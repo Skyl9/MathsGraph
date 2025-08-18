@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
-from psycopg_pool import AsyncConnectionPool
 from starlette.responses import JSONResponse
 
 from app import settings
@@ -10,7 +9,6 @@ from app.api.routes import concept_routes, auth_routes, mathematicien_routes, ca
     source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes, \
     statistics_routes
 from app.core.logging_config import setup_logging
-from app.db.database import pool
 from app.core.exceptions import BadRequestException, NotFoundException, AuthenticationException, ForbiddenException, \
     InternalServerError, ConflictException
 
@@ -22,15 +20,14 @@ def error_response(status_code: int, error: str):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global pool
-    # ⚡ Ouverture du pool au démarrage
-    pool = AsyncConnectionPool(settings.DATABASE_URL,open=False)
-    await pool.open()
+    from app.db.database import init_pool, close_pool
+    await init_pool(settings.DATABASE_URL)
+
     try:
         yield
     finally:
         # 🧼 Fermeture propre au shutdown
-        await pool.close()
+        await close_pool()
 app = FastAPI(
     title="Math Concepts API",
     description="API pour gérer les concepts mathématiques",
@@ -45,7 +42,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type","Content-Type: application/json"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 @app.exception_handler(BadRequestException)

@@ -6,14 +6,16 @@ from logging.config import dictConfig
 import psycopg
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from fastapi.security import OAuth2PasswordRequestForm
+from httpx import AsyncClient, ASGITransport
 from psycopg import AsyncConnection
+from psycopg import rows
 from psycopg_pool import AsyncConnectionPool
 
 from app.core.security import get_password_hash
-from app.db import database
 from app.db.database import get_db
 from app.main import app
+from app.services import AuthService
 from app.services.comments_service import CommentsService
 from tests.constants import TEST_PASSWORD, TEST_USER_EMAIL, TEST_USER_NAME
 
@@ -28,6 +30,7 @@ url = (
     f"postgresql://{TEST_DB_CONFIG['user']}:{TEST_DB_CONFIG['password']}"
     f"@{TEST_DB_CONFIG['host']}:{TEST_DB_CONFIG['port']}/{TEST_DB_CONFIG['database']}"
 )
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_logging():
@@ -55,16 +58,16 @@ def setup_test_logging():
                 "class": "logging.handlers.RotatingFileHandler",
                 "formatter": "standard",
                 "level": "DEBUG",
-                "filename": "test_app.log", # Nom de fichier de log distinct pour les tests
+                "filename": "test_app.log",  # Nom de fichier de log distinct pour les tests
                 "maxBytes": 10_000_000,
                 "backupCount": 1,
                 "encoding": "utf8"
             }
         },
         "loggers": {
-            "": {                       # logger racine
-                "handlers": ["console", "file"], # Attache les gestionnaires à la racine
-                "level": "DEBUG",      # Le logger racine est aussi au niveau DEBUG
+            "": {  # logger racine
+                "handlers": ["console", "file"],  # Attache les gestionnaires à la racine
+                "level": "DEBUG",  # Le logger racine est aussi au niveau DEBUG
                 "propagate": False
             },
             "uvicorn.error": {
@@ -91,9 +94,13 @@ def setup_test_logging():
     logging.info("Configuration de logging réinitialisée après la session de tests.")
 
 
-# Event loop session-scoped pour compatibilité fixtures session async
 @pytest.fixture(scope="session")
 def event_loop():
+    """
+    Creates a new event loop for the entire test session.
+    Modern pytest-asyncio often handles this, but explicitly defining it
+    can prevent issues in some environments.
+    """
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
@@ -101,10 +108,12 @@ def event_loop():
 
 @pytest_asyncio.fixture(scope="session")
 async def async_db():
+    """Creates a session-scoped database connection pool."""
     pool = AsyncConnectionPool(url)
     await pool.open()
     yield pool
     await pool.close()
+
 
 @pytest_asyncio.fixture(scope="function")
 async def transaction(async_db: AsyncConnectionPool):
@@ -113,7 +122,6 @@ async def transaction(async_db: AsyncConnectionPool):
         print(f"Connexion obtenue : {conn.info.backend_pid}")
         await conn.execute("BEGIN")
         print("\n--- Transaction de test DÉMARRÉE (BEGIN) ---")
-
         try:
             yield conn
         finally:
@@ -130,7 +138,7 @@ async def async_client(transaction: psycopg.AsyncConnection):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
     app.dependency_overrides.clear()
@@ -147,12 +155,14 @@ async def setup_test_user(transaction: psycopg.AsyncConnection):
         user = await cur.fetchone()
     yield user
 
+
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_type(transaction: psycopg.AsyncConnection):
     async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
         await cur.execute("INSERT INTO type (type) VALUES (%s) RETURNING *", ("Type 1",))
         type_row = await cur.fetchone()
     yield type_row
+
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_concept(transaction: psycopg.AsyncConnection, setup_test_type: psycopg.rows.dict_row):
@@ -165,6 +175,7 @@ async def setup_test_concept(transaction: psycopg.AsyncConnection, setup_test_ty
         concept = await cur.fetchone()
     yield concept
 
+
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_mathematicien(transaction: psycopg.AsyncConnection):
     async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
@@ -172,12 +183,14 @@ async def setup_test_mathematicien(transaction: psycopg.AsyncConnection):
         mat = await cur.fetchone()
     yield mat
 
+
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_categorie(transaction: psycopg.AsyncConnection):
     async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
         await cur.execute("INSERT INTO categories (nom) VALUES (%s) RETURNING *", ("Categorie 1",))
         cat = await cur.fetchone()
     yield cat
+
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_source(transaction: psycopg.AsyncConnection):
@@ -189,22 +202,25 @@ async def setup_test_source(transaction: psycopg.AsyncConnection):
         src = await cur.fetchone()
     yield src
 
+
 @pytest_asyncio.fixture(scope="function")
-async def setup_reset_token(transaction:psycopg.AsyncConnection,setup_test_user):
+async def setup_reset_token(transaction: psycopg.AsyncConnection, setup_test_user):
     user = setup_test_user
     time = datetime.now() + timedelta(days=1)
     async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
         await cur.execute(
             "INSERT INTO password_reset_tokens (user_id, token,expires_at) VALUES (%s, %s,%s) RETURNING *",
-            (user["id"], "token",time)
+            (user["id"], "token", time)
         )
-        reset_data= await cur.fetchone()
+        reset_data = await cur.fetchone()
     yield reset_data
+
 
 # Fixture pour obtenir une instance du CommentsService avec une connexion transactionnelle
 @pytest.fixture
 def comments_service_instance(transaction: psycopg.AsyncConnection):
     return CommentsService(transaction)
+
 
 # Fixture pour créer un commentaire de test (à ajouter à votre conftest.py si ce n'est pas déjà fait)
 @pytest_asyncio.fixture(scope="function")
@@ -220,6 +236,7 @@ async def setup_test_comment(transaction: psycopg.AsyncConnection, setup_test_co
         )
         comment = await cur.fetchone()
     yield comment
+
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_source_full(transaction: psycopg.AsyncConnection):
@@ -307,14 +324,18 @@ async def setup_full_test_concept(
         "mathematicien": setup_test_mathematicien["nom"],
         "categorie": setup_test_categorie["nom"]
     }
+
+
 @pytest_asyncio.fixture(scope="function")
-async def setup_graph(transaction,setup_test_concept):
-    node = {"id": setup_test_concept["id"],"nom":setup_test_concept["nom"],"type_id":setup_test_concept["type_id"]}
-    posDict = {"x": 100, "y": 100,"z": 100}
+async def setup_graph(transaction, setup_test_concept):
+    node = {"id": setup_test_concept["id"], "nom": setup_test_concept["nom"], "type_id": setup_test_concept["type_id"]}
+    posDict = {"x": 100, "y": 100, "z": 100}
     node["position"] = posDict
     async with transaction.cursor() as cur:
-        await cur.execute("INSERT INTO positions (concept_id,x,y,z,vue) VALUES (%s,%s,%s,%s,%s) RETURNING * ", (setup_test_concept["id"],posDict["x"],posDict["y"],posDict["z"],"grille"))
+        await cur.execute("INSERT INTO positions (concept_id,x,y,z,vue) VALUES (%s,%s,%s,%s,%s) RETURNING * ",
+                          (setup_test_concept["id"], posDict["x"], posDict["y"], posDict["z"], "grille"))
     yield node
+
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_two_concepts(transaction: AsyncConnection):
@@ -341,14 +362,14 @@ async def setup_two_concepts(transaction: AsyncConnection):
         # Insérer le Concept Source
         await cur.execute(
             "INSERT INTO concepts (nom, type_id,enonce) VALUES (%s, %s,%s) RETURNING *;",
-            (concept1_name, type_id,"Enonce 1")
+            (concept1_name, type_id, "Enonce 1")
         )
         concept1_id = (await cur.fetchone())[0]
 
         # Insérer le Concept Cible
         await cur.execute(
             "INSERT INTO concepts (nom, type_id,enonce) VALUES (%s, %s,%s) RETURNING *;",
-            (concept2_name, type_id,"Enonce 2")
+            (concept2_name, type_id, "Enonce 2")
         )
         concept2_id = (await cur.fetchone())[0]
         # Commit pour que les concepts soient visibles pour les opérations suivantes dans la même transaction de test
@@ -359,6 +380,7 @@ async def setup_two_concepts(transaction: AsyncConnection):
         "concept2_name": concept2_name,
     }
 
+
 @pytest_asyncio.fixture(scope="function")
 async def setup_tag(transaction: AsyncConnection):
     async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
@@ -366,17 +388,35 @@ async def setup_tag(transaction: AsyncConnection):
         tag = await cur.fetchone()
     yield tag
 
+
 @pytest_asyncio.fixture(scope="function")
-async def setup_tag_concept(transaction: AsyncConnection,setup_test_concept):
+async def setup_tag_concept(transaction: AsyncConnection, setup_test_concept):
     async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
         await cur.execute("INSERT INTO tags (name) VALUES (%s) RETURNING *;", ("Tag 1",))
         tag = await cur.fetchone()
-        await cur.execute("INSERT INTO concept_tags (concept_id, tag_id) VALUES (%s, %s) RETURNING *;", (setup_test_concept["id"],tag["id"]))
+        await cur.execute("INSERT INTO concept_tags (concept_id, tag_id) VALUES (%s, %s) RETURNING *;",
+                          (setup_test_concept["id"], tag["id"]))
     yield tag
 
+
 @pytest_asyncio.fixture(scope="function")
-async def setup_fav_user(transaction: AsyncConnection,setup_test_user,setup_test_concept):
+async def setup_fav_user(transaction: AsyncConnection, setup_test_user, setup_test_concept):
     async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
-        await cur.execute("INSERT INTO user_favorites (user_id, concept_id) VALUES (%s, %s) RETURNING *;", (setup_test_user["id"],setup_test_concept["id"]))
+        await cur.execute("INSERT INTO user_favorites (user_id, concept_id) VALUES (%s, %s) RETURNING *;",
+                          (setup_test_user["id"], setup_test_concept["id"]))
         fav = await cur.fetchone()
     yield fav
+
+@pytest_asyncio.fixture(scope="function")
+async def setup_user_token_admin(transaction: AsyncConnection):
+    password_hash = get_password_hash('admin')
+    async with transaction.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        await cur.execute("INSERT INTO users (username, email, password_hash, is_active, role) VALUES (%s, %s, %s, %s, %s) RETURNING *",
+                          ("admin", "tristan.rigaud@nrmi.fr", password_hash, True, 'admin'))
+        user = await cur.fetchone()
+    login_data = {
+        "username": "admin",
+        "password": "admin"
+    }
+    tokenJson = await AuthService(transaction).login_for_access_token(OAuth2PasswordRequestForm(username=login_data['username'], password=login_data['password']))
+    yield tokenJson

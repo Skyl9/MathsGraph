@@ -1,8 +1,6 @@
 from fastapi import HTTPException
 from psycopg import AsyncConnection
-from psycopg2 import sql
-
-from app.core.exceptions import NotFoundException, InternalServerError, ForbiddenException, ConflictException, \
+from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException, \
     BadRequestException
 from app.schemas import CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom

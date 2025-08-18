@@ -1,7 +1,7 @@
 import logging
 
 from psycopg import AsyncConnection
-from psycopg2 import sql
+from psycopg import sql
 
 from app.core.exceptions import ForbiddenException, InternalServerError, ConflictException, NotFoundException
 from app.schemas import CreateData
