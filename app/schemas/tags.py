@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class TagsModel(BaseModel):
+class Tag(BaseModel):
     id: int
     tag: str
 

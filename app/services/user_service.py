@@ -46,7 +46,7 @@ class UserService:
             raise NotFoundException(detail="User not found")
         return {"id":user[0]}
 
-    async def patch_user(self,id:str, data: UpdateUser):
+    async def patch_user(self,id:str, data: UpdateUser) -> None:
         data = data.model_dump() if isinstance(data, UpdateUser) else data
         allowed_fields = {"username", "email", "is_active", "role", "preferred_language", "avatar_url", "bio"}
         field:str = data["field"]
@@ -105,7 +105,7 @@ class UserService:
 
             return dictList
 
-    async def delete_favorite_user(self,general_id:int, data:Favorite):
+    async def delete_favorite_user(self,general_id:int, data:Favorite) -> None:
         data = data.model_dump() if isinstance(data, Favorite) else data
         async with self.db.cursor() as cursor:
             await cursor.execute("SELECT id FROM users WHERE id = %s;", (data["user_id"],))
@@ -126,7 +126,7 @@ class UserService:
 
 
 
-    async def add_favorite_user(self,general_id:int, data:Favorite):
+    async def add_favorite_user(self,general_id:int, data:Favorite)->None:
         data = data.model_dump() if isinstance(data, Favorite) else data
         data["user_id"]=int(data["user_id"])
         async with self.db.cursor() as cursor:

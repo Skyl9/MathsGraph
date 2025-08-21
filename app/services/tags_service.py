@@ -4,7 +4,7 @@ from typing import List
 from psycopg import AsyncConnection
 
 from app.core.exceptions import NotFoundException, ConflictException, BadRequestException
-from app.schemas.tags import TagsModel
+from app.schemas.tags import Tag
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class TagsService:
                 return None
         return [tag[0] for tag in tags]
 
-    async def get_tags_name_and_id_by_concept_id(self, concept_id: int, warning=True) -> List[TagsModel] | None:
+    async def get_tags_name_and_id_by_concept_id(self, concept_id: int, warning=True) -> List[Tag] | None:
         async with self.db.cursor() as cursor:
             await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
             if await cursor.fetchone() is None:
@@ -48,18 +48,15 @@ class TagsService:
                     return None
         return [{"id": tag[0], "tag": tag[1]} for tag in tags]
 
-    async def get_all_tags(self) -> List[TagsModel] | None:
-        try:
-            async  with self.db.cursor() as cursor:
-                await cursor.execute(
-                    "SELECT id, name FROM tags;"
-                )
-                tags = await cursor.fetchall()
-                tags = [{"id": tag[0], "tag": tag[1]} for tag in tags]
-            return tags
-        except Exception as e:
-            print(e)
-            return None
+    async def get_all_tags(self) -> List[Tag] | None:
+        async  with self.db.cursor() as cursor:
+            await cursor.execute(
+                "SELECT id, name FROM tags;"
+            )
+            tags = await cursor.fetchall()
+            tags = [{"id": tag[0], "tag": tag[1]} for tag in tags]
+        return tags
+
 
     async def create_new_tag(self, tag_name: str) -> None:
         async with self.db.cursor() as cursor:

@@ -6,7 +6,7 @@ from psycopg import AsyncConnection
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response, UserResponse
-from app.schemas.user import UserId, UpdateUser, Favorite
+from app.schemas.user import UserId, UpdateUser, Favorite,FavoriteResponse
 from app.services.user_service import UserService, logger
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -38,15 +38,15 @@ async def get_id_by_username(username: str, db: AsyncConnection = Depends(get_db
 async def patch_user(id_user: str, data: UpdateUser, db: AsyncConnection = Depends(get_db)):
     try:
         async with db.transaction():
-            result = await UserService(db).patch_user(id_user, data)
+            await UserService(db).patch_user(id_user, data)
         logger.debug(f"Route PATCH /{router.prefix}/update/{id_user} a correctement mis à jour l'utilisateur d'id : {id_user}")
-        return {"error": None, "data": result, "success": True, "meta": None}
+        return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route PATCH /{router.prefix}/update/{id_user} Erreur : {exc}")
         raise InternalServerError(str(exc)) from exc
 
 
-@router.get("/favorite/{user_id}", summary="Récupère les favoris d'un utilisateur", response_model=Response)
+@router.get("/favorite/{user_id}", summary="Récupère les favoris d'un utilisateur", response_model=Response[List[FavoriteResponse]])
 async def get_favorite_user(user_id: int, db: AsyncConnection = Depends(get_db)):
     try:
         favorites = await UserService(db).get_favorite_user(user_id)
@@ -61,9 +61,9 @@ async def get_favorite_user(user_id: int, db: AsyncConnection = Depends(get_db))
 async def delete_favorite_user(general_id: int, data: Favorite, db: AsyncConnection = Depends(get_db)):
     try:
         async with db.transaction():
-            result = await UserService(db).delete_favorite_user(general_id, data)
+            await UserService(db).delete_favorite_user(general_id, data)
         logger.debug(f"Route DELETE /{router.prefix}/favorite/delete/{general_id} a correctement supprimé le favori")
-        return {"error": None, "data": result, "success": True, "meta": None}
+        return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route DELETE /{router.prefix}/favorite/delete/{general_id} Erreur : {exc}")
         raise InternalServerError(str(exc)) from exc
@@ -73,9 +73,9 @@ async def delete_favorite_user(general_id: int, data: Favorite, db: AsyncConnect
 async def add_favorite_user(general_id: int, data: Favorite, db: AsyncConnection = Depends(get_db)):
     try:
         async with db.transaction():
-            result = await UserService(db).add_favorite_user(general_id, data)
+            await UserService(db).add_favorite_user(general_id, data)
         logger.debug(f"Route POST /{router.prefix}/favorite/add/{general_id} a correctement ajouté le favori")
-        return {"error": None, "data": result, "success": True, "meta": None}
+        return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route POST /{router.prefix}/favorite/add/{general_id} Erreur : {exc}")
         raise InternalServerError(str(exc)) from exc

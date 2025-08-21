@@ -35,3 +35,8 @@ class UpdateUser(BaseModel):
 class Favorite(BaseModel):
     type:str
     user_id:str
+
+class FavoriteResponse(BaseModel):
+    id:int
+    nom:str
+    category:str

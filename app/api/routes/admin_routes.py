@@ -11,7 +11,7 @@ from app.schemas.admin import Stat, ConceptForAdmin
 from app.schemas.auth import User
 from app.services.admin_service import AdminService, logger
 
-router = APIRouter(prefix="/admin", tags=["alias"])
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/stats", response_model=Response[Stat])

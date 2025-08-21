@@ -1,16 +1,18 @@
+from typing import List
+
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response
-from app.schemas.tags import TagsCreate, TagsUpdate
+from app.schemas.tags import TagsCreate, TagsUpdate, Tag
 from app.services.tags_service import TagsService, logger
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 
 
-@router.get("/id/concept_id/{concept_id}", summary="Récupère les IDs des tags d'un concept", response_model=Response)
+@router.get("/id/concept_id/{concept_id}", summary="Récupère les IDs des tags d'un concept", response_model=Response[List[int]])
 async def get_tags_ids(concept_id: int, db: AsyncConnection = Depends(get_db)):
     try:
         tags_ids = await TagsService(db).get_tags_id_by_concept_id(concept_id)
@@ -22,7 +24,7 @@ async def get_tags_ids(concept_id: int, db: AsyncConnection = Depends(get_db)):
 
 
 @router.get("/name/concept_id/{concept_id}", summary="Récupère les noms et IDs des tags d'un concept",
-            response_model=Response)
+            response_model=Response[List[Tag]])
 async def get_tags_name_and_id(concept_id: int, db: AsyncConnection = Depends(get_db)):
     try:
         tags_data = await TagsService(db).get_tags_name_and_id_by_concept_id(concept_id)
@@ -33,7 +35,7 @@ async def get_tags_name_and_id(concept_id: int, db: AsyncConnection = Depends(ge
         raise InternalServerError(str(exc)) from exc
 
 
-@router.get("/all", summary="Récupère tous les tags", response_model=Response)
+@router.get("/all", summary="Récupère tous les tags", response_model=Response[List[Tag]])
 async def get_all_tag(db: AsyncConnection = Depends(get_db)):
     try:
         all_tags = await TagsService(db).get_all_tags()
@@ -74,9 +76,9 @@ async def remove_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get
 async def add_new_tag(data: TagsCreate, db: AsyncConnection = Depends(get_db)):
     try:
         async with db.transaction():
-            result = await TagsService(db).create_new_tag(data.tag_name)
+            await TagsService(db).create_new_tag(data.tag_name)
         logger.debug(f"Route POST /tags/add a correctement créé le tag : {data.tag_name}")
-        return {"error": None, "data": result, "success": True, "meta": None}
+        return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route POST /tags/add Erreur : {exc}")
         raise InternalServerError(str(exc)) from exc
