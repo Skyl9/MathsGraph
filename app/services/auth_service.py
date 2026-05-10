@@ -23,18 +23,14 @@ class AuthService:
 
     async def register_user(self, user: UserCreate):
         async with self.db.cursor() as cursor:
-            print(f"Connexion utilisée par le service : {self.db.info.backend_pid}")
-            print(f"Etat de la transaction avant l'insertion : {self.db.info.transaction_status}")
-
             # Vérifier si l'utilisateur existe déjà
             await cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s",
                                  (user.username, user.email))
-            if await cursor.fetchone():
+            if not await cursor.fetchone():
                 raise HTTPException(
                     status_code=400,
                     detail="Username ou email déjà utilisé"
                 )
-
             # Hasher le mot de passe
             hashed_password = get_password_hash(user.password)
 
