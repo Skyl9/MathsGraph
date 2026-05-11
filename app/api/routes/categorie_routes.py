@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
+from app.core.deps import get_current_user_payload
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import CreateData, Response
@@ -24,7 +25,12 @@ async def get_one_category_E(id_category: int, db: AsyncConnection = Depends(get
 
 
 @router.patch("/update/{id_category}", response_model=Response)
-async def update_category_E(id_category: int, data: dict, db: AsyncConnection = Depends(get_db)):
+async def update_category_E(
+    id_category: int, 
+    data: dict, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await CategoryService(db).update_category(id_category, data)
@@ -49,7 +55,11 @@ async def all_category(db: AsyncConnection = Depends(get_db)):
 
 
 @router.post("/create", response_model=Response)
-async def create_category(data: CreateData, db: AsyncConnection = Depends(get_db)):
+async def create_category(
+    data: CreateData, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await CategoryService(db).add_category(data)

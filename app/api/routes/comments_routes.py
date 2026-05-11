@@ -25,7 +25,12 @@ async def get_comments(concept_id: int, db: AsyncConnection = Depends(get_db)):
 
 
 @router.post("/add/{concept_id}", summary="Ajoute un commentaire à un concept", response_model=Response)
-async def post_comment(concept_id: int, data: CommentIn, db: AsyncConnection = Depends(get_db)):
+async def post_comment(
+    concept_id: int, 
+    data: CommentIn, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await CommentsService(db).add_comment(

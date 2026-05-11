@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
+from app.core.deps import get_current_user_payload
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response, UserResponse
@@ -35,7 +36,12 @@ async def get_id_by_username(username: str, db: AsyncConnection = Depends(get_db
 
 
 @router.patch("/update/{id_user}", summary="Met à jour les informations d'un utilisateur", response_model=Response)
-async def patch_user(id_user: str, data: UpdateUser, db: AsyncConnection = Depends(get_db)):
+async def patch_user(
+    id_user: str, 
+    data: UpdateUser, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await UserService(db).patch_user(id_user, data)
@@ -58,7 +64,12 @@ async def get_favorite_user(user_id: int, db: AsyncConnection = Depends(get_db))
 
 
 @router.delete("/favorite/delete/{general_id}", summary="Supprime un favori d'un utilisateur", response_model=Response)
-async def delete_favorite_user(general_id: int, data: Favorite, db: AsyncConnection = Depends(get_db)):
+async def delete_favorite_user(
+    general_id: int, 
+    data: Favorite, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await UserService(db).delete_favorite_user(general_id, data)
@@ -70,7 +81,12 @@ async def delete_favorite_user(general_id: int, data: Favorite, db: AsyncConnect
 
 
 @router.post("/favorite/add/{general_id}", summary="Ajoute un favori à un utilisateur", response_model=Response)
-async def add_favorite_user(general_id: int, data: Favorite, db: AsyncConnection = Depends(get_db)):
+async def add_favorite_user(
+    general_id: int, 
+    data: Favorite, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await UserService(db).add_favorite_user(general_id, data)

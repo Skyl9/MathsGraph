@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
+from app.core.deps import get_current_user_payload
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response, CreateRelation
@@ -10,7 +11,11 @@ router = APIRouter(prefix="/relation", tags=["relation"])
 
 
 @router.post("/create", summary="Crée une nouvelle relation", response_model=Response)
-async def create_relation(data: CreateRelation, db: AsyncConnection = Depends(get_db)):
+async def create_relation(
+    data: CreateRelation, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await RelationService(db).add_relation(data)

@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
+from app.core.deps import get_current_user_payload
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response
@@ -47,7 +48,11 @@ async def get_all_tag(db: AsyncConnection = Depends(get_db)):
 
 
 @router.post("/add/concept", summary="Ajoute un tag à un concept", response_model=Response)
-async def add_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get_db)):
+async def add_tag_concept(
+    data: TagsUpdate, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await TagsService(db).add_tag_to_concept(data.concept_id, data.tag_id)
@@ -60,7 +65,11 @@ async def add_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get_db
 
 
 @router.post("/remove/concept", summary="Supprime un tag d'un concept", response_model=Response)
-async def remove_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get_db)):
+async def remove_tag_concept(
+    data: TagsUpdate, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await TagsService(db).remove_tag_from_concept(data.concept_id, data.tag_id)
@@ -73,7 +82,11 @@ async def remove_tag_concept(data: TagsUpdate, db: AsyncConnection = Depends(get
 
 
 @router.post("/add", summary="Crée un nouveau tag", response_model=Response)
-async def add_new_tag(data: TagsCreate, db: AsyncConnection = Depends(get_db)):
+async def add_new_tag(
+    data: TagsCreate, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await TagsService(db).create_new_tag(data.tag_name)

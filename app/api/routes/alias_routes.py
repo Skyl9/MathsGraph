@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
+from app.core.deps import get_current_user_payload
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import CreateAlias, Response
@@ -10,7 +11,11 @@ router = APIRouter(prefix="/alias", tags=["alias"])
 
 
 @router.post("/create", response_model=Response)
-async def create_alias(data: CreateAlias, db: AsyncConnection = Depends(get_db)):
+async def create_alias(
+    data: CreateAlias, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     """Crée un alias à partir d'un nom d'utilisateur et d'un prénom.
 
     Cette fonction crée un nouvel alias en utilisant les données

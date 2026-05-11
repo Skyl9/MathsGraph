@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
+from app.core.deps import get_current_user_payload
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response, CreateData
@@ -24,7 +25,12 @@ async def get_one_type_E(id_type: int, db: AsyncConnection = Depends(get_db)):
 
 
 @router.patch("/update/{id_type}", summary="Met à jour un type", response_model=Response)
-async def update_type_E(id_type: int, data: TypeUpdate, db: AsyncConnection = Depends(get_db)):
+async def update_type_E(
+    id_type: int, 
+    data: TypeUpdate, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             await TypeService(db).update_type(id_type, data)
@@ -47,7 +53,11 @@ async def get_all_type(db: AsyncConnection = Depends(get_db)):
 
 
 @router.post("/create", summary="Crée un nouveau type", response_model=Response)
-async def create_type(data: CreateData, db: AsyncConnection = Depends(get_db)):
+async def create_type(
+    data: CreateData, 
+    db: AsyncConnection = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
     try:
         async with db.transaction():
             result = await TypeService(db).add_type(data)
