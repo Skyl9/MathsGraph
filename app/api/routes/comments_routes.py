@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
+from app.core.deps import get_current_active_user, get_current_user_payload
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response
@@ -42,8 +43,9 @@ async def post_comment(concept_id: int, data: CommentIn, db: AsyncConnection = D
 
 
 @router.patch("/update/{comment_id}", summary="Met à jour le contenu d'un commentaire", response_model=Response)
-async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnection = Depends(get_db)):
+async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
+        data.username = current_user.get("sub")
         async with db.transaction():
             await CommentsService(db).update_comment(comment_id, data.content)
         logger.debug(f"Route PATCH /comments/update/{comment_id} a correctement mis à jour le commentaire d'id : {comment_id}")
@@ -54,8 +56,9 @@ async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnecti
 
 
 @router.delete("/delete/{comment_id}", summary="Supprime un commentaire", response_model=Response)
-async def delete_comment(comment_id: int, db: AsyncConnection = Depends(get_db)):
+async def delete_comment(comment_id: int, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
+        current_user.get("sub")
         async with db.transaction():
             await CommentsService(db).delete_comment(comment_id)
         logger.debug(f"Route DELETE /comments/delete/{comment_id} a correctement supprimé le commentaire d'id : {comment_id}")
