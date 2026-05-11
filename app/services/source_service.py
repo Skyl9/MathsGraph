@@ -2,6 +2,7 @@ from psycopg import AsyncConnection
 
 from app.core.exceptions import ConflictException, NotFoundException, BadRequestException
 from app.schemas import CreateSource
+from app.utils.db_utils import get_id_by_field
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,10 +16,10 @@ class SourceService:
         allowed_types = ["article", "livre","site_web","autre"]
         if data["type"] not in allowed_types:
             raise BadRequestException(detail="Type not allowed")
+
+        await get_id_by_field(self.db, "concepts", "id", data["id"], "Concept not found")
+
         async with self.db.cursor() as cursor:
-            await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (data["id"],))
-            if await cursor.fetchone() is None:
-                raise NotFoundException(detail="Concept not found")
             await cursor.execute("SELECT id FROM sources WHERE titre = %s;", (data["source"],))
             if await cursor.fetchone() is not None:
                 raise ConflictException(detail="Source already exists")

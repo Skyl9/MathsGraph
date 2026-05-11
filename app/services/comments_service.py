@@ -2,10 +2,11 @@ from psycopg import AsyncConnection
 from psycopg import DatabaseError
 
 from app.core.exceptions import NotFoundException
-
 import logging
+from app.utils.db_utils import check_exists, get_id_by_field
 
 logger = logging.getLogger(__name__)
+
 
 class CommentsService:
 
@@ -71,17 +72,13 @@ class CommentsService:
             parent_id: int | None = None,
 
     ) -> dict:
-        async with (self.db.cursor() as cur):
+        user_id = await get_id_by_field(self.db, "users", "username", username, "Utilisateur introuvable")
 
-            await cur.execute("SELECT id FROM users WHERE username = %s;", (username,))
-            user_id = await cur.fetchone()
-            user_id=user_id[0] if username else None
-            if not user_id:
-                raise NotFoundException(detail="Utilisateur introuvable")
+        async with (self.db.cursor() as cur):
             parent_id = None if parent_id==0 else parent_id
-            await cur.execute("SELECT id FROM concepts WHERE id = %s", (concept_id,))
-            if not await cur.fetchone():
-                raise NotFoundException(detail="Concept introuvable")
+
+            await check_exists(self.db, "concepts", concept_id, "Concept introuvable")
+
             await cur.execute(
                 """
                 INSERT INTO comments (concept_id, user_id, content, parent_id,field)

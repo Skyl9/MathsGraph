@@ -1,4 +1,5 @@
 from psycopg import AsyncConnection
+from app.utils.db_utils import get_id_by_field
 
 
 import logging
@@ -13,10 +14,8 @@ class StatisticsService:
         self.db = db
 
     async def get_concept_views(self,concept_id: int):
+            await get_id_by_field(self.db, "concepts", "id", concept_id, "Concept not found")
             async with self.db.cursor() as cursor:
-                await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
-                if await cursor.fetchone() is None:
-                    raise NotFoundException(detail="Concept not found")
                 await cursor.execute("""
                                SELECT COUNT(*)                as view_count,
                                       COUNT(DISTINCT user_id) as unique_viewers

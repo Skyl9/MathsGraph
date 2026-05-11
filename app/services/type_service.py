@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from psycopg import AsyncConnection
+from app.utils.db_utils import get_id_by_field
 from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException, \
     BadRequestException
 from app.schemas import CreateData
@@ -41,11 +42,9 @@ class TypeService:
                 f"Le champ '{field}' n'est pas autorisé pour une mise à jour."
             )
 
-        async with self.db.cursor() as cur:
-            await cur.execute("SELECT id FROM type WHERE id = %s", (id_type,))
-            if not await cur.fetchone():
-                raise NotFoundException(f"Type introuvable : {id_type}")
+        await get_id_by_field(self.db, "type", "id", id_type, f"Type introuvable : {id_type}")
 
+        async with self.db.cursor() as cur:
             query = f"UPDATE type SET {field} = %s WHERE id = %s"
             await cur.execute(query, (data["value"], id_type))
 
@@ -64,9 +63,5 @@ class TypeService:
 
 
     async def get_category_id(self,nom):
-        async with self.db.cursor() as cursor:
-            await cursor.execute("SELECT id FROM type WHERE type.type = %s;", (nom,))
-            type = await cursor.fetchone()
-            if type is None:
-                raise NotFoundException(f"Type introuvable : {nom}")
-        return {"id":type[0],"type":nom}
+        type_id = await get_id_by_field(self.db, "type", "type", nom, f"Type introuvable : {nom}")
+        return {"id": type_id, "type": nom}

@@ -6,6 +6,7 @@ from typing import List
 from psycopg import AsyncConnection, DatabaseError, sql
 
 from app.core.exceptions import NotFoundException, InternalServerError
+from app.utils.db_utils import get_id_by_field
 from app.schemas import UpdateConceptDict
 from app.schemas.concept import ConceptName, ConceptResponse, RollbackConcept
 from app.schemas.history import History
@@ -70,11 +71,8 @@ class ConceptService:
 
     async def get_concept_info(self, concept_id) -> ConceptResponse:
         try:
+            await get_id_by_field(self.db, "concepts", "id", concept_id, "Concept non trouvé")
             async with self.db.cursor() as cursor:
-                await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,)
-                                     )
-                if await cursor.fetchone() is None:
-                    raise NotFoundException(detail="Concept non trouvé")
                 # Récupérer les informations de base sur le concept
                 await cursor.execute("""
                                      SELECT c.id,
@@ -445,13 +443,9 @@ class ConceptService:
     async def updateConcept(self, concept_id: int, data: UpdateConceptDict, rollback: bool = False) -> None:
         data = data.model_dump() if isinstance(data, UpdateConceptDict) else data
 
+        await get_id_by_field(self.db, "concepts", "id", concept_id, "ID not found")
+
         async with self.db.cursor() as cursor:
-
-            # Vérifier si l'ID existe
-            await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
-            if await cursor.fetchone() is None:
-                raise NotFoundException(detail="ID not found")
-
             # Champ à mettre à jour
             if data["field"] in ["nom", "enonce", "demonstration", "verification", "date_ajout"]:
                 field_name = data["field"]
