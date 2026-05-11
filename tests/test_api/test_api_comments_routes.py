@@ -36,32 +36,31 @@ async def test_get_comments_with_data(async_client: AsyncClient,transaction, set
 
 # Tests pour la route POST /comments/add/{concept_id}
 @pytest.mark.asyncio
-async def test_post_comment_success(async_client: AsyncClient, setup_test_concept, setup_test_user,setup_user_token_admin):
+async def test_post_comment_success(async_client: AsyncClient, setup_test_concept, setup_user_token_admin):
     """
     Teste l'ajout réussi d'un commentaire.
     """
-    headers=create_headers_token(setup_user_token_admin)
+    headers = create_headers_token(setup_user_token_admin)
     concept_id = setup_test_concept["id"]
     comment_data = {
         "content": "This is a new comment via API.",
-        "username": setup_test_user["username"],
+        "username": "admin",
         "parent_id": None,
         "field": "api_test"
     }
-    response = await async_client.post(f"/comments/add/{concept_id}", json=comment_data,headers=headers)
+    response = await async_client.post(f"/comments/add/{concept_id}", json=comment_data, headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
-    assert data["data"] is None
 
     # Vérifier que le commentaire est bien là en le récupérant
     get_response = await async_client.get(f"/comments/{concept_id}")
     get_data = get_response.json()
-    assert any(c["content"] == comment_data["content"] for c in get_data["data"])
+    assert any(c["content"] == comment_data["content"] and c["username"] == "admin" for c in get_data["data"])
 
 
 @pytest.mark.asyncio
-async def test_post_comment_invalid_concept_id(async_client: AsyncClient, setup_test_user,setup_user_token_admin):
+async def test_post_comment_invalid_concept_id(async_client: AsyncClient, setup_user_token_admin):
     """
     Teste l'ajout d'un commentaire avec un concept_id inexistant.
     """
@@ -69,16 +68,31 @@ async def test_post_comment_invalid_concept_id(async_client: AsyncClient, setup_
     invalid_concept_id = 99999
     comment_data = {
         "content": "Comment for non-existent concept.",
-        "username": setup_test_user["username"],
+        "username": "admin",
         "parent_id": None,
         "field": "invalid_test"
     }
-    response = await async_client.post(f"/comments/add/{invalid_concept_id}", json=comment_data,headers=headers)
-    # Attendre une erreur 500 (InternalServerError) si l'erreur DB n'est pas gérée plus spécifiquement
+    response = await async_client.post(f"/comments/add/{invalid_concept_id}", json=comment_data, headers=headers)
     assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
     assert "error" in data
+
+
+@pytest.mark.asyncio
+async def test_post_comment_unauthorized(async_client: AsyncClient, setup_test_concept):
+    """
+    Teste l'ajout d'un commentaire sans authentification.
+    """
+    concept_id = setup_test_concept["id"]
+    comment_data = {
+        "content": "Unauthorized comment.",
+        "username": "someuser",
+        "parent_id": None,
+        "field": "unauth_test"
+    }
+    response = await async_client.post(f"/comments/add/{concept_id}", json=comment_data)
+    assert response.status_code == 401
 
 
 # Tests pour la route PATCH /comments/update/{comment_id}
@@ -101,6 +115,15 @@ async def test_patch_comment_success(async_client: AsyncClient, setup_test_comme
     get_response = await async_client.get(f"/comments/{setup_test_comment['concept_id']}")
     get_data = get_response.json()
     assert any(c["id"] == comment_id and c["content"] == updated_content for c in get_data["data"])
+
+@pytest.mark.asyncio
+async def test_patch_comment_unauthorized(async_client: AsyncClient, setup_test_comment):
+    """
+    Teste la mise à jour d'un commentaire sans authentification.
+    """
+    comment_id = setup_test_comment["id"]
+    response = await async_client.patch(f"/comments/update/{comment_id}", json={"content": "Unauthorized update"})
+    assert response.status_code == 401
 
 @pytest.mark.asyncio
 async def test_patch_comment_not_found(async_client: AsyncClient,setup_user_token_admin):
@@ -136,6 +159,14 @@ async def test_delete_comment_success(async_client: AsyncClient, setup_test_comm
     get_data = get_response.json()
     assert not any(c["id"] == comment_id for c in get_data["data"])
 
+@pytest.mark.asyncio
+async def test_delete_comment_unauthorized(async_client: AsyncClient, setup_test_comment):
+    """
+    Teste la suppression d'un commentaire sans authentification.
+    """
+    comment_id = setup_test_comment["id"]
+    response = await async_client.delete(f"/comments/delete/{comment_id}")
+    assert response.status_code == 401
 
 @pytest.mark.asyncio
 async def test_delete_comment_not_found(async_client: AsyncClient,setup_user_token_admin):
@@ -167,3 +198,15 @@ async def test_delete_comment_already_deleted(async_client: AsyncClient, setup_t
     data = second_delete_response.json()
     assert data["success"] is False
     assert "Commentaire déjà supprimé" in data["error"]
+
+@pytest.mark.asyncio
+async def test_get_recent_comments_route_success(async_client: AsyncClient, setup_test_comment):
+    """
+    Teste la récupération des commentaires récents.
+    """
+    response = await async_client.get("/comments/recent")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert len(data["data"]) >= 1
+    assert data["data"][0]["content"] == setup_test_comment["content"]

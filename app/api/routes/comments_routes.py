@@ -13,6 +13,16 @@ from app.services.comments_service import CommentsService, logger
 router = APIRouter(prefix="/comments", tags=["comments"])
 
 
+@router.get("/recent", summary="Récupère les derniers commentaires globaux", response_model=Response)
+async def get_recent_comments_route(limit: int = 20, db: AsyncConnection = Depends(get_db)):
+    try:
+        comments = await CommentsService(db).get_recent_comments(limit)
+        return {"error": None, "data": comments, "success": True, "meta": None}
+    except InternalServerError as exc:
+        logger.error(f"Route GET /comments/recent Erreur : {str(exc)}")
+        raise InternalServerError(str(exc)) from exc
+
+
 @router.get("/{concept_id}", summary="Récupère les commentaires d'un concept", response_model=Response[List[CommentResponse]])
 async def get_comments(concept_id: int, db: AsyncConnection = Depends(get_db)):
     try:
@@ -50,9 +60,8 @@ async def post_comment(
 @router.patch("/update/{comment_id}", summary="Met à jour le contenu d'un commentaire", response_model=Response)
 async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
-        data.username = current_user.get("sub")
         async with db.transaction():
-            await CommentsService(db).update_comment(comment_id, data.content)
+            await CommentsService(db).update_comment(comment_id, data.content, current_user)
         logger.debug(f"Route PATCH /comments/update/{comment_id} a correctement mis à jour le commentaire d'id : {comment_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
@@ -63,20 +72,10 @@ async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnecti
 @router.delete("/delete/{comment_id}", summary="Supprime un commentaire", response_model=Response)
 async def delete_comment(comment_id: int, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
-        current_user.get("sub")
         async with db.transaction():
-            await CommentsService(db).delete_comment(comment_id)
+            await CommentsService(db).delete_comment(comment_id, current_user)
         logger.debug(f"Route DELETE /comments/delete/{comment_id} a correctement supprimé le commentaire d'id : {comment_id}")
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route DELETE /comments/delete/{comment_id} Erreur : {str(exc)}")
-        raise InternalServerError(str(exc)) from exc
-
-@router.get("/recent", summary="Récupère les derniers commentaires globaux", response_model=Response)
-async def get_recent_comments_route(limit: int = 20, db: AsyncConnection = Depends(get_db)):
-    try:
-        comments = await CommentsService(db).get_recent_comments(limit)
-        return {"error": None, "data": comments, "success": True, "meta": None}
-    except InternalServerError as exc:
-        logger.error(f"Route GET /comments/recent Erreur : {str(exc)}")
         raise InternalServerError(str(exc)) from exc

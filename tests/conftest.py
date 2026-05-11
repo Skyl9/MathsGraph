@@ -42,7 +42,7 @@ async def clean_database(async_db: AsyncConnectionPool):
             TRUNCATE TABLE 
                 users, concepts, categories, mathematiciens, type,
                 sources, concepts_sources, relations, aliases, foreign_name,
-                comments, concept_tags, concept_versions, positions,
+                comments, concept_tags, tags, concept_versions, positions,
                 user_favorites, password_reset_tokens
             RESTART IDENTITY CASCADE;
         """)
@@ -125,7 +125,7 @@ def event_loop():
 @pytest_asyncio.fixture(scope="session")
 async def async_db():
     """Creates a session-scoped database connection pool."""
-    pool = AsyncConnectionPool(url)
+    pool = AsyncConnectionPool(url, open=False)
     await pool.open()
     yield pool
     await pool.close()

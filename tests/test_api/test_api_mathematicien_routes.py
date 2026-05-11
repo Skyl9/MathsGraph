@@ -2,18 +2,22 @@ import pytest
 from httpx import AsyncClient
 from psycopg import AsyncConnection
 
+from tests.utils import create_headers_token
+
+
 # Assurez-vous que les fixtures setup_mathematicien et async_client sont disponibles,
 # potentiellement définies dans un fichier conftest.py
 
 
 
 @pytest.mark.asyncio
-async def test_add_mathematicien_success(async_client: AsyncClient, transaction: AsyncConnection):
+async def test_add_mathematicien_success(async_client: AsyncClient, transaction: AsyncConnection,setup_user_token_admin):
     """
     Teste l'ajout d'un nouveau mathématicien via la route POST /mathematicien/create.
     """
+    headers = create_headers_token(setup_user_token_admin)
     test_name = "Ada Lovelace"
-    response = await async_client.post("/mathematicien/create", json={"value": test_name})
+    response = await async_client.post("/mathematicien/create", json={"value": test_name},headers=headers)
 
     assert response.status_code == 200
     res_data = response.json()
