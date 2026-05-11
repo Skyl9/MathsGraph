@@ -134,7 +134,7 @@ class AuthService:
             )
 
         # Générer l'e-mail contenant le lien de réinitialisation
-        reset_link = f"{settings.RESET_URL}/reset-password-verification/{reset_token}"
+        reset_link = f"{settings.BACKEND_CORS_ORIGINS}/reset-password-verification/{reset_token}"
         email_subject = "Réinitialisation de votre mot de passe"
         email_body = f"""
         Bonjour,

@@ -20,7 +20,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev_secret_key")  # A fallback value for local testing
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-    RESET_URL : str = "http://localhost:3000"
 
     # Database
     DB_USER: str = os.getenv("DB_USER", "postgres")
@@ -45,7 +44,7 @@ class Settings(BaseSettings):
             return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     # CORS
-    BACKEND_CORS_ORIGINS: list = ["*"]  # Modify this for stricter security in production
+    BACKEND_CORS_ORIGINS: list = ["*"]
     model_config = ConfigDict(env_file=".env", case_sensitive=True)
 
 
@@ -60,8 +59,10 @@ def get_settings() -> Settings:
     elif settings.ENVIRONMENT == "development":
         settings.DEBUG = True
         settings.TESTING = False
+        settings.BACKEND_CORS_ORIGINS = ["http://localhost:3000", "http://localhost:8080","http://localhost:8000"]
     else:  # production
-        settings.RESET_URL= ["https://mathsgraph-production.up.railway.app:3000"]
+        settings.BACKEND_CORS_ORIGINS= ["https://mathsgraph-production.up.railway.app"]
+
         settings.DEBUG = False
         settings.TESTING = False
 
