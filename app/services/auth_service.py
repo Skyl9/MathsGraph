@@ -26,7 +26,7 @@ class AuthService:
             # Vérifier si l'utilisateur existe déjà
             await cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s",
                                  (user.username, user.email))
-            if not await cursor.fetchone():
+            if await cursor.fetchone():
                 raise HTTPException(
                     status_code=400,
                     detail="Username ou email déjà utilisé"

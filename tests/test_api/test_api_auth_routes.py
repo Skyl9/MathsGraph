@@ -13,6 +13,7 @@ async def test_register(async_client, transaction):
     }
     response = await async_client.post("/register", json=user_data)
     responseA = response.json()
+    print(responseA)
     body = responseA["data"]
     assert response.status_code == 200, "L'utilisateur a bien pu s'inscrire !"
 

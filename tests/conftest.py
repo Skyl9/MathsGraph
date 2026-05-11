@@ -31,6 +31,22 @@ url = (
     f"@{TEST_DB_CONFIG['host']}:{TEST_DB_CONFIG['port']}/{TEST_DB_CONFIG['database']}"
 )
 
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def clean_database(async_db: AsyncConnectionPool):
+    """
+    Vide explicitement toutes les tables de l'application avant chaque test.
+    """
+    async with async_db.connection() as conn:
+        # On liste toutes les tables connues pour faire un nettoyage parfait et rapide
+        await conn.execute("""
+            TRUNCATE TABLE 
+                users, concepts, categories, mathematiciens, type,
+                sources, concepts_sources, relations, aliases, foreign_name,
+                comments, concept_tags, concept_versions, positions,
+                user_favorites, password_reset_tokens
+            RESTART IDENTITY CASCADE;
+        """)
+        await conn.commit()
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_logging():
@@ -117,16 +133,12 @@ async def async_db():
 
 @pytest_asyncio.fixture(scope="function")
 async def transaction(async_db: AsyncConnectionPool):
-    print("\n--- Début de la transaction (Rollback forcé) ---")
+    """
+    Fournit une connexion à la base de données pour les tests.
+    L'isolation est désormais garantie par la fixture `clean_database`.
+    """
     async with async_db.connection() as conn:
-        print(f"Connexion obtenue : {conn.info.backend_pid}")
-        await conn.execute("BEGIN")
-        print("\n--- Transaction de test DÉMARRÉE (BEGIN) ---")
-        try:
-            yield conn
-        finally:
-            await conn.execute("ROLLBACK")
-            print("--- Transaction de test ANNULÉE (ROLLBACK) ---")
+        yield conn
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -420,3 +432,4 @@ async def setup_user_token_admin(transaction: AsyncConnection):
     }
     tokenJson = await AuthService(transaction).login_for_access_token(OAuth2PasswordRequestForm(username=login_data['username'], password=login_data['password']))
     yield tokenJson
+

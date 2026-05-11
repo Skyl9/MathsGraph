@@ -1,11 +1,7 @@
 import pytest
-import psycopg
 from httpx import AsyncClient
 
-from app.services.category_service import CategoryService
-from app.schemas.categorie import CategorieBase, CategoryUpdate
-from app.schemas import CreateData
-from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException
+from tests.utils import create_headers_token
 
 
 @pytest.mark.asyncio
@@ -25,15 +21,16 @@ async def test_get_one_category(async_client: AsyncClient, setup_test_categorie)
 
 
 @pytest.mark.asyncio
-async def test_update_category(async_client: AsyncClient, setup_test_categorie):
+async def test_update_category(async_client: AsyncClient, setup_test_categorie,setup_user_token_admin):
     """
     Teste la route PATCH /category/update/{id_category} pour s'assurer qu'elle met à jour la catégorie.
     """
+    headers = create_headers_token(setup_user_token_admin)
     category_id = setup_test_categorie["id"]
     updated_name = "Updated Test Category"
     update_data = {"field": "nom", "value": updated_name}
 
-    response = await async_client.patch(f"/category/update/{category_id}", json=update_data)
+    response = await async_client.patch(f"/category/update/{category_id}", json=update_data,headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -70,13 +67,13 @@ async def test_get_all_categories(async_client: AsyncClient, setup_test_categori
 
 
 @pytest.mark.asyncio
-async def test_create_category(async_client: AsyncClient):
+async def test_create_category(async_client: AsyncClient,setup_user_token_admin):
     """
     Teste la route POST /category/create pour s'assurer qu'elle crée une nouvelle catégorie.
-    Note: Ce test devrait idéalement utiliser une base de données de test isolée pour éviter les conflits de noms.
     """
+    headers = create_headers_token(setup_user_token_admin)
     new_category_data = {"value": "New Created Category", "description": "Description of a newly created category"}
-    response = await async_client.post("/category/create", json=new_category_data)
+    response = await async_client.post("/category/create", json=new_category_data,headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
