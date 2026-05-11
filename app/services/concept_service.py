@@ -3,7 +3,7 @@ import json
 import logging
 from typing import List
 
-from psycopg import AsyncConnection, DatabaseError
+from psycopg import AsyncConnection, DatabaseError, sql
 
 from app.core.exceptions import NotFoundException, InternalServerError
 from app.schemas import UpdateConceptDict
@@ -445,25 +445,29 @@ class ConceptService:
     async def updateConcept(self, concept_id: int, data: UpdateConceptDict, rollback: bool = False) -> None:
         data = data.model_dump() if isinstance(data, UpdateConceptDict) else data
 
-
         async with self.db.cursor() as cursor:
 
             # Vérifier si l'ID existe
             await cursor.execute("SELECT id FROM concepts WHERE id = %s;", (concept_id,))
             if await cursor.fetchone() is None:
                 raise NotFoundException(detail="ID not found")
+
             # Champ à mettre à jour
             if data["field"] in ["nom", "enonce", "demonstration", "verification", "date_ajout"]:
-                await cursor.execute(f"SELECT {data['field']} FROM concepts WHERE id=%s;", (concept_id,))
-                old_value = await cursor.fetchone()
-                old_value = old_value[0]
+                field_name = data["field"]
+
+                select_query = sql.SQL("SELECT {} FROM concepts WHERE id=%s;").format(sql.Identifier(field_name))
+                await cursor.execute(select_query, (concept_id,))
+
+                old_value_row = await cursor.fetchone()
+                old_value = old_value_row[0] if old_value_row else None
                 new_value = data["value"]
-                set_clause = data["field"] + " = %s"  # Ex: "x = %s, y = %s"
-                sql = f"UPDATE concepts SET {set_clause} WHERE id = %s;"
-                await cursor.execute(sql, (data["value"], concept_id))
+
+                update_query = sql.SQL("UPDATE concepts SET {} = %s WHERE id = %s;").format(sql.Identifier(field_name))
+                await cursor.execute(update_query, (new_value, concept_id))
 
             elif data["field"] == "type":
-                await cursor.execute(f"SELECT type_id FROM concepts WHERE id=%s;", (concept_id,))
+                await cursor.execute("SELECT type_id FROM concepts WHERE id=%s;", (concept_id,))
                 old_value = await cursor.fetchone()
                 old_value = old_value[0]
                 await cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
@@ -474,28 +478,30 @@ class ConceptService:
                     (data["value"], concept_id))
 
             elif data["field"] == "categorie":
-                await cursor.execute(f"SELECT categorie_id FROM concepts WHERE id=%s;", (concept_id,))
+                await cursor.execute("SELECT categorie_id FROM concepts WHERE id=%s;", (concept_id,))
                 old_value = await cursor.fetchone()
                 old_value = old_value[0]
                 await cursor.execute("SELECT id FROM categories WHERE nom = %s;", (data["value"],))
                 new_value = await cursor.fetchone()
                 new_value = new_value[0]
-                sql = f"UPDATE concepts SET categorie_id = (SELECT id FROM categories WHERE nom = %s ) WHERE id = %s;"
-                await cursor.execute(sql, (data["value"], concept_id))
+                await cursor.execute(
+                    "UPDATE concepts SET categorie_id = (SELECT id FROM categories WHERE nom = %s ) WHERE id = %s;",
+                    (data["value"], concept_id))
 
             elif data["field"] == "mathematicien":
-                await cursor.execute(f"SELECT mathematicien_id FROM concepts WHERE id=%s;", (concept_id,))
+                await cursor.execute("SELECT mathematicien_id FROM concepts WHERE id=%s;", (concept_id,))
                 old_value = await cursor.fetchone()
                 old_value = old_value[0]
                 await cursor.execute("SELECT id FROM mathematiciens WHERE nom = %s;", (data["value"],))
                 new_value = await cursor.fetchone()
                 new_value = new_value[0]
-                sql = f"UPDATE concepts SET mathematicien_id = (SELECT id FROM mathematiciens WHERE nom = %s ) WHERE id = %s;"
-                await cursor.execute(sql, (data["value"], concept_id))
+                await cursor.execute(
+                    "UPDATE concepts SET mathematicien_id = (SELECT id FROM mathematiciens WHERE nom = %s ) WHERE id = %s;",
+                    (data["value"], concept_id))
 
             elif data["field"] == "relations":
                 await cursor.execute(
-                    f"SELECT concept_source, concept_cible, type_relation, description,date_relation FROM relations WHERE concept_source = %s OR concept_cible = %s;",
+                    "SELECT concept_source, concept_cible, type_relation, description, date_relation FROM relations WHERE concept_source = %s OR concept_cible = %s;",
                     (concept_id, concept_id))
                 query_result = await cursor.fetchall()
                 old_value = []
@@ -534,7 +540,7 @@ class ConceptService:
 
             elif data["field"] == "sources":
                 await cursor.execute(
-                    f"SELECT id,titre,auteur,annee,url,type FROM sources WHERE id IN (SELECT source_id FROM concepts_sources WHERE concept_id = %s);",
+                    "SELECT id,titre,auteur,annee,url,type FROM sources WHERE id IN (SELECT source_id FROM concepts_sources WHERE concept_id = %s);",
                     (concept_id,))
                 query = await cursor.fetchall()
                 old_value = []
@@ -558,7 +564,7 @@ class ConceptService:
                          source["id"]))
 
             elif data["field"] == "aliases":
-                await cursor.execute(f"SELECT alias FROM aliases WHERE concept_id = %s;", (concept_id,))
+                await cursor.execute("SELECT alias FROM aliases WHERE concept_id = %s;", (concept_id,))
                 old_value = await cursor.fetchall()
                 old_value = [i[0] for i in old_value]
                 new_value = data["value"]
@@ -589,7 +595,6 @@ class ConceptService:
             await self.add_concept_version(username=data["username"], concept_id=concept_id,
                                            field_modified=data["field"], old_version=old_value,
                                            new_version=new_value, rollback=rollback, note=data["note"])
-
     async def getEditableFieldsOptions(self):
         async with self.db.cursor() as cursor:
             await cursor.execute("SELECT DISTINCT type FROM type")

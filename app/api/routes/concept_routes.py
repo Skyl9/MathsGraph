@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
+from app.core.deps import get_current_user_payload
 from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response
@@ -27,8 +28,9 @@ async def getConcept(concept_id: int, db: AsyncConnection = Depends(get_db)):
 
 
 @router.patch("/concept/rollback/{concept_id}",response_model=Response)
-async def rollbackConcept(concept_id: int, data: RollbackConcept, db: AsyncConnection = Depends(get_db)):
+async def rollbackConcept(concept_id: int, data: RollbackConcept, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
+        data.username = current_user.get("sub")
         async with db.transaction():
             await ConceptService(db).rollback_history(concept_id, data)
         logger.debug(f"Route PATCH /concept/rollback/{concept_id} a correctement rollback le concept dont l'id est:{concept_id}")
@@ -61,8 +63,9 @@ async def getHistory(concept_id: int, db: AsyncConnection = Depends(get_db)):
 
 
 @router.patch("/update/{concept_id}",response_model=Response)
-async def updateConcept(concept_id: int, data: UpdateConceptDict, db: AsyncConnection = Depends(get_db)):
+async def updateConcept(concept_id: int, data: UpdateConceptDict, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
+        data.username = current_user.get("sub")
         async with db.transaction():
             await ConceptService(db).updateConcept(concept_id, data)
         logger.debug(f"Route PATCH /update/{concept_id} a réussi la modification du concept dont l'id est:{concept_id}")
