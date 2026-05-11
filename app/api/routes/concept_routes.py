@@ -84,3 +84,13 @@ async def get_all_concept_name_R(db: AsyncConnection = Depends(get_db)):
     except InternalServerError as exc:
         logger.error(f"Route GET /getAllConceptName Erreur : {str(exc)}")
         raise InternalServerError(str(exc)) from exc
+
+@router.get("/recent-history", summary="Récupère le fil d'actualité global", response_model=Response)
+async def get_recent_history_route(limit: int = 20, db: AsyncConnection = Depends(get_db)):
+    try:
+        history = await ConceptService(db).get_recent_history(limit)
+        logger.debug(f'Route /recent-history a renvoyé correctement la liste : {str(history)}')
+        return {"error": None, "data": history, "success": True, "meta": None}
+    except InternalServerError as exc:
+        logger.error(f"Route GET /recent-history Erreur : {str(exc)}")
+        raise InternalServerError(str(exc)) from exc

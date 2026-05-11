@@ -71,3 +71,12 @@ async def delete_comment(comment_id: int, db: AsyncConnection = Depends(get_db),
     except InternalServerError as exc:
         logger.error(f"Route DELETE /comments/delete/{comment_id} Erreur : {str(exc)}")
         raise InternalServerError(str(exc)) from exc
+
+@router.get("/recent", summary="Récupère les derniers commentaires globaux", response_model=Response)
+async def get_recent_comments_route(limit: int = 20, db: AsyncConnection = Depends(get_db)):
+    try:
+        comments = await CommentsService(db).get_recent_comments(limit)
+        return {"error": None, "data": comments, "success": True, "meta": None}
+    except InternalServerError as exc:
+        logger.error(f"Route GET /comments/recent Erreur : {str(exc)}")
+        raise InternalServerError(str(exc)) from exc

@@ -601,3 +601,31 @@ class ConceptService:
                 "categorie": category,
                 "type": type_concept}
         return data
+
+    async def get_recent_history(self, limit: int = 50) -> list[dict]:
+        async with self.db.cursor() as cursor:
+            await cursor.execute("""
+                                 SELECT cv.id,
+                                        cv.concept_id,
+                                        c.nom      as concept_nom,
+                                        u.username as modified_by,
+                                        cv.modified_at,
+                                        cv.field_modified,
+                                        cv.is_rollback
+                                 FROM concept_versions cv
+                                          JOIN users u ON cv.modified_by = u.id
+                                          JOIN concepts c ON cv.concept_id = c.id
+                                 ORDER BY cv.modified_at DESC
+                                 LIMIT %s
+                                 """, (limit,))
+            data = await cursor.fetchall()
+
+            return [{
+                "id": row[0],
+                "concept_id": row[1],
+                "concept_nom": row[2],
+                "username": row[3],
+                "modified_at": row[4].isoformat() if row[4] else None,
+                "field_modified": row[5],
+                "is_rollback": row[6]
+            } for row in data]
