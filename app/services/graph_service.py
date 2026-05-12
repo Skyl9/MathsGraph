@@ -4,6 +4,7 @@ from typing import List
 from psycopg import AsyncConnection
 
 from app.schemas import Nodes, GraphData
+from app.schemas.GraphData import Edge
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,9 @@ class GraphService:
             await cur.execute("SELECT concept_id, vue, x, y, z FROM positions WHERE vue IN ('grille', 'arbre');")
             positions = await cur.fetchall()
 
+            await cur.execute("SELECT concept_source, concept_cible, type_relation FROM relations;")
+            relations = await cur.fetchall()
+
         positions_dict = {}
         for concept_id, vue, x, y, z in positions:
             if concept_id not in positions_dict:
@@ -90,7 +94,14 @@ class GraphService:
                 "typeMath": concept_type,
                 "position": positions_dict.get(concept_id, {})
             })
-        logger.info(
-            f"Graphe extrait avec succès : {len(nodes)} noeuds,  arêtes")
+        edges: List[Edge] = []
+        for start_id, end_id, type_relation in relations:
+            edges.append({
+                "start": start_id,
+                "end": end_id,
+                "type": type_relation
+            })
 
-        return {'nodes': nodes, "edges": []}
+        logger.info(f"Graphe extrait avec succès : {len(nodes)} noeuds, {len(edges)} arêtes")
+
+        return {'nodes': nodes, 'edges': edges}

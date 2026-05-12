@@ -24,7 +24,7 @@ async def register_user(user: UserCreate, db: AsyncConnection = Depends(get_db))
         raise InternalServerError(detail=str(exc))
 
 
-@router.post("/token", response_model=ApiResponse[Token])
+@router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),
                                  db: AsyncConnection = Depends(get_db)):
     try:
@@ -32,7 +32,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             token: Token = await AuthService(db).login_for_access_token(form_data)
 
         logger.debug(f"Route POST /login a token successfully")
-        return {"error": None, "success": True, "data": token, "meta": None}
+        # Le standard est de retourner le token diretement
+        return token
     except InternalServerError as exc:
         logger.error(f"Route POST /{router.prefix}/login Erreur : {str(exc)}")
         raise InternalServerError(detail=str(exc))

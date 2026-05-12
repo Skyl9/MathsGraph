@@ -38,8 +38,8 @@ async def test_login(async_client, setup_test_user):
 
     assert response.status_code == 200, "Connexion réussie"
     response_body = response.json()
-    assert "access_token" in response_body["data"]
-    assert response_body["data"]["token_type"] == "bearer"
+    assert "access_token" in response_body
+    assert response_body["token_type"] == "bearer"
 
 @pytest.mark.asyncio
 async def test_request_password_token(transaction,async_client, setup_test_user,):

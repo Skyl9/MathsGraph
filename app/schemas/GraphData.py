@@ -13,7 +13,11 @@ class Nodes(BaseModel):
     typeMath:str
     position: Dict[str, Position]
 
+class Edge(BaseModel):
+    start: int
+    end: int
+    type: str
 
 class GraphData(BaseModel):
     nodes: Optional[List[Nodes]]
-    edges: Optional[List[dict]]
+    edges: Optional[List[Edge]]

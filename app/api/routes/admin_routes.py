@@ -10,6 +10,7 @@ from app.schemas import Response
 from app.schemas.admin import Stat, ConceptForAdmin
 from app.schemas.auth import User
 from app.services.admin_service import AdminService, logger
+from app.services.layout_service import LayoutService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -45,4 +46,20 @@ async def get_contents(db: AsyncConnection = Depends(get_db), _payload: dict = D
         return {"error": None, "data": data, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route GET /{router.prefix}/contents a : {str(exc)}")
+        raise InternalServerError(str(exc)) from exc
+
+
+@router.post("/recalculate-graph", summary="Recalcule la physique 3D du graphe", response_model=Response)
+async def recalculate_graph_layout(
+        db: AsyncConnection = Depends(get_db),
+        _payload: dict = Depends(get_current_admin_payload)
+):
+    try:
+        # On lance le calcul physique
+        await LayoutService(db).recalculate_positions(vue='grille')
+        logger.debug(f"Route POST /{router.prefix}/recalculate-graph exécutée avec succès")
+
+        return {"error": None, "data": "Graphe recalculé avec succès", "success": True, "meta": None}
+    except InternalServerError as exc:
+        logger.error(f"Erreur de Route POST /{router.prefix}/recalculate-graph : {exc}")
         raise InternalServerError(str(exc)) from exc
