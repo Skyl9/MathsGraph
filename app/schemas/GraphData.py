@@ -3,9 +3,9 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 
 class Position(BaseModel):
-    x:Optional[int]
-    y:Optional[int]
-    z:Optional[int]
+    x: Optional[float]
+    y: Optional[float]
+    z: Optional[float]
 
 class Nodes(BaseModel):
     id: int

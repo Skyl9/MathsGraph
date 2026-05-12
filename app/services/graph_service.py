@@ -73,7 +73,8 @@ class GraphService:
             concepts = await cur.fetchall()
 
             # Récupérer les positions des concepts
-            await cur.execute("SELECT concept_id, vue, x, y, z FROM positions WHERE vue IN ('grille', 'arbre');")
+            await cur.execute(
+                "SELECT concept_id, vue, x, y, z FROM positions WHERE vue IN ('grille', 'arbre', 'physique');")
             positions = await cur.fetchall()
 
             await cur.execute("SELECT concept_source, concept_cible, type_relation FROM relations;")

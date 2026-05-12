@@ -56,7 +56,7 @@ async def recalculate_graph_layout(
 ):
     try:
         # On lance le calcul physique
-        await LayoutService(db).recalculate_positions(vue='grille')
+        await LayoutService(db).recalculate_positions()
         logger.debug(f"Route POST /{router.prefix}/recalculate-graph exécutée avec succès")
 
         return {"error": None, "data": "Graphe recalculé avec succès", "success": True, "meta": None}
