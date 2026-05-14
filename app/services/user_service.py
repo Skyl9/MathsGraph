@@ -2,7 +2,7 @@ from datetime import datetime
 
 from psycopg import AsyncConnection
 
-from app.core.exceptions import NotFoundException, BadRequestException
+from app.core.exceptions import NotFoundException, BadRequestException, InternalServerError
 from app.schemas.user import UserId, UpdateUser, Favorite
 from app.utils.db_utils import get_id_by_field
 
@@ -134,3 +134,47 @@ class UserService:
             elif data["type"] == "type":
                 await cursor.execute(f"INSERT INTO user_favorites (user_id, type_id) VALUES (%s, %s);", (data["user_id"],general_id))
 
+    async def get_history_user(self, user_id: int, limit: int = 20) -> list[dict]:
+        """
+        Récupère l'historique des contributions d'un utilisateur spécifique.
+        """
+        query = """
+                SELECT cv.id, \
+                       cv.concept_id, \
+                       c.nom AS concept_nom, \
+                       u.username, \
+                       cv.modified_at, \
+                       cv.field_modified, \
+                       cv.is_rollback
+                FROM concept_versions cv
+                         JOIN concepts c ON cv.concept_id = c.id
+                         JOIN users u ON cv.modified_by = u.id
+                WHERE cv.modified_by = %s
+                ORDER BY cv.modified_at DESC
+                LIMIT %s; \
+                """
+
+        try:
+            async with self.db.cursor() as cur:
+                await cur.execute(query, (user_id, limit))
+                rows = await cur.fetchall()
+
+            # Formatage pour correspondre exactement à l'interface `RecentChange` du frontend
+            contributions = []
+            for row in rows:
+                contributions.append({
+                    "id": row[0],
+                    "concept_id": row[1],
+                    "concept_nom": row[2],
+                    "username": row[3],
+                    # psycopg renvoie des objets datetime, on les passe en chaîne ISO pour le JSON
+                    "modified_at": row[4].isoformat() if row[4] else None,
+                    "field_modified": row[5],
+                    "is_rollback": row[6]
+                })
+
+            return contributions
+
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération de l'historique de l'utilisateur {user_id} : {e}")
+            raise InternalServerError("Impossible de récupérer l'historique de l'utilisateur.")

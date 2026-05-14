@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from psycopg import AsyncConnection
 
 from app.core.deps import get_current_user_payload
@@ -51,6 +51,16 @@ async def patch_user(
         logger.error(f"Route PATCH /{router.prefix}/update/{id_user} Erreur : {exc}")
         raise InternalServerError(str(exc)) from exc
 
+@router.get("/history/{id_user}",summary = "Donne la liste des concepts modifié par un utilisateur")
+async def get_history_user(id_user: int,
+                           limit: int = Query(20, ge=1, le=100),
+                           db: AsyncConnection = Depends(get_db)):
+    try:
+        data = await UserService(db).get_history_user(id_user,limit)
+        return {"error": None, "data": data, "success": True, "meta": None}
+    except InternalServerError as exc:
+        logger.error(f"Route PATCH /{router.prefix}/update/{id_user} Erreur : {exc}")
+        raise InternalServerError(str(exc)) from exc
 
 @router.get("/favorite/{user_id}", summary="Récupère les favoris d'un utilisateur", response_model=Response[List[FavoriteResponse]])
 async def get_favorite_user(user_id: int, db: AsyncConnection = Depends(get_db)):
@@ -71,9 +81,7 @@ async def delete_favorite_user(
     current_user: dict = Depends(get_current_user_payload)
 ):
     try:
-        async with db.transaction():
-            await UserService(db).delete_favorite_user(general_id, data)
-        logger.debug(f"Route DELETE /{router.prefix}/favorite/delete/{general_id} a correctement supprimé le favori")
+        await UserService(db).delete_favorite_user(general_id, data)
         return {"error": None, "data": None, "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Route DELETE /{router.prefix}/favorite/delete/{general_id} Erreur : {exc}")

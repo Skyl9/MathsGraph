@@ -10,7 +10,7 @@ from psycopg import AsyncConnection
 
 from app import settings
 from app.core.security import get_password_hash, verify_password, create_access_token
-from app.core.exceptions import BadRequestException, AuthenticationException
+from app.core.exceptions import BadRequestException, AuthenticationException, ConflictException
 from app.schemas.auth import PasswordResetConfirmSchema, UserCreate
 import logging
 
@@ -22,38 +22,40 @@ class AuthService:
         self.db = db
 
     async def register_user(self, user: UserCreate):
-        async with self.db.cursor() as cursor:
-            # Vérifier si l'utilisateur existe déjà
-            await cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s",
-                                 (user.username, user.email))
-            if await cursor.fetchone():
-                raise HTTPException(
-                    status_code=400,
-                    detail="Username ou email déjà utilisé"
+            async with self.db.cursor() as cursor:
+                # Vérifier si l'utilisateur existe déjà
+                await cursor.execute("SELECT username, email FROM users WHERE username = %s OR email = %s",
+                                     (user.username, user.email))
+                existing_user = await cursor.fetchone()
+
+                if existing_user:
+                    if existing_user[0] == user.username:
+                        raise ConflictException(detail="Ce nom d'utilisateur est déjà pris.")
+                    else:
+                        raise ConflictException(detail="Cet email est déjà associé à un compte.")
+                # Hasher le mot de passe
+                hashed_password = get_password_hash(user.password)
+
+                # Créer l'utilisateur
+                await cursor.execute(
+                    """
+                    INSERT INTO users (username, email, password_hash)
+                    VALUES (%s, %s, %s)
+                    RETURNING id, username, email, is_active,role,created_at
+                    """,
+                    (user.username, user.email, hashed_password)
                 )
-            # Hasher le mot de passe
-            hashed_password = get_password_hash(user.password)
+                new_user = await cursor.fetchone()
+            print(f"Etat de la transaction après l'insertion : {self.db.info.transaction_status}")
 
-            # Créer l'utilisateur
-            await cursor.execute(
-                """
-                INSERT INTO users (username, email, password_hash)
-                VALUES (%s, %s, %s)
-                RETURNING id, username, email, is_active,role,created_at
-                """,
-                (user.username, user.email, hashed_password)
-            )
-            new_user = await cursor.fetchone()
-        print(f"Etat de la transaction après l'insertion : {self.db.info.transaction_status}")
-
-        return {
-            "id": new_user[0],
-            "username": new_user[1],
-            "email": new_user[2],
-            "is_active": new_user[3],
-            "role": new_user[4],
-            "created_at": new_user[5]
-        }
+            return {
+                "id": new_user[0],
+                "username": new_user[1],
+                "email": new_user[2],
+                "is_active": new_user[3],
+                "role": new_user[4],
+                "created_at": new_user[5]
+            }
 
     async def login_for_access_token(self, form_data: OAuth2PasswordRequestForm = Depends()):
 

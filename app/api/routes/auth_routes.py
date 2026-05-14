@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from psycopg import AsyncConnection
 
-from app.core.exceptions import InternalServerError
+from app.core.exceptions import InternalServerError, ConflictException
 from app.db.database import get_db
 from app.schemas.response import Response as ApiResponse
 from app.schemas.auth import Token, UserCreate, User, PasswordResetRequestSchema, PasswordResetConfirmSchema
@@ -19,6 +19,10 @@ async def register_user(user: UserCreate, db: AsyncConnection = Depends(get_db))
             userCreated: User = await AuthService(db).register_user(user)
         logger.debug(f"Route POST /register user {str(userCreated)} registered successfully")
         return {"error": None, "success": True, "data": userCreated, "meta": None}
+    except ConflictException as exc:
+        # 🌟 On attrape ton erreur spécifique !
+        logger.warning(f"Route POST /register Refusé (Conflit) : {exc.detail}")
+        raise exc
     except InternalServerError as exc:
         logger.error(f"Route POST /{router.prefix}/register Erreur : {str(exc)}")
         raise InternalServerError(detail=str(exc))
