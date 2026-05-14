@@ -90,3 +90,25 @@ class MathematicienService:
         if mathematicien is None:
             return None
         return {"id": mathematicien[0], "nom": nom}
+
+    async def get_timeline_data(self):
+        async with self.db.cursor() as cur:
+            # On ne prend que ceux qui ont une date de naissance, triés chronologiquement
+            await cur.execute("""
+                              SELECT id, nom, date_naissance, date_deces, biographie, epoque
+                              FROM mathematiciens
+                              WHERE date_naissance IS NOT NULL
+                              ORDER BY date_naissance ASC;
+                              """)
+            rows = await cur.fetchall()
+
+        return [
+            {
+                "id": r[0],
+                "nom": r[1],
+                "date_naissance": r[2].isoformat() if r[2] else None,
+                "date_deces": r[3].isoformat() if r[3] else None,
+                "biographie": r[4][:200] + "..." if r[4] and len(r[4]) > 200 else r[4],  # Un résumé
+                "epoque": r[5]
+            } for r in rows
+        ]

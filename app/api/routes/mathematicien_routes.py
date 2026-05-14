@@ -36,7 +36,7 @@ async def updateOneCategoryMathematicien_E(
         async with db.transaction():
             await MathematicienService(db).update_mathematicien(id_mathematicien, data)
         logger.debug(f"Route PATCH {router.prefix}/update/{id_mathematicien} a été effectué avec succès")
-        return {"success": True, data: "", "error": None,"meta": None}
+        return {"success": True, "error": None,"meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur interne dans PATCH /{router.prefix}/update/{id_mathematicien} : %s", exc)
         raise InternalServerError(detail=str(exc))
@@ -77,4 +77,12 @@ async def get_mathematicien_by_name(name: str, db: AsyncConnection = Depends(get
         return {"success": True, "data": mathematicien_id, "error": None,"meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur interne dans GET /{router.prefix}/name/{name} : %s", exc)
+        raise InternalServerError(detail=str(exc))
+
+@router.get("/timeline/all", summary="Récupère les données pour la frise chronologique", response_model=Response)
+async def get_mathematiciens_timeline(db: AsyncConnection = Depends(get_db)):
+    try:
+        data = await MathematicienService(db).get_timeline_data()
+        return {"success": True, "data": data, "error": None, "meta": None}
+    except InternalServerError as exc:
         raise InternalServerError(detail=str(exc))
