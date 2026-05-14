@@ -5,6 +5,7 @@ from psycopg import AsyncConnection
 
 from app.core.deps import get_current_admin_payload
 from app.core.exceptions import InternalServerError
+from app.core.redis_client import redis_db
 from app.db.database import get_db
 from app.schemas import Response
 from app.schemas.admin import Stat, ConceptForAdmin
@@ -58,7 +59,7 @@ async def recalculate_graph_layout(
         # On lance le calcul physique
         await LayoutService(db).recalculate_positions()
         logger.debug(f"Route POST /{router.prefix}/recalculate-graph exécutée avec succès")
-
+        await redis_db.delete("mathgraph:data")
         return {"error": None, "data": "Graphe recalculé avec succès", "success": True, "meta": None}
     except InternalServerError as exc:
         logger.error(f"Erreur de Route POST /{router.prefix}/recalculate-graph : {exc}")

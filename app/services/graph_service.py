@@ -65,6 +65,7 @@ class GraphService:
                """
 
         logger.info("Début de l'extraction du graphe")
+
         async with self.db.cursor() as cur:
 
             # Récupérer les informations de base des concepts

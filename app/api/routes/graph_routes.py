@@ -1,7 +1,10 @@
+import json
+
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
 from app.core.exceptions import InternalServerError
+from app.core.redis_client import redis_db
 from app.db.database import get_db
 from app.schemas import GraphData, Response
 from app.services.graph_service import GraphService, logger
@@ -12,10 +15,15 @@ router = APIRouter(prefix="/graph", tags=["graph"])
 @router.get("", response_model=Response[GraphData])
 async def get_graph(db: AsyncConnection = Depends(get_db)):
     try:
+        cached_graph = await redis_db.get("mathgraph:data")
+        if cached_graph:
+            logger.debug("Graphe servi depuis le cache Redis ⚡")
+            return {"success": True, "data": cached_graph, "error": None, "meta": None}
         graph: GraphData = await GraphService(db).get_graph()
+        await redis_db.set("mathgraph:data", json.dumps(graph), ex=86400)
         logger.debug("Route GET /graph a renvoyé %d nœuds", len(graph["nodes"]))
-        return {"success": True, "data": graph, "error": None, "meta": None}
-
+        return {"success": True, "data": graph, "error": None, "meta": {"source": "db"}}
+    
     except InternalServerError as exc:
         logger.error("Erreur interne dans GET /graph : %s", exc)
         raise InternalServerError(detail=str(exc))
