@@ -1,3 +1,4 @@
+import logging
 import time
 from contextlib import asynccontextmanager
 
@@ -16,6 +17,8 @@ from app.core.exceptions import BadRequestException, NotFoundException, Authenti
 from app.db import database as db
 
 setup_logging()
+
+logger = logging.getLogger(__name__)
 
 def error_response(status_code: int, error: str):
     return {"success": False, "error": error, "data": None}
@@ -109,12 +112,15 @@ async def not_found_exception_handler(request: Request, exc: ConflictException):
         content=error_response(exc.status_code, exc.detail)
     )
 
+
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    # ici on peut logger exc
+    logger.exception(f"Erreur non gérée sur la route {request.method} {request.url.path}")
+
     return JSONResponse(
         status_code=500,
-        content=error_response(500, "Une erreur inattendue est survenue")
+        content={"success": False, "error": "Une erreur inattendue est survenue côté serveur.", "data": None,
+                 "meta": None}
     )
 
 
