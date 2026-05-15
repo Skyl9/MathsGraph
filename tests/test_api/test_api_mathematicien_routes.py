@@ -17,7 +17,7 @@ async def test_add_mathematicien_success(async_client: AsyncClient, transaction:
     """
     headers = create_headers_token(setup_user_token_admin)
     test_name = "Ada Lovelace"
-    response = await async_client.post("/mathematicien/create", json={"value": test_name},headers=headers)
+    response = await async_client.post("/mathematicien", json={"value": test_name},headers=headers)
 
     assert response.status_code == 200
     res_data = response.json()

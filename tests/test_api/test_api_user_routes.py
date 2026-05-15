@@ -56,7 +56,7 @@ async def test_update_user(async_client: AsyncClient, setup_test_user, setup_use
         "field": "email",
         "value": "test.r@gmail.com"
     }
-    response = await async_client.patch(f"/user/update/{user_id}", json=payload, headers=headers)
+    response = await async_client.patch(f"/user/{user_id}", json=payload, headers=headers)
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["success"] is True
@@ -70,7 +70,7 @@ async def test_update_user_wrong_field(async_client: AsyncClient, setup_test_use
         "field": "WrongField",
         "value": "test.r@gmail.com"
     }
-    response = await async_client.patch(f"/user/update/{user_id}", json=payload, headers=headers)
+    response = await async_client.patch(f"/user/{user_id}", json=payload, headers=headers)
     assert response.status_code == 400
     data = response.json()
     assert data["success"] is False
@@ -85,7 +85,7 @@ async def test_update_user_not_found(async_client: AsyncClient, setup_test_user,
         "field": "email",
         "value": "test.r@gmail.com"
     }
-    response = await async_client.patch(f"/user/update/{user_id}", json=payload, headers=headers)
+    response = await async_client.patch(f"/user/{user_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
@@ -134,7 +134,7 @@ async def test_delete_user_fav(async_client: AsyncClient, transaction, setup_tes
         "type": "concept",
         "user_id": str(user_id)
     }
-    response = await async_client.request("DELETE", f"/user/favorite/delete/{concept_id}", json=payload, headers=headers)
+    response = await async_client.request("DELETE", f"/user/favorite/{concept_id}", json=payload, headers=headers)
 
     assert response.status_code == 200
 
@@ -149,7 +149,7 @@ async def test_delete_user_fav_wrong_user(async_client: AsyncClient, transaction
         "type": "concept",
         "user_id": str(user_id)
     }
-    response = await async_client.request("DELETE", f"/user/favorite/delete/{concept_id}", json=payload, headers=headers)
+    response = await async_client.request("DELETE", f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
@@ -166,7 +166,7 @@ async def test_delete_user_fav_wrong_concept(async_client: AsyncClient, transact
         "type": "concept",
         "user_id": str(user_id)
     }
-    response = await async_client.request("DELETE", f"/user/favorite/delete/{concept_id}", json=payload, headers=headers)
+    response = await async_client.request("DELETE", f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
@@ -182,7 +182,7 @@ async def test_add_user_fav(async_client: AsyncClient, transaction, setup_test_u
         "user_id": str(user_id),
         "type": "concept"
     }
-    response = await async_client.post(f"/user/favorite/add/{concept_id}", json=payload, headers=headers)
+    response = await async_client.post(f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 200
 
 
@@ -195,7 +195,7 @@ async def test_add_user_fav_no_concept(async_client: AsyncClient, transaction, s
         "user_id": str(user_id),
         "type": "concept"
     }
-    response = await async_client.post(f"/user/favorite/add/{concept_id}", json=payload, headers=headers)
+    response = await async_client.post(f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
@@ -211,7 +211,7 @@ async def test_add_user_fav_no_user(async_client: AsyncClient, transaction, setu
         "user_id": str(user_id),
         "type": "concept"
     }
-    response = await async_client.post(f"/user/favorite/add/{concept_id}", json=payload, headers=headers)
+    response = await async_client.post(f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
     assert data["success"] is False

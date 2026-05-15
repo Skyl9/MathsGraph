@@ -10,7 +10,7 @@ from app.services.source_service import SourceService, logger
 router = APIRouter(prefix="/source", tags=["source"])
 
 
-@router.post("/create", summary="Crée une nouvelle source", response_model=Response)
+@router.post("", summary="Crée une nouvelle source", response_model=Response)
 async def create_source(
     data: CreateSource, 
     db: AsyncConnection = Depends(get_db),

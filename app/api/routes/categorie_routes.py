@@ -24,7 +24,7 @@ async def get_one_category_E(id_category: int, db: AsyncConnection = Depends(get
         raise InternalServerError(str(exc)) from exc
 
 
-@router.patch("/update/{id_category}", response_model=Response)
+@router.patch("/{id_category}", response_model=Response)
 async def update_category_E(
     id_category: int, 
     data: dict, 
@@ -54,7 +54,7 @@ async def all_category(db: AsyncConnection = Depends(get_db)):
         raise InternalServerError(str(exc)) from exc
 
 
-@router.post("/create", response_model=Response)
+@router.post("", response_model=Response)
 async def create_category(
     data: CreateData, 
     db: AsyncConnection = Depends(get_db),

@@ -35,7 +35,7 @@ async def get_id_by_username(username: str, db: AsyncConnection = Depends(get_db
         raise InternalServerError(str(exc)) from exc
 
 
-@router.patch("/update/{id_user}", summary="Met à jour les informations d'un utilisateur", response_model=Response)
+@router.patch("/{id_user}", summary="Met à jour les informations d'un utilisateur", response_model=Response)
 async def patch_user(
     id_user: str, 
     data: UpdateUser, 
@@ -73,7 +73,7 @@ async def get_favorite_user(user_id: int, db: AsyncConnection = Depends(get_db))
         raise InternalServerError(str(exc)) from exc
 
 
-@router.delete("/favorite/delete/{general_id}", summary="Supprime un favori d'un utilisateur", response_model=Response)
+@router.delete("/favorite/{general_id}", summary="Supprime un favori d'un utilisateur", response_model=Response)
 async def delete_favorite_user(
     general_id: int, 
     data: Favorite, 
@@ -88,7 +88,7 @@ async def delete_favorite_user(
         raise InternalServerError(str(exc)) from exc
 
 
-@router.post("/favorite/add/{general_id}", summary="Ajoute un favori à un utilisateur", response_model=Response)
+@router.post("/favorite/{general_id}", summary="Ajoute un favori à un utilisateur", response_model=Response)
 async def add_favorite_user(
     general_id: int, 
     data: Favorite, 

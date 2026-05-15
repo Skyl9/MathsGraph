@@ -10,7 +10,7 @@ from app.services.relation_service import RelationService, logger
 router = APIRouter(prefix="/relation", tags=["relation"])
 
 
-@router.post("/create", summary="Crée une nouvelle relation", response_model=Response)
+@router.post("", summary="Crée une nouvelle relation", response_model=Response)
 async def create_relation(
     data: CreateRelation, 
     db: AsyncConnection = Depends(get_db),

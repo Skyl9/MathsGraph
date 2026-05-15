@@ -25,7 +25,7 @@ async def get_one_mathematicien_E(id_mathematicien: int, db: AsyncConnection = D
         raise InternalServerError(detail=str(exc))
 
 
-@router.patch("/update/{id_mathematicien}", response_model=Response)
+@router.patch("/{id_mathematicien}", response_model=Response)
 async def updateOneCategoryMathematicien_E(
     id_mathematicien: int, 
     data: dict, 
@@ -53,7 +53,7 @@ async def mathematicienName(db: AsyncConnection = Depends(get_db)):
         raise InternalServerError(detail=str(exc))
 
 
-@router.post('/create', response_model=Response)
+@router.post('', response_model=Response)
 async def add_mathematicien(
     data: CreateData, 
     db: AsyncConnection = Depends(get_db),

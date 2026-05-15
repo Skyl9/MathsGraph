@@ -122,7 +122,7 @@ async def test_update_concept_simple_field_success(async_client: AsyncClient, se
     get_response = await async_client.get(f"/concept/{concept_id}")
     get_data = get_response.json()
 
-    response = await async_client.patch(f"/update/{concept_id}", json=update_data, headers=headers)
+    response = await async_client.patch(f"/concept/{concept_id}", json=update_data, headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -161,7 +161,7 @@ async def test_update_concept_invalid_id(async_client: AsyncClient, setup_test_u
         "note": "Test invalid ID",
         "username": setup_test_user["username"]
     }
-    response = await async_client.patch("/update/99999", json=update_data,headers=headers)
+    response = await async_client.patch("/concept/99999", json=update_data,headers=headers)
     assert response.status_code == 404  # Si NotFoundException est convertie en InternalServerError
     data = response.json()
     assert data["success"] is False
@@ -186,7 +186,7 @@ async def test_rollback_concept_success(async_client: AsyncClient, setup_full_te
         "note": "Temporary name",
         "username": setup_test_user["username"]
     }
-    await async_client.patch(f"/update/{concept_id}", json=first_update_data, headers=headers)
+    await async_client.patch(f"/concept/{concept_id}", json=first_update_data, headers=headers)
 
     # Étape 2: Obtenir l'historique pour trouver la version originale (avant la mise à jour)
     history_response = await async_client.get(f"/concept/history/{concept_id}")
@@ -243,13 +243,13 @@ async def test_get_concept_history_success(async_client: AsyncClient, setup_full
     concept_id = setup_full_test_concept["concept"]["id"]
 
     # Créer quelques entrées d'historique via des mises à jour API
-    await async_client.patch(f"/update/{concept_id}", json={
+    await async_client.patch(f"/concept/{concept_id}", json={
         "field": "nom", "value": "Name Change 1", "note": "Note 1", "username": setup_test_user["username"]
     },headers=headers)
-    await async_client.patch(f"/update/{concept_id}", json={
+    await async_client.patch(f"/concept/{concept_id}", json={
         "field": "enonce", "value": "Enonce Change 1", "note": "Note 2", "username": setup_test_user["username"]
     },headers=headers)
-    await async_client.patch(f"/update/{concept_id}", json={
+    await async_client.patch(f"/concept/{concept_id}", json={
         "field": "nom", "value": "Name Change 2", "note": "Note 3", "username": setup_test_user["username"]
     },headers=headers)
 

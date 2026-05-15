@@ -62,7 +62,7 @@ async def getHistory(concept_id: int, db: AsyncConnection = Depends(get_db)):
         raise InternalServerError(str(exc)) from exc
 
 
-@router.patch("/update/{concept_id}",response_model=Response)
+@router.patch("/concept/{concept_id}",response_model=Response)
 async def updateConcept(concept_id: int, data: UpdateConceptDict, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
         data.username = current_user.get("sub")

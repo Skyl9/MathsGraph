@@ -30,7 +30,7 @@ async def test_update_type(transaction,async_client: httpx.AsyncClient, setup_te
         "value":"new_type",
         "field":"type"
     }
-    response = await async_client.patch(f"/type/update/{type_id}", json=payload, headers=headers)
+    response = await async_client.patch(f"/type/{type_id}", json=payload, headers=headers)
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["success"] is True
@@ -48,7 +48,7 @@ async def test_update_type_no_type(transaction,async_client: httpx.AsyncClient, 
         "value":"new_type",
         "field":"type"
     }
-    response = await async_client.patch(f"/type/update/{type_id}", json=payload, headers=headers)
+    response = await async_client.patch(f"/type/{type_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
@@ -62,7 +62,7 @@ async def test_wrong_field_update_type(transaction,async_client: httpx.AsyncClie
         "value":"new_type",
         "field":"wrong_field"
     }
-    response = await async_client.patch(f"/type/update/{type_id}", json=payload, headers=headers)
+    response = await async_client.patch(f"/type/{type_id}", json=payload, headers=headers)
     assert response.status_code == 403
     data = response.json()
     assert data["success"] is False
@@ -88,7 +88,7 @@ async def test_create_type(transaction,async_client: httpx.AsyncClient, setup_us
     payload = {
         "value":"new_type"
     }
-    response = await async_client.post("/type/create", json=payload, headers=headers)
+    response = await async_client.post("/type", json=payload, headers=headers)
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["success"] is True
@@ -107,7 +107,7 @@ async def test_create_type_empty(transaction,async_client: httpx.AsyncClient, se
     payload = {
         "value":""
     }
-    response = await async_client.post("/type/create", json=payload, headers=headers)
+    response = await async_client.post("/type", json=payload, headers=headers)
     assert response.status_code == 400
     response_data = response.json()
     assert response_data["success"] is False
@@ -120,7 +120,7 @@ async def test_create_type_conflict(transaction,async_client: httpx.AsyncClient,
     payload = {
         "value":setup_test_type["type"]
     }
-    response = await async_client.post("/type/create", json=payload, headers=headers)
+    response = await async_client.post("/type", json=payload, headers=headers)
     assert response.status_code == 409
 
 @pytest.mark.asyncio

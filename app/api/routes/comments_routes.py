@@ -34,7 +34,7 @@ async def get_comments(concept_id: int, db: AsyncConnection = Depends(get_db)):
         raise InternalServerError(str(exc)) from exc
 
 
-@router.post("/add/{concept_id}", summary="Ajoute un commentaire à un concept", response_model=Response)
+@router.post("/{concept_id}", summary="Ajoute un commentaire à un concept", response_model=Response)
 async def post_comment(
     concept_id: int, 
     data: CommentIn, 
@@ -57,7 +57,7 @@ async def post_comment(
         raise InternalServerError(str(exc)) from exc
 
 
-@router.patch("/update/{comment_id}", summary="Met à jour le contenu d'un commentaire", response_model=Response)
+@router.patch("/{comment_id}", summary="Met à jour le contenu d'un commentaire", response_model=Response)
 async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
         async with db.transaction():
@@ -69,7 +69,7 @@ async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnecti
         raise InternalServerError(str(exc)) from exc
 
 
-@router.delete("/delete/{comment_id}", summary="Supprime un commentaire", response_model=Response)
+@router.delete("/{comment_id}", summary="Supprime un commentaire", response_model=Response)
 async def delete_comment(comment_id: int, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
     try:
         async with db.transaction():

@@ -24,7 +24,7 @@ async def get_one_type_E(id_type: int, db: AsyncConnection = Depends(get_db)):
         raise InternalServerError(str(exc)) from exc
 
 
-@router.patch("/update/{id_type}", summary="Met à jour un type", response_model=Response)
+@router.patch("/{id_type}", summary="Met à jour un type", response_model=Response)
 async def update_type_E(
     id_type: int, 
     data: TypeUpdate, 
@@ -52,7 +52,7 @@ async def get_all_type(db: AsyncConnection = Depends(get_db)):
         raise InternalServerError(str(exc)) from exc
 
 
-@router.post("/create", summary="Crée un nouveau type", response_model=Response)
+@router.post("", summary="Crée un nouveau type", response_model=Response)
 async def create_type(
     data: CreateData, 
     db: AsyncConnection = Depends(get_db),

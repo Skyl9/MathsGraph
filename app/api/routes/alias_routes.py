@@ -10,7 +10,7 @@ from app.services.alias_service import AliasService, logger
 router = APIRouter(prefix="/alias", tags=["alias"])
 
 
-@router.post("/create", response_model=Response)
+@router.post("", response_model=Response)
 async def create_alias(
     data: CreateAlias, 
     db: AsyncConnection = Depends(get_db),

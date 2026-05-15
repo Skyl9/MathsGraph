@@ -25,7 +25,7 @@ async def test_create_relation_success(async_client: AsyncClient, setup_two_conc
         }
     }
 
-    response = await async_client.post("/relation/create", json=payload,headers=headers)
+    response = await async_client.post("/relation", json=payload,headers=headers)
 
     assert response.status_code == 200
     res_data = response.json()
@@ -73,7 +73,7 @@ async def test_create_relation_concept_not_found(async_client: AsyncClient, setu
             "desc": "Test avec source inexistante"
         }
     }
-    response1 = await async_client.post("/relation/create", json=payload1,headers=headers)
+    response1 = await async_client.post("/relation", json=payload1,headers=headers)
     assert response1.status_code == 404
     assert "Concept not found" in response1.json()["error"]
 
@@ -86,7 +86,7 @@ async def test_create_relation_concept_not_found(async_client: AsyncClient, setu
             "desc": "Test avec cible inexistante"
         }
     }
-    response2 = await async_client.post("/relation/create", json=payload2,headers=headers)
+    response2 = await async_client.post("/relation", json=payload2,headers=headers)
     assert response2.status_code == 404
     assert "Concept not found" in response2.json()["error"]
 
@@ -99,7 +99,7 @@ async def test_create_relation_concept_not_found(async_client: AsyncClient, setu
             "desc": "Test avec les deux inexistants"
         }
     }
-    response3 = await async_client.post("/relation/create", json=payload3,headers=headers)
+    response3 = await async_client.post("/relation", json=payload3,headers=headers)
     assert response3.status_code == 404
     assert "Concept not found" in response3.json()["error"]
 
@@ -125,11 +125,11 @@ async def test_create_relation_conflict(async_client: AsyncClient, setup_two_con
     }
 
     # Créer la relation une première fois avec succès
-    first_response = await async_client.post("/relation/create", json=payload,headers=headers)
+    first_response = await async_client.post("/relation", json=payload,headers=headers)
     assert first_response.status_code == 200
 
     # Tenter de créer la même relation une seconde fois
-    second_response = await async_client.post("/relation/create", json=payload,headers=headers)
+    second_response = await async_client.post("/relation", json=payload,headers=headers)
 
     assert second_response.status_code == 409  # Code pour ConflictException
     assert "Relation already exists" in second_response.json()["error"]
