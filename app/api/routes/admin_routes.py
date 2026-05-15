@@ -18,7 +18,6 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/stats", response_model=Response[Stat])
 async def get_stats(db: AsyncConnection = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
     data: Stat = await AdminService(db).get_stats()
-    print(data)
     logger.debug(f"Route GET {router.prefix}/stats a renvoyé : ,{str(data)}")
     return {"error": None, "data": data, "success": True, "meta": None}
 

@@ -25,7 +25,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     async with db.transaction():
         token: Token = await AuthService(db).login_for_access_token(form_data)
 
-    logger.debug(f"Route POST /login a token successfully")
+    logger.debug("Route POST /token: access token generated successfully")
     # Le standard est de retourner le token diretement
     return token
 

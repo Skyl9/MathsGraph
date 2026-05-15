@@ -46,7 +46,6 @@ class AuthService:
                     (user.username, user.email, hashed_password)
                 )
                 new_user = await cursor.fetchone()
-            print(f"Etat de la transaction après l'insertion : {self.db.info.transaction_status}")
 
             return {
                 "id": new_user[0],

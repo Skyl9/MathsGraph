@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
-from app.core.deps import get_current_active_user, get_current_user_payload
+from app.core.deps import get_current_user_payload
 from app.db.database import get_db
 from app.schemas import Response
 from app.schemas.comments import CommentIn, CommentUpdate, CommentResponse
@@ -53,7 +53,7 @@ async def update_comment(comment_id: int, data: CommentUpdate, db: AsyncConnecti
 
 
 @router.delete("/{comment_id}", summary="Supprime un commentaire", response_model=Response)
-async def delete_comment(comment_id: int, db: AsyncConnection = Depends(get_db),current_user: dict = Depends(get_current_user_payload)):
+async def delete_comment(comment_id: int, db: AsyncConnection = Depends(get_db), current_user: dict = Depends(get_current_user_payload)):
     async with db.transaction():
         await CommentsService(db).delete_comment(comment_id, current_user)
     logger.debug(f"Route DELETE /comments/delete/{comment_id} a correctement supprimé le commentaire d'id : {comment_id}")
