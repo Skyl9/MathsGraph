@@ -64,3 +64,13 @@ async def recalculate_graph_layout(
     except InternalServerError as exc:
         logger.error(f"Erreur de Route POST /{router.prefix}/recalculate-graph : {exc}")
         raise InternalServerError(str(exc)) from exc
+
+@router.get("/analytics", summary="Données d'utilisation de l'API")
+async def get_analytics(db: AsyncConnection = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
+    try:
+        data = await AdminService(db).get_api_analytics()
+        logger.debug(f"Route GET /{router.prefix}/analytics exécutée avec succès")
+        return {"error": None, "data": data, "success": True, "meta": None}
+    except InternalServerError as exc:
+        logger.error(f"Erreur de Route GET /{router.prefix}/analutics : {exc}")
+        raise InternalServerError(str(exc)) from exc

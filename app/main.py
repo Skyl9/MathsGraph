@@ -1,3 +1,4 @@
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI,Request
@@ -7,11 +8,12 @@ from starlette.responses import JSONResponse
 from app import settings
 from app.api.routes import concept_routes, auth_routes, mathematicien_routes, categorie_routes, type_routes, \
     source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes, \
-    statistics_routes
+    statistics_routes, search_routes
 from app.core.logging_config import setup_logging
 from app.core.exceptions import BadRequestException, NotFoundException, AuthenticationException, ForbiddenException, \
     InternalServerError, ConflictException
 
+from app.db import database as db
 
 setup_logging()
 
@@ -38,6 +40,28 @@ app = FastAPI(
     redirect_slashes=False
 
 )
+
+
+@app.middleware("http")
+async def log_api_calls(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = (time.time() - start_time) * 1000
+
+    ignored_paths = ["/docs", "/openapi.json", "/redoc"]
+
+    if db.pool and not any(request.url.path.startswith(p) for p in ignored_paths):
+        try:
+            async with db.pool.connection() as conn:  # Accès via le module
+                await conn.execute(
+                    "INSERT INTO api_logs (endpoint, method, status_code, duration_ms) VALUES (%s, %s, %s, %s)",
+                    (request.url.path, request.method, response.status_code, process_time)
+                )
+        except Exception as e:
+            print(f"ERREUR ANALYTICS : {e}")
+
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -113,3 +137,5 @@ app.include_router(tags_routes.router)
 
 app.include_router(comments_routes.router)
 app.include_router(admin_routes.router)
+
+app.include_router(search_routes.router)

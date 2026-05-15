@@ -18,12 +18,14 @@ async def get_graph(db: AsyncConnection = Depends(get_db)):
         cached_graph = await redis_db.get("mathgraph:data")
         if cached_graph:
             logger.debug("Graphe servi depuis le cache Redis ⚡")
-            return {"success": True, "data": cached_graph, "error": None, "meta": None}
+            return {"success": True, "data": json.loads(cached_graph), "error": None, "meta": {"source": "cache"}}
+
         graph: GraphData = await GraphService(db).get_graph()
         await redis_db.set("mathgraph:data", json.dumps(graph), ex=86400)
         logger.debug("Route GET /graph a renvoyé %d nœuds", len(graph["nodes"]))
+
         return {"success": True, "data": graph, "error": None, "meta": {"source": "db"}}
-    
-    except InternalServerError as exc:
+
+    except Exception as exc:
         logger.error("Erreur interne dans GET /graph : %s", exc)
         raise InternalServerError(detail=str(exc))

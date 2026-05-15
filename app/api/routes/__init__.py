@@ -14,7 +14,7 @@ from .user_routes import router as user_router
 from .tags_routes import router as tags_router
 from .comments_routes import router as comments_router
 from .admin_routes import router as admin_router
-
+from .search_routes import router as search_router
 
 api_router = APIRouter()
 
@@ -85,4 +85,9 @@ api_router.include_router(
     admin_router,
     prefix="/admin",
     tags=["admin"]
+)
+api_router.include_router(
+    search_router,
+    prefix="/search",
+    tags=["search"]
 )

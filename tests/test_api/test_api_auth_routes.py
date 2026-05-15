@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from psycopg import rows
 
@@ -72,5 +74,39 @@ async def test_reset_password(transaction,async_client, setup_reset_token,setup_
     response = response.json()
     msg = response["data"]
     assert response["success"] == True
+
+
+@pytest.mark.asyncio
+@patch("app.services.auth_service.smtplib.SMTP")
+async def test_request_password_token(mock_smtp, transaction, async_client, setup_test_user):
+    login_data = {
+        "email": TEST_USER_EMAIL,
+    }
+
+    response = await async_client.post("/password-reset/request", json=login_data)
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["success"] is True
+
+    async with transaction.cursor() as cur:
+        await cur.execute("SELECT id FROM users WHERE email = %s", (TEST_USER_EMAIL,))
+        user_id = await cur.fetchone()
+        assert user_id is not None
+
+        await cur.execute("SELECT token FROM password_reset_tokens WHERE user_id = %s", (user_id[0],))
+        token = await cur.fetchone()
+        assert token is not None
+
+    assert mock_smtp.called
+
+    mock_smtp_instance = mock_smtp.return_value.__enter__.return_value
+
+    assert mock_smtp_instance.starttls.called
+    assert mock_smtp_instance.login.called
+    assert mock_smtp_instance.sendmail.called
+
+    args, kwargs = mock_smtp_instance.sendmail.call_args
+    assert args[1] == TEST_USER_EMAIL  # Le destinataire
 
 
