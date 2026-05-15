@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
 from app.core.deps import get_current_user_payload
-from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import CreateAlias, Response
 from app.services.alias_service import AliasService, logger
@@ -35,11 +34,7 @@ async def create_alias(
         InternalServerError: Si une erreur survient lors de la
             création de l'alias dans la base de données.
     """
-    try:
-        async with db.transaction():
-            await AliasService(db).add_alias(data)
-        logger.debug(f"Route POST /{router.prefix}/alias : {str(data)} ")
-        return {"success": True, "data": None, "meta": None, "error": None}
-    except InternalServerError as exc:
-        logger.error(f"Route POST /{router.prefix}/alias : {str(exc)}")
-        raise InternalServerError(detail=str(exc))
+    async with db.transaction():
+        await AliasService(db).add_alias(data)
+    logger.debug(f"Route POST /{router.prefix}/alias : {str(data)} ")
+    return {"success": True, "data": None, "meta": None, "error": None}

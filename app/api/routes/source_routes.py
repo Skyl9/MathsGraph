@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
 
 from app.core.deps import get_current_user_payload
-from app.core.exceptions import InternalServerError
 from app.db.database import get_db
 from app.schemas import Response, CreateSource
 from app.services.source_service import SourceService, logger
@@ -16,11 +15,7 @@ async def create_source(
     db: AsyncConnection = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload)
 ):
-    try:
-        async with db.transaction():
-            await SourceService(db).create_source(data)
-        logger.debug(f"Route POST /source/create a correctement créé une source")
-        return {"error": None, "data": None, "success": True, "meta": None}
-    except InternalServerError as exc:
-        logger.error(f"Route POST /source/create Erreur : {exc}")
-        raise InternalServerError(str(exc)) from exc
+    async with db.transaction():
+        await SourceService(db).create_source(data)
+    logger.debug(f"Route POST /source/create a correctement créé une source")
+    return {"error": None, "data": None, "success": True, "meta": None}
