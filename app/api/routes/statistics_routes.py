@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from psycopg import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
 from app.schemas import Response
@@ -9,7 +9,7 @@ router = APIRouter(prefix="/statistics", tags=["statistics"])
 
 
 @router.get("/concepts/{concept_id}", summary="Récupère les statistiques de vues d'un concept", response_model=Response)
-async def get_concept_views(concept_id: int, db: AsyncConnection = Depends(get_db)):
+async def get_concept_views(concept_id: int, db: AsyncSession = Depends(get_db)):
     views = await StatisticsService(db).get_concept_views(concept_id)
     logger.debug(f'Route GET {router.prefix}/concepts/{concept_id} a renvoyé correctement : {views}')
     return {"error": None, "data": views, "success": True, "meta": None}

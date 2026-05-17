@@ -1,36 +1,28 @@
-
-from psycopg_pool import AsyncConnectionPool
-
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.core.config import settings
 
+# On s'assure que l'URL utilise bien le driver asynchrone psycopg
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+psycopg://")
 
-DATABASE_URL = settings.DATABASE_URL
-# Initialise un pool de connexions asynchrone
-pool: AsyncConnectionPool = None  # Declare the pool but don't initialize it yet
+# 1. Création du moteur asynchrone (le cœur de SQLAlchemy)
+engine = create_async_engine(
+    SQLALCHEMY_DATABASE_URL,
+    echo=False, # Mets à True si tu veux voir le SQL généré dans la console
+    pool_size=5,
+    max_overflow=10
+)
 
+# 2. Création de l'usine à sessions
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine, 
+    class_=AsyncSession, 
+    expire_on_commit=False
+)
 
-# Fonction pour initialiser le pool
-async def init_pool(connection_url=None):
-    global pool
-    if pool is None:
-        pool = AsyncConnectionPool(connection_url or DATABASE_URL, open=False)
-        await pool.open()
-    return pool
-
-
-# Fonction pour fermer le pool
-async def close_pool():
-    global pool
-    if pool:
-        await pool.close()
-        pool = None
-
-
+# 3. La dépendance FastAPI pour injecter la session dans les routes
 async def get_db():
-    global pool
-    if pool is None:
-        raise ValueError(
-            "Le pool de connexion n'est pas initialisé. Appelez init_pool() au démarrage de l'application.")
+    async with AsyncSessionLocal() as session:
+        yield session
 
-    async with pool.connection() as conn:
-        yield conn
+# Note : Avec SQLAlchemy, pas besoin d'un init_pool() complexe dans le lifespan de main.py,
+# le moteur gère ses connexions tout seul dès qu'on l'utilise !

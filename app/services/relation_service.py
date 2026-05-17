@@ -1,41 +1,50 @@
-from psycopg import AsyncConnection
+import logging
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictException, NotFoundException
 from app.schemas import CreateRelation
-
-import logging
+from app.db.models import Concept, Relation
 
 logger = logging.getLogger(__name__)
 
 
 class RelationService:
-    def __init__(self, db: AsyncConnection):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
     async def add_relation(self, data: CreateRelation):
-        data = data.model_dump() if isinstance(data, CreateRelation) else data
-        data = data["value"]
-        async with self.db.cursor() as cursor:
+        data_dict = data.model_dump() if isinstance(data, CreateRelation) else data
+        val = data_dict["value"]
+        
+        # Récupérer les IDs des concepts
+        query1 = select(Concept.id).where(func.trim(Concept.nom) == val["théo1"].strip())
+        res1 = await self.db.execute(query1)
+        theo1 = res1.scalar_one_or_none()
+        
+        query2 = select(Concept.id).where(func.trim(Concept.nom) == val["théo2"].strip())
+        res2 = await self.db.execute(query2)
+        theo2 = res2.scalar_one_or_none()
 
-            await cursor.execute("SELECT id FROM concepts WHERE TRIM(nom) = %s;", (data["théo1"],))
-            theo1 = await cursor.fetchone()
-            theo1 = theo1[0] if theo1 else None
-            await cursor.execute("SELECT id FROM concepts WHERE TRIM(nom) = %s;", (data["théo2"],))
-            theo2 = await cursor.fetchone()
-            theo2 = theo2[0] if theo2 else None
+        if theo1 is None or theo2 is None:
+            raise NotFoundException(detail="Concept not found")
+        if theo1 == theo2:
+            raise ConflictException(detail="Concept cannot be related to itself")
 
-            if theo1 is None or theo2 is None:
-                raise NotFoundException(detail="Concept not found")
-            if theo1 == theo2:
-                raise ConflictException(detail="Concept cannot be related to itself")
+        # Vérifier si la relation existe déjà
+        query_rel = select(Relation.id).where(
+            Relation.concept_source == theo1,
+            Relation.concept_cible == theo2
+        )
+        res_rel = await self.db.execute(query_rel)
+        if res_rel.scalar_one_or_none() is not None:
+            raise ConflictException(detail="Relation already exists")
 
-            await cursor.execute("SELECT id FROM relations WHERE concept_source = %s AND concept_cible = %s;",
-                                 (theo1, theo2))
-
-            if await cursor.fetchone() is not None:
-                raise ConflictException(detail="Relation already exists")
-
-
-            await cursor.execute(
-                "INSERT INTO relations (concept_source, concept_cible, type_relation, description) VALUES  (%s,%s,%s,%s);",
-                (theo1, theo2, data["relation"], data["desc"]))
+        new_rel = Relation(
+            concept_source=theo1,
+            concept_cible=theo2,
+            type_relation=val["relation"],
+            description=val["desc"]
+        )
+        self.db.add(new_rel)
+        await self.db.flush()

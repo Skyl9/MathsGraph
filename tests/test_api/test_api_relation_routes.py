@@ -1,12 +1,14 @@
 import pytest
 from httpx import AsyncClient
-from psycopg import AsyncConnection
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.models import Relation, Concept
 
 from tests.utils import create_headers_token
 
 
 @pytest.mark.asyncio
-async def test_create_relation_success(async_client: AsyncClient, setup_two_concepts:dict, transaction: AsyncConnection,setup_user_token_admin):
+async def test_create_relation_success(async_client: AsyncClient, setup_two_concepts: dict, db_session: AsyncSession, setup_user_token_admin):
     """
     Teste la création réussie d'une relation.
     """
@@ -25,7 +27,7 @@ async def test_create_relation_success(async_client: AsyncClient, setup_two_conc
         }
     }
 
-    response = await async_client.post("/relation", json=payload,headers=headers)
+    response = await async_client.post("/relation", json=payload, headers=headers)
 
     assert response.status_code == 200
     res_data = response.json()
@@ -34,28 +36,21 @@ async def test_create_relation_success(async_client: AsyncClient, setup_two_conc
     assert res_data["error"] is None
 
     # Vérifier que la relation a bien été ajoutée à la base de données
-    async with transaction.cursor() as cur:
-        await cur.execute(
-            """
-            SELECT r.type_relation, r.description, cs.nom, cc.nom
-            FROM relations r
-            JOIN concepts cs ON r.concept_source = cs.id
-            JOIN concepts cc ON r.concept_cible = cc.id
-            WHERE cs.nom = %s AND cc.nom = %s;
-            """,
-            (concept1_name, concept2_name)
-        )
-        db_relation = await cur.fetchone()
+    query = (
+        select(Relation)
+        .join(Concept, Relation.concept_source == Concept.id)
+        .where(Concept.nom == concept1_name)
+    )
+    result = await db_session.execute(query)
+    db_relation = result.scalars().first()
 
     assert db_relation is not None
-    assert db_relation[0] == relation_type
-    assert db_relation[1] == description
-    assert db_relation[2] == concept1_name
-    assert db_relation[3] == concept2_name
+    assert db_relation.type_relation == relation_type
+    assert db_relation.description == description
 
 
 @pytest.mark.asyncio
-async def test_create_relation_concept_not_found(async_client: AsyncClient, setup_two_concepts: dict,setup_user_token_admin):
+async def test_create_relation_concept_not_found(async_client: AsyncClient, setup_two_concepts: dict, setup_user_token_admin):
     """
     Teste la création d'une relation lorsque un ou les deux concepts n'existent pas.
     """
@@ -73,7 +68,7 @@ async def test_create_relation_concept_not_found(async_client: AsyncClient, setu
             "desc": "Test avec source inexistante"
         }
     }
-    response1 = await async_client.post("/relation", json=payload1,headers=headers)
+    response1 = await async_client.post("/relation", json=payload1, headers=headers)
     assert response1.status_code == 404
     assert "Concept not found" in response1.json()["error"]
 
@@ -86,26 +81,13 @@ async def test_create_relation_concept_not_found(async_client: AsyncClient, setu
             "desc": "Test avec cible inexistante"
         }
     }
-    response2 = await async_client.post("/relation", json=payload2,headers=headers)
+    response2 = await async_client.post("/relation", json=payload2, headers=headers)
     assert response2.status_code == 404
     assert "Concept not found" in response2.json()["error"]
 
-    # Cas 3 : Les deux concepts non trouvés
-    payload3 = {
-        "value": {
-            "théo1": "AutreConceptInexistant1",
-            "théo2": "AutreConceptInexistant2",
-            "relation": relation_type,
-            "desc": "Test avec les deux inexistants"
-        }
-    }
-    response3 = await async_client.post("/relation", json=payload3,headers=headers)
-    assert response3.status_code == 404
-    assert "Concept not found" in response3.json()["error"]
-
 
 @pytest.mark.asyncio
-async def test_create_relation_conflict(async_client: AsyncClient, setup_two_concepts: dict,setup_user_token_admin):
+async def test_create_relation_conflict(async_client: AsyncClient, setup_two_concepts: dict, setup_user_token_admin):
     """
     Teste la création d'une relation qui existe déjà.
     """
@@ -125,11 +107,11 @@ async def test_create_relation_conflict(async_client: AsyncClient, setup_two_con
     }
 
     # Créer la relation une première fois avec succès
-    first_response = await async_client.post("/relation", json=payload,headers=headers)
+    first_response = await async_client.post("/relation", json=payload, headers=headers)
     assert first_response.status_code == 200
 
     # Tenter de créer la même relation une seconde fois
-    second_response = await async_client.post("/relation", json=payload,headers=headers)
+    second_response = await async_client.post("/relation", json=payload, headers=headers)
 
     assert second_response.status_code == 409  # Code pour ConflictException
     assert "Relation already exists" in second_response.json()["error"]

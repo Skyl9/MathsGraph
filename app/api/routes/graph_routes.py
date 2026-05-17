@@ -1,8 +1,7 @@
 import json
-
 import redis
 from fastapi import APIRouter, Depends
-from psycopg import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis_client import redis_db
 from app.db.database import get_db
@@ -13,7 +12,7 @@ router = APIRouter(prefix="/graph", tags=["graph"])
 
 
 @router.get("", response_model=Response[GraphData])
-async def get_graph(db: AsyncConnection = Depends(get_db)):
+async def get_graph(db: AsyncSession = Depends(get_db)):
     cached_graph = None
 
     try:

@@ -1,67 +1,75 @@
-from fastapi import HTTPException
-from psycopg import AsyncConnection
-from app.utils.db_utils import get_id_by_field
-from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException, \
-    BadRequestException
+import logging
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.db.models import Type
+from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException, BadRequestException
 from app.schemas import CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
 
-import logging
-
 logger = logging.getLogger(__name__)
 
+
 class TypeService:
-    def __init__(self,db:AsyncConnection):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
     async def get_all_type_name(self) -> list[TypeNom]:
-        async with self.db.cursor() as cur:
-            await cur.execute("SELECT id, type FROM type")
-            types_fetched = await cur.fetchall()
-        return [{"id": i[0], "type": i[1]} for i in types_fetched]
+        query = select(Type)
+        result = await self.db.execute(query)
+        types_fetched = result.scalars().all()
 
+        return [{"id": t.id, "type": t.type} for t in types_fetched]
 
-    async def get_one_type(self,id_type: int) -> TypeResponse:
-        async with self.db.cursor() as cur:
-            await cur.execute("SELECT * FROM type WHERE id = %s", (id_type,))
-            type_fetched = await cur.fetchone()
+    async def get_one_type(self, id_type: int) -> TypeResponse:
+        type_fetched = await self.db.get(Type, id_type)
+
         if not type_fetched:
             raise NotFoundException(f"Type introuvable : {id_type}")
+
         return {
-            "id": type_fetched[0],
-            "type": type_fetched[1],
+            "id": type_fetched.id,
+            "type": type_fetched.type,
         }
 
-    async def update_type(self,id_type: int, data: TypeUpdate):
-        data = data.model_dump() if isinstance(data, TypeUpdate) else data
+    async def update_type(self, id_type: int, data: TypeUpdate):
+        data_dict = data.model_dump() if isinstance(data, TypeUpdate) else data
         allowed_fields = {"type"}
-        field:str = data["field"]
+        field: str = data_dict["field"]
 
         if field not in allowed_fields:
-            raise ForbiddenException(
-                f"Le champ '{field}' n'est pas autorisé pour une mise à jour."
-            )
+            raise ForbiddenException(f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")
 
-        await get_id_by_field(self.db, "type", "id", id_type, f"Type introuvable : {id_type}")
+        type_fetched = await self.db.get(Type, id_type)
+        if not type_fetched:
+            raise NotFoundException(f"Type introuvable : {id_type}")
 
-        async with self.db.cursor() as cur:
-            query = f"UPDATE type SET {field} = %s WHERE id = %s"
-            await cur.execute(query, (data["value"], id_type))
+        setattr(type_fetched, field, data_dict["value"])
 
-    async def add_type(self,data: CreateData):
-        data = data.model_dump() if isinstance(data, CreateData) else data
-        if data["value"]=="":
+        await self.db.flush()
+
+    async def add_type(self, data: CreateData):
+        data_dict = data.model_dump() if isinstance(data, CreateData) else data
+        nom_type = data_dict["value"]
+
+        if not nom_type:
             raise BadRequestException(detail="Type vide")
-        async with self.db.cursor() as cursor:
 
-            await cursor.execute("SELECT id FROM type WHERE type = %s;", (data["value"],))
+        query = select(Type).where(Type.type == nom_type)
+        result = await self.db.execute(query)
+        if result.scalars().first() is not None:
+            raise ConflictException(detail="Type already exists")
 
-            if await cursor.fetchone() is not None:
-                raise ConflictException(detail="Type already exists")
-            await cursor.execute("INSERT INTO type (type) VALUES  (%s);", (data["value"],))
+        new_type = Type(type=nom_type)
+        self.db.add(new_type)
+        await self.db.flush()
 
+    async def get_type_by_name(self, nom: str):
+        query = select(Type).where(Type.type == nom)
+        result = await self.db.execute(query)
+        type_fetched = result.scalars().first()
 
+        if not type_fetched:
+            raise NotFoundException(f"Type introuvable : {nom}")
 
-    async def get_category_id(self,nom):
-        type_id = await get_id_by_field(self.db, "type", "type", nom, f"Type introuvable : {nom}")
-        return {"id": type_id, "type": nom}
+        return {"id": type_fetched.id, "type": type_fetched.type}

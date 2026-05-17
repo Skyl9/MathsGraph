@@ -14,7 +14,9 @@ from app.core.logging_config import setup_logging
 from app.core.exceptions import BadRequestException, NotFoundException, AuthenticationException, ForbiddenException, \
     InternalServerError, ConflictException
 
-from app.db import database as db
+from sqlalchemy import text
+
+from app.db.database import AsyncSessionLocal
 
 setup_logging()
 
@@ -22,49 +24,43 @@ logger = logging.getLogger(__name__)
 
 def error_response(status_code: int, error: str):
     return {"success": False, "error": error, "data": None}
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    from app.db.database import init_pool, close_pool
-    await init_pool(settings.DATABASE_URL)
-
-    try:
-        yield
-    finally:
-        # 🧼 Fermeture propre au shutdown
-        await close_pool()
 app = FastAPI(
     title="Math Concepts API",
     description="API pour gérer les concepts mathématiques",
     version="1.0.0",
     docs_url="/docs",  # URL pour Swagger UI
-    redoc_url="/redoc"  # URL pour ReDoc
-    ,lifespan=lifespan,
+    redoc_url="/redoc",  # URL pour ReDoc
     redirect_slashes=False
 
 )
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # SQLAlchemy gère son pool tout seul, rien à faire ici !
+    yield
 
-@app.middleware("http")
-async def log_api_calls(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = (time.time() - start_time) * 1000
+    @app.middleware("http")
+    async def log_api_calls(request: Request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = (time.time() - start_time) * 1000
 
-    ignored_paths = ["/docs", "/openapi.json", "/redoc"]
+        ignored_paths = ["/docs", "/openapi.json", "/redoc"]
 
-    if db.pool and not any(request.url.path.startswith(p) for p in ignored_paths):
-        try:
-            async with db.pool.connection() as conn:  # Accès via le module
-                await conn.execute(
-                    "INSERT INTO api_logs (endpoint, method, status_code, duration_ms) VALUES (%s, %s, %s, %s)",
-                    (request.url.path, request.method, response.status_code, process_time)
-                )
-        except Exception as e:
-            print(f"ERREUR ANALYTICS : {e}")
+        if not any(request.url.path.startswith(p) for p in ignored_paths):
+            try:
+                # 🌟 Utilisation de la session SQLAlchemy locale
+                async with AsyncSessionLocal() as session:
+                    await session.execute(text(
+                            "INSERT INTO api_logs (endpoint, method, status_code, duration_ms) VALUES (:ep, :meth, :status, :dur)"),
+                        {"ep": request.url.path, "meth": request.method, "status": response.status_code,
+                         "dur": process_time}
+                    )
+                    await session.commit()
+            except Exception as e:
+                print(f"ERREUR ANALYTICS : {e}")
 
-    return response
-
+        return response
 
 app.add_middleware(
     CORSMiddleware,

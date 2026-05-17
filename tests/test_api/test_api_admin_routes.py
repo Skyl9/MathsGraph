@@ -1,7 +1,9 @@
 import pytest
 from httpx import AsyncClient
-import psycopg
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import Type
 from tests.utils import create_headers_token
 
 
@@ -12,13 +14,13 @@ async def test_get_stats(
     setup_test_concept,
     setup_test_categorie,
     setup_test_mathematicien,
-        setup_user_token_admin
+    setup_user_token_admin
 ):
     """
-    Test la route /getAlldatabaseInfo pour s'assurer qu'elle retourne les statistiques correctes.
+    Test la route /admin/stats pour s'assurer qu'elle retourne les statistiques correctes.
     """
     headers = create_headers_token(setup_user_token_admin)
-    response = await async_client.get("/admin/stats",headers=headers)
+    response = await async_client.get("/admin/stats", headers=headers)
     assert response.status_code == 200
     data = response.json()
 
@@ -36,18 +38,15 @@ async def test_get_stats(
     assert stats["concepts"] >= 1
     assert stats["categories"] >= 1
     assert stats["mathematicien"] >= 1
-    # Le nombre de favoris peut être 0 si aucun favori n'est explicitement configuré.
 
 
 @pytest.mark.asyncio
-async def test_get_users_admin_route(async_client: AsyncClient, setup_test_user,setup_user_token_admin):
+async def test_get_users_admin_route(async_client: AsyncClient, setup_test_user, setup_user_token_admin):
     """
     Test la route /admin/users pour s'assurer qu'elle retourne une liste d'utilisateurs.
-    Ce test suppose que l'authentification admin n'est pas strictement requise pour la configuration,
-    ou qu'elle est gérée par async_client.
     """
     headers = create_headers_token(setup_user_token_admin)
-    response = await async_client.get("/admin/users",headers=headers)
+    response = await async_client.get("/admin/users", headers=headers)
     assert response.status_code == 200
     data = response.json()
 
@@ -56,9 +55,9 @@ async def test_get_users_admin_route(async_client: AsyncClient, setup_test_user,
     users = data["data"]
 
     assert isinstance(users, list)
-    assert len(users) >= 1  # Au moins l'utilisateur créé par setup_test_user
+    assert len(users) >= 1
 
-    # Vérifie si l'utilisateur de test est présent dans la liste retournée et si ses détails correspondent
+    # Vérifie si l'utilisateur de test est présent dans la liste retournée
     found_user = False
     for user in users:
         if user.get("email") == setup_test_user["email"]:
@@ -66,21 +65,18 @@ async def test_get_users_admin_route(async_client: AsyncClient, setup_test_user,
             assert user.get("username") == setup_test_user["username"]
             assert user.get("role") == setup_test_user["role"]
             assert user.get("is_active") == setup_test_user["is_active"]
-            # `created_at` peut avoir des différences de fuseau horaire, nous ignorons donc l'égalité directe pour l'instant
             break
     assert found_user, "L'utilisateur de test n'a pas été trouvé dans la réponse de /admin/users."
 
 
 @pytest.mark.asyncio
-async def test_get_concepts_admin_route(transaction,async_client: AsyncClient, setup_test_concept,setup_user_token_admin):
+async def test_get_concepts_admin_route(db_session: AsyncSession, async_client: AsyncClient, setup_test_concept, setup_user_token_admin):
     """
-    Test la route /admin/concepts pour s'assurer qu'elle retourne une liste de concepts avec des détails d'administration.
-    Ce test suppose que l'authentification admin n'est pas strictement requise pour la configuration,
-    ou qu'elle est gérée par async_client.
+    Test la route /admin/contents pour s'assurer qu'elle retourne une liste de concepts avec des détails d'administration.
     """
     headers = create_headers_token(setup_user_token_admin)
 
-    response = await async_client.get("/admin/contents",headers=headers)
+    response = await async_client.get("/admin/contents", headers=headers)
     assert response.status_code == 200
     data = response.json()
 
@@ -89,17 +85,18 @@ async def test_get_concepts_admin_route(transaction,async_client: AsyncClient, s
     concepts = data["data"]
 
     assert isinstance(concepts, list)
-    assert len(concepts) >= 1  # Au moins le concept créé par setup_test_concept
+    assert len(concepts) >= 1
 
-    # Vérifie si le concept de test est présent dans la liste retournée et si ses détails correspondent
+    # Vérifie si le concept de test est présent dans la liste retournée
     found_concept = False
     for concept in concepts:
-        async with transaction.connection.cursor() as cur:
-            await cur.execute("SELECT id FROM type WHERE type.type = %s", (concept.get("type"),))
-            type_id = await cur.fetchone()
-            assert type_id is not None
         if concept.get("nom") == setup_test_concept["nom"]:
             found_concept = True
-            assert type_id[0] == setup_test_concept["type_id"]
+            # On vérifie le type via SQLAlchemy
+            query = select(Type).where(Type.type == concept.get("type"))
+            result = await db_session.execute(query)
+            type_obj = result.scalars().first()
+            assert type_obj is not None
+            assert type_obj.id == setup_test_concept["type_id"]
             break
-    assert found_concept, "Le concept de test n'a pas été trouvé dans la réponse de /admin/concepts."
+    assert found_concept, "Le concept de test n'a pas été trouvé dans la réponse de /admin/contents."

@@ -1,10 +1,12 @@
 import logging
 from typing import List
-
-from psycopg import AsyncConnection
+from sqlalchemy import select, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.schemas import Nodes, GraphData
 from app.schemas.GraphData import Edge
+from app.db.models import Concept, Position, Relation, Type
 
 logger = logging.getLogger(__name__)
 
@@ -12,96 +14,60 @@ logger = logging.getLogger(__name__)
 class GraphService:
     """
     Service pour récupérer et construire le graphe des concepts.
-
-    Responsabilités :
-      - Extraire les nœuds (concepts) avec leurs attributs (id, nom, type).
-      - Extraire les positions associées aux vues 'grille' et 'arbre'.
-      - Assembler et renvoyer une structure au format { "nodes": [...], "edges": [] }.
     """
 
-    def __init__(self, db: AsyncConnection):
-        """
-               Initialise le service avec une connexion asynchrone à la base de données.
-
-               Args:
-                   db (AsyncConnection): connexion PostgreSQL asynchrone.
-               """
-
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    # TODO Fractionner le code pour obtenir les noeuds/arrete et les positions
     async def get_graph(self) -> GraphData:
-        """
-               Récupère la représentation du graphe des concepts depuis la base.
-
-               Effectue deux requêtes :
-                 1. Sélection des concepts (id, nom, type).
-                 2. Sélection des positions (concept_id, vue, x, y, z).
-
-               Construit ensuite :
-                 - un dictionnaire `positions_dict` indexé par concept_id,
-                 - une liste de nœuds enrichis de leurs coordonnées,
-                 - un tableau d'arêtes (vide pour l'instant).
-
-               Returns:
-                   dict[str, list]:
-                       {
-                         "nodes": [
-                           {
-                             "id": int,
-                             "nom": str,
-                             "typeMath": str | None,
-                             "position": {
-                               "grille": {"x": float, "y": float, "z": float},
-                               "arbre": {"x": float, "y": float, "z": float}
-                             }
-                           }, ...
-                         ],
-                         "edges": []
-                       }
-
-               Raises:
-                   InternalServerError: en cas d'erreur inattendue lors de l'accès ou du traitement des données.
-               """
-
         logger.info("Début de l'extraction du graphe")
 
-        async with self.db.cursor() as cur:
+        # Récupérer les informations de base des concepts avec leur type
+        query_concepts = (
+            select(Concept)
+            .options(joinedload(Concept.type))
+            .order_by(Concept.id)
+        )
+        result_concepts = await self.db.execute(query_concepts)
+        concepts = result_concepts.scalars().all()
 
-            # Récupérer les informations de base des concepts
-            await cur.execute(
-                "SELECT c.id, c.nom, t.type FROM concepts c LEFT JOIN type t on type_id = t.id ORDER BY id ;")
-            concepts = await cur.fetchall()
+        # Récupérer les positions des concepts
+        query_positions = (
+            select(Position)
+            .where(Position.vue.in_(['grille', 'arbre', 'physique']))
+        )
+        result_positions = await self.db.execute(query_positions)
+        positions = result_positions.scalars().all()
 
-            # Récupérer les positions des concepts
-            await cur.execute(
-                "SELECT concept_id, vue, x, y, z FROM positions WHERE vue IN ('grille', 'arbre', 'physique');")
-            positions = await cur.fetchall()
+        # Récupérer les relations
+        query_relations = select(Relation)
+        result_relations = await self.db.execute(query_relations)
+        relations = result_relations.scalars().all()
 
-            await cur.execute("SELECT concept_source, concept_cible, type_relation FROM relations;")
-            relations = await cur.fetchall()
-
+        # Construire le dictionnaire des positions
         positions_dict = {}
-        for concept_id, vue, x, y, z in positions:
-            if concept_id not in positions_dict:
-                positions_dict[concept_id] = {}
-            positions_dict[concept_id][vue] = {"x": x, "y": y, "z": z}
+        for pos in positions:
+            if pos.concept_id not in positions_dict:
+                positions_dict[pos.concept_id] = {}
+            positions_dict[pos.concept_id][pos.vue] = {"x": pos.x, "y": pos.y, "z": pos.z}
 
-        # Construire le dictionnaire final
-        nodes: List[Nodes] = []
-        for concept_id, nom, concept_type in concepts:
+        # Construire la liste des nœuds
+        nodes: List[dict] = []
+        for c in concepts:
             nodes.append({
-                "id": concept_id,
-                "nom": nom,
-                "typeMath": concept_type,
-                "position": positions_dict.get(concept_id, {})
+                "id": c.id,
+                "nom": c.nom,
+                "typeMath": c.type.type if c.type else None,
+                "position": positions_dict.get(c.id, {})
             })
-        edges: List[Edge] = []
-        for start_id, end_id, type_relation in relations:
+
+        # Construire la liste des arêtes
+        edges: List[dict] = []
+        for r in relations:
             edges.append({
-                "start": start_id,
-                "end": end_id,
-                "type": type_relation
+                "start": r.concept_source,
+                "end": r.concept_cible,
+                "type": r.type_relation
             })
 
         logger.info(f"Graphe extrait avec succès : {len(nodes)} noeuds, {len(edges)} arêtes")

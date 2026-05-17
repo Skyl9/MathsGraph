@@ -165,8 +165,7 @@ async def test_update_concept_invalid_id(async_client: AsyncClient, setup_test_u
     assert response.status_code == 404  # Si NotFoundException est convertie en InternalServerError
     data = response.json()
     assert data["success"] is False
-    assert "ID not found" in data["error"]
-
+    assert "Concept non trouvé" in data["error"]
 
 @pytest.mark.asyncio
 async def test_rollback_concept_success(async_client: AsyncClient, setup_full_test_concept, setup_test_user,setup_user_token_admin):

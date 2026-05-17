@@ -1,23 +1,20 @@
 import pytest
 from httpx import AsyncClient
-from psycopg import AsyncConnection
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.models import Mathematicien
 
 from tests.utils import create_headers_token
 
 
-# Assurez-vous que les fixtures setup_mathematicien et async_client sont disponibles,
-# potentiellement définies dans un fichier conftest.py
-
-
-
 @pytest.mark.asyncio
-async def test_add_mathematicien_success(async_client: AsyncClient, transaction: AsyncConnection,setup_user_token_admin):
+async def test_add_mathematicien_success(async_client: AsyncClient, db_session: AsyncSession, setup_user_token_admin):
     """
-    Teste l'ajout d'un nouveau mathématicien via la route POST /mathematicien/create.
+    Teste l'ajout d'un nouveau mathématicien via la route POST /mathematicien.
     """
     headers = create_headers_token(setup_user_token_admin)
     test_name = "Ada Lovelace"
-    response = await async_client.post("/mathematicien", json={"value": test_name},headers=headers)
+    response = await async_client.post("/mathematicien", json={"value": test_name}, headers=headers)
 
     assert response.status_code == 200
     res_data = response.json()
@@ -26,16 +23,11 @@ async def test_add_mathematicien_success(async_client: AsyncClient, transaction:
     assert res_data["error"] is None
 
     # Vérifier que le mathématicien a bien été ajouté à la base de données
-    async with transaction.cursor() as cur:
-        await cur.execute("SELECT nom FROM mathematiciens WHERE nom = %s;", (test_name,))
-        added_mathematicien = await cur.fetchone()
+    query = select(Mathematicien).where(Mathematicien.nom == test_name)
+    result = await db_session.execute(query)
+    added_mathematicien = result.scalars().first()
     assert added_mathematicien is not None
-    assert added_mathematicien[0] == test_name
-
-    # Nettoyage
-    async with transaction.cursor() as cur:
-        await cur.execute("DELETE FROM mathematiciens WHERE nom = %s;", (test_name,))
-        await transaction.commit()
+    assert added_mathematicien.nom == test_name
 
 
 @pytest.mark.asyncio
@@ -68,7 +60,7 @@ async def test_get_one_mathematicien_not_found(async_client: AsyncClient):
 
     response = await async_client.get(f"/mathematicien/{non_existent_id}")
 
-    assert response.status_code == 404  # Ou le code d'erreur que vous utilisez pour "non trouvé"
+    assert response.status_code == 404
     res_data = response.json()
     assert res_data["success"] is False
     assert "error" in res_data

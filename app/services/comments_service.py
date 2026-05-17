@@ -1,67 +1,43 @@
-from psycopg import AsyncConnection
-from psycopg import DatabaseError
+import logging
+from sqlalchemy import select, desc
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundException, ForbiddenException
-import logging
-from app.utils.db_utils import check_exists, get_id_by_field
+from app.db.models import Comment, User, Concept
 
 logger = logging.getLogger(__name__)
 
 
 class CommentsService:
-
-    def __init__(self,db:AsyncConnection):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-
-    async def get_comments(self,concept_id: int) -> list[dict]:
-        try:
-
-           async with self.db.cursor() as cur:
-                await cur.execute(
-                    """
-                    SELECT comments.id,
-                           comments.concept_id,
-                           comments.user_id,
-                           comments.content,
-                           comments.created_at,
-                           comments.updated_at,
-                           comments.parent_id,
-                           comments.is_deleted,
-                           comments.field,
-                           users.username
-                    FROM public.comments
-                             LEFT JOIN
-                         public.users ON comments.user_id = users.id
-
-                    WHERE comments.concept_id = %s
-                      AND comments.is_deleted = false
-                    ORDER BY comments.created_at ASC
-                    """,
-                    (concept_id,),
-                )
-                result = await cur.fetchall()
-                res = []
-                for row in result:
-                    res.append(
-                        {
-                            "id": row[0],
-                            "concept_id": row[1],
-                            "user_id": row[2],
-                            "content": row[3],
-                            "created_at": row[4],
-                            "updated_at": row[5],
-                            "parent_id": row[6],
-                            "is_deleted": row[7],
-                            "field": row[8],
-                            "username": row[9],
-                        }
-                    )
-                return res
-        except DatabaseError as e:
-            print(f"Erreur de base de données : {e}")
-            return []
-
+    async def get_comments(self, concept_id: int) -> list[dict]:
+        query = (
+            select(Comment)
+            .where(Comment.concept_id == concept_id, Comment.is_deleted == False)
+            .options(selectinload(Comment.user))
+            .order_by(Comment.created_at.asc())
+        )
+        result = await self.db.execute(query)
+        comments = result.scalars().all()
+        
+        return [
+            {
+                "id": c.id,
+                "concept_id": c.concept_id,
+                "user_id": c.user_id,
+                "content": c.content,
+                "created_at": c.created_at,
+                "updated_at": c.updated_at,
+                "parent_id": c.parent_id,
+                "is_deleted": c.is_deleted,
+                "field": c.field,
+                "username": c.user.username if c.user else None,
+            }
+            for c in comments
+        ]
 
     async def add_comment(
             self,
@@ -70,116 +46,122 @@ class CommentsService:
             username: str | None,
             content: str,
             parent_id: int | None = None,
-
     ) -> dict:
-        user_id = await get_id_by_field(self.db, "users", "username", username, "Utilisateur introuvable")
+        # Récupérer l'ID utilisateur
+        query_user = select(User.id).where(User.username == username)
+        result_user = await self.db.execute(query_user)
+        user_id = result_user.scalar_one_or_none()
+        if user_id is None:
+            raise NotFoundException(detail="Utilisateur introuvable")
 
-        async with (self.db.cursor() as cur):
-            parent_id = None if parent_id==0 else parent_id
+        # Vérifier si le concept existe
+        concept = await self.db.get(Concept, concept_id)
+        if not concept:
+            raise NotFoundException(detail="Concept introuvable")
 
-            await check_exists(self.db, "concepts", concept_id, "Concept introuvable")
-
-            await cur.execute(
-                """
-                INSERT INTO comments (concept_id, user_id, content, parent_id,field)
-                VALUES (%s, %s, %s, %s,%s)
-                RETURNING id, concept_id, user_id, content, created_at, updated_at,
-                    parent_id, is_deleted, field
-                """,
-                (concept_id, user_id, content, parent_id,field),
-            )
-
-            comment = await cur.fetchone()
-        return comment
+        actual_parent_id = None if parent_id == 0 else parent_id
+        
+        new_comment = Comment(
+            concept_id=concept_id,
+            user_id=user_id,
+            content=content,
+            parent_id=actual_parent_id,
+            field=field
+        )
+        self.db.add(new_comment)
+        await self.db.flush()
+        
+        return {
+            "id": new_comment.id,
+            "concept_id": new_comment.concept_id,
+            "user_id": new_comment.user_id,
+            "content": new_comment.content,
+            "created_at": new_comment.created_at,
+            "updated_at": new_comment.updated_at,
+            "parent_id": new_comment.parent_id,
+            "is_deleted": new_comment.is_deleted,
+            "field": new_comment.field
+        }
 
     async def update_comment(self, comment_id: int, content: str, current_user: dict) -> dict:
-        async with self.db.cursor() as cur:
-            await cur.execute(
-                "SELECT user_id, is_deleted FROM public.comments WHERE id = %s",
-                (comment_id,),
-            )
-            row = await cur.fetchone()
-            if not row or row[1]:
-                raise NotFoundException(detail="Commentaire introuvable ou supprimé")
+        comment = await self.db.get(Comment, comment_id)
+        
+        if not comment or comment.is_deleted:
+            raise NotFoundException(detail="Commentaire introuvable ou supprimé")
 
-            comment_user_id = int(row[0])
-            token_user_id = int(current_user.get("id"))
+        comment_user_id = int(comment.user_id)
+        token_user_id = int(current_user.get("id"))
 
-            is_author = (token_user_id == comment_user_id)
-            is_admin = current_user.get("role") in ["admin", "moderator"]
+        is_author = (token_user_id == comment_user_id)
+        is_admin = current_user.get("role") in ["admin", "moderator"]
 
-            if not (is_author or is_admin):
-                raise ForbiddenException(detail="Vous n'êtes pas autorisé à modifier ce commentaire.")
+        if not (is_author or is_admin):
+            raise ForbiddenException(detail="Vous n'êtes pas autorisé à modifier ce commentaire.")
 
-            await cur.execute(
-                """
-                UPDATE public.comments
-                SET content    = %s,
-                    updated_at = NOW()
-                WHERE id = %s
-                RETURNING id, concept_id, user_id, content, created_at, updated_at, parent_id, is_deleted, field
-                """,
-                (content, comment_id),
-            )
-            data = await cur.fetchone()
-            return {
-                "id": data[0], "concept_id": data[1], "user_id": data[2], "content": data[3],
-                "created_at": data[4], "updated_at": data[5], "parent_id": data[6],
-                "is_deleted": data[7], "field": data[8]
-            }
+        comment.content = content
+        # updated_at est géré par server_default=func.now() ou onupdate=func.now() dans les modèles si configuré, 
+        # sinon on peut le faire manuellement ici si nécessaire. 
+        # Dans models.py: created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+        # updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+        # Il manque onupdate sur updated_at dans models.py, mais gardons la logique du service original:
+        from sqlalchemy import func
+        comment.updated_at = func.now()
+
+        await self.db.flush()
+        await self.db.refresh(comment)
+        
+        return {
+            "id": comment.id,
+            "concept_id": comment.concept_id,
+            "user_id": comment.user_id,
+            "content": comment.content,
+            "created_at": comment.created_at,
+            "updated_at": comment.updated_at,
+            "parent_id": comment.parent_id,
+            "is_deleted": comment.is_deleted,
+            "field": comment.field
+        }
 
     async def delete_comment(self, comment_id: int, current_user: dict) -> None:
-        async with self.db.cursor() as cur:
-            await cur.execute(
-                "SELECT user_id, is_deleted FROM public.comments WHERE id = %s",
-                (comment_id,),
-            )
-            row = await cur.fetchone()
+        comment = await self.db.get(Comment, comment_id)
 
-            if not row:
-                raise NotFoundException("Commentaire introuvable")
-            if row[1]:
-                raise NotFoundException("Commentaire déjà supprimé")
+        if not comment:
+            raise NotFoundException("Commentaire introuvable")
+        if comment.is_deleted:
+            raise NotFoundException("Commentaire déjà supprimé")
 
-            comment_user_id = int(row[0])
-            token_user_id = int(current_user.get("id"))
+        comment_user_id = int(comment.user_id)
+        token_user_id = int(current_user.get("id"))
 
-            is_author = (token_user_id == comment_user_id)
-            is_admin = current_user.get("role") in ["admin", "moderator"]
+        is_author = (token_user_id == comment_user_id)
+        is_admin = current_user.get("role") in ["admin", "moderator"]
 
-            if not (is_author or is_admin):
-                raise ForbiddenException("Vous n'êtes pas autorisé à supprimer ce commentaire.")
+        if not (is_author or is_admin):
+            raise ForbiddenException("Vous n'êtes pas autorisé à supprimer ce commentaire.")
 
-            await cur.execute("UPDATE public.comments SET is_deleted = true WHERE id = %s", (comment_id,))
-
+        comment.is_deleted = True
+        await self.db.flush()
 
     async def get_recent_comments(self, limit: int = 20) -> list[dict]:
-        async with self.db.cursor() as cursor:
-            await cursor.execute("""
-                                 SELECT c.id,
-                                        c.concept_id,
-                                        co.nom as concept_nom,
-                                        c.user_id,
-                                        u.username,
-                                        c.content,
-                                        c.created_at,
-                                        c.field
-                                 FROM comments c
-                                          JOIN users u ON c.user_id = u.id
-                                          JOIN concepts co ON c.concept_id = co.id
-                                 WHERE c.is_deleted = false
-                                 ORDER BY c.created_at DESC
-                                 LIMIT %s
-                                 """, (limit,))
-            data = await cursor.fetchall()
+        query = (
+            select(Comment)
+            .where(Comment.is_deleted == False)
+            .options(selectinload(Comment.user), selectinload(Comment.concept))
+            .order_by(desc(Comment.created_at))
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        comments = result.scalars().all()
 
-            return [{
-                "id": row[0],
-                "concept_id": row[1],
-                "concept_nom": row[2],
-                "user_id": row[3],
-                "username": row[4],
-                "content": row[5],
-                "created_at": row[6].isoformat() if row[6] else None,
-                "field": row[7]
-            } for row in data]
+        return [
+            {
+                "id": c.id,
+                "concept_id": c.concept_id,
+                "concept_nom": c.concept.nom if c.concept else None,
+                "user_id": c.user_id,
+                "username": c.user.username if c.user else None,
+                "content": c.content,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "field": c.field
+            } for c in comments
+        ]

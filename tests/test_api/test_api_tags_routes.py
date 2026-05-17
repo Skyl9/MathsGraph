@@ -1,5 +1,9 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import concept_tags
 from tests.utils import create_headers_token
 
 
@@ -108,7 +112,7 @@ async def test_get_id_no_tag_concept(async_client, setup_test_concept, setup_use
 
 
 @pytest.mark.asyncio
-async def test_delete_tag(transaction, async_client, setup_test_concept, setup_tag_concept, setup_user_token_admin):
+async def test_delete_tag(db_session: AsyncSession, async_client, setup_test_concept, setup_tag_concept, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     payload = {
         "tag_id": setup_tag_concept["id"],
@@ -116,14 +120,16 @@ async def test_delete_tag(transaction, async_client, setup_test_concept, setup_t
     }
     response = await async_client.delete(url=f"/tags/concept/{payload["concept_id"]}/tag/{payload["tag_id"]}", headers=headers)
     assert response.status_code == 200
-    async with transaction.cursor() as cur:
-        await cur.execute("SELECT * FROM concept_tags WHERE concept_id = %s AND tag_id = %s;",
-                          (setup_test_concept["id"], setup_tag_concept["id"]))
-        data = await cur.fetchone()
-        assert data is None, "La suppression du lien entre concept et Tag a échoué"
+    
+    query = select(concept_tags).where(
+        concept_tags.c.concept_id == setup_test_concept["id"],
+        concept_tags.c.tag_id == setup_tag_concept["id"]
+    )
+    result = await db_session.execute(query)
+    assert result.first() is None, "La suppression du lien entre concept et Tag a échoué"
 
 @pytest.mark.asyncio
-async def test_delete_tag_no_relation(transaction, async_client, setup_test_concept, setup_tag, setup_user_token_admin):
+async def test_delete_tag_no_relation(async_client, setup_test_concept, setup_tag, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     payload = {
         "tag_id": setup_tag["id"],
@@ -136,7 +142,7 @@ async def test_delete_tag_no_relation(transaction, async_client, setup_test_conc
     assert "Relation does not exist for this concept and tag" in data["error"]
 
 @pytest.mark.asyncio
-async def test_delete_tag_no_concept(transaction, async_client, setup_test_concept, setup_tag, setup_user_token_admin):
+async def test_delete_tag_no_concept(async_client, setup_test_concept, setup_tag, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     payload = {
         "tag_id": setup_tag["id"],
@@ -149,7 +155,7 @@ async def test_delete_tag_no_concept(transaction, async_client, setup_test_conce
     assert "Concept introuvable" in data["error"]
 
 @pytest.mark.asyncio
-async def test_delete_tag_no_tag(transaction, async_client, setup_test_concept, setup_tag, setup_user_token_admin):
+async def test_delete_tag_no_tag(async_client, setup_test_concept, setup_tag, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     payload = {
         "tag_id": setup_tag["id"]+999,
@@ -162,7 +168,7 @@ async def test_delete_tag_no_tag(transaction, async_client, setup_test_concept, 
     assert "Tag introuvable" in data["error"]
 
 @pytest.mark.asyncio
-async def test_get_all_tags(transaction, async_client, setup_test_concept, setup_tag_concept, setup_user_token_admin):
+async def test_get_all_tags(async_client, setup_test_concept, setup_tag_concept, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     response = await async_client.get(url="/tags/all", headers=headers)
     assert response.status_code == 200

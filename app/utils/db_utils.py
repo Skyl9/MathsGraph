@@ -1,20 +1,20 @@
 from typing import Any
-
-from psycopg import AsyncConnection
-from psycopg import sql
+from sqlalchemy import text, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundException
 
-async def check_exists(db: AsyncConnection, table_name: str,entity_id: int, error_msg: str = "Ressource introuvable"):
+async def check_exists(db: AsyncSession, table_name: str, entity_id: int, error_msg: str = "Ressource introuvable"):
     """Vérifie si un ID existe dans une table spécifique, sinon lève une NotFoundException."""
-    async with db.cursor() as cursor:
-        query = sql.SQL("SELECT id FROM {} WHERE id = %s LIMIT 1;").format(sql.Identifier(table_name))
-        await cursor.execute(query, (entity_id,))
-        if await cursor.fetchone() is None:
-            raise NotFoundException(detail=error_msg)
+    # Note: Using text() for dynamic table names is generally risky, 
+    # but here we follow the existing pattern while migrating to AsyncSession.
+    query = text(f"SELECT id FROM {table_name} WHERE id = :id LIMIT 1")
+    result = await db.execute(query, {"id": entity_id})
+    if result.scalar_one_or_none() is None:
+        raise NotFoundException(detail=error_msg)
 
 
 async def get_id_by_field(
-        db: AsyncConnection,
+        db: AsyncSession,
         table_name: str,
         field_name: str,
         field_value: Any,
@@ -27,17 +27,11 @@ async def get_id_by_field(
     if not field_value:
         raise NotFoundException(detail=error_msg)
 
-    async with db.cursor() as cursor:
-        # Construction sécurisée de la requête dynamique avec psycopg.sql
-        query = sql.SQL("SELECT id FROM {} WHERE {} = %s LIMIT 1;").format(
-            sql.Identifier(table_name),
-            sql.Identifier(field_name)
-        )
+    query = text(f"SELECT id FROM {table_name} WHERE {field_name} = :val LIMIT 1")
+    result = await db.execute(query, {"val": field_value})
+    row = result.fetchone()
 
-        await cursor.execute(query, (field_value,))
-        result = await cursor.fetchone()
+    if row is None:
+        raise NotFoundException(detail=error_msg)
 
-        if result is None:
-            raise NotFoundException(detail=error_msg)
-
-        return result[0]
+    return row[0]

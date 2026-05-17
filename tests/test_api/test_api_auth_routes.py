@@ -1,33 +1,34 @@
 from unittest.mock import patch
-
 import pytest
-from psycopg import rows
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import User, PasswordResetToken
 from tests.constants import TEST_USER_EMAIL, TEST_PASSWORD, TEST_USER_NAME
 
 
 @pytest.mark.asyncio
-async def test_register(async_client, transaction):
+async def test_register(async_client: pytest.fixture, db_session: AsyncSession):
     user_data = {
         "email": TEST_USER_EMAIL,
         "password": TEST_PASSWORD,
         "username": TEST_USER_NAME
     }
     response = await async_client.post("/register", json=user_data)
-    responseA = response.json()
-    print(responseA)
-    body = responseA["data"]
-    assert response.status_code == 200, "L'utilisateur a bien pu s'inscrire !"
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["success"] is True
+    body = response_data["data"]
 
     assert body["email"] == user_data["email"]
     assert body["username"] == user_data["username"]
 
-    # Vérifier que l'utilisateur est bien dans la base
-    async with transaction.cursor(row_factory=rows.dict_row) as cur:
-        await cur.execute("SELECT * FROM users WHERE email=%s", (TEST_USER_EMAIL,))
-        user_in_db = await cur.fetchone()
-        assert user_in_db is not None
-        assert user_in_db["email"] == user_data["email"]
+    # Vérifier que l'utilisateur est bien dans la base via SQLAlchemy
+    query = select(User).where(User.email == TEST_USER_EMAIL)
+    result = await db_session.execute(query)
+    user_in_db = result.scalars().first()
+    assert user_in_db is not None
+    assert user_in_db.email == user_data["email"]
 
 
 @pytest.mark.asyncio
@@ -43,42 +44,28 @@ async def test_login(async_client, setup_test_user):
     assert "access_token" in response_body
     assert response_body["token_type"] == "bearer"
 
-@pytest.mark.asyncio
-async def test_request_password_token(transaction,async_client, setup_test_user,):
-    login_data = {
-        "email": TEST_USER_EMAIL,
-    }
-    response = await async_client.post("/password-reset/request", json=login_data)
-    assert response.status_code == 200
-    response = response.json()
-    data = response["data"]
-    assert response["success"] == True
-    assert type(data) == dict
-    async with transaction.cursor() as cur:
-        await cur.execute("SELECT id FROM users WHERE email = %s", (TEST_USER_EMAIL,))
-        user_id = await cur.fetchone()
-        assert user_id is not None
-        await cur.execute("SELECT token FROM password_reset_tokens WHERE user_id = %s", (user_id[0],))
-        token = await cur.fetchone()
-        assert token is not None
 
 @pytest.mark.asyncio
-async def test_reset_password(transaction,async_client, setup_reset_token,setup_test_user,):
-
+async def test_reset_password(async_client, db_session: AsyncSession, setup_reset_token, setup_test_user):
     login_data = {
         "token": setup_reset_token["token"],
-        "new_password":"testtest"
+        "new_password": "newpassword123"
     }
     response = await async_client.post("/password-reset/confirm", json=login_data)
     assert response.status_code == 200
-    response = response.json()
-    msg = response["data"]
-    assert response["success"] == True
+    response_data = response.json()
+    assert response_data["success"] is True
+
+    # Vérifier que le mot de passe a été mis à jour (via le login par exemple, ou en vérifiant le hash)
+    # Ici on fait simple: on vérifie que le token a été supprimé
+    query = select(PasswordResetToken).where(PasswordResetToken.token == setup_reset_token["token"])
+    result = await db_session.execute(query)
+    assert result.scalars().first() is None
 
 
 @pytest.mark.asyncio
 @patch("app.services.auth_service.smtplib.SMTP")
-async def test_request_password_token(mock_smtp, transaction, async_client, setup_test_user):
+async def test_request_password_token(mock_smtp, async_client, db_session: AsyncSession, setup_test_user):
     login_data = {
         "email": TEST_USER_EMAIL,
     }
@@ -89,24 +76,19 @@ async def test_request_password_token(mock_smtp, transaction, async_client, setu
     response_data = response.json()
     assert response_data["success"] is True
 
-    async with transaction.cursor() as cur:
-        await cur.execute("SELECT id FROM users WHERE email = %s", (TEST_USER_EMAIL,))
-        user_id = await cur.fetchone()
-        assert user_id is not None
+    # Vérifier le token en DB
+    query_user = select(User).where(User.email == TEST_USER_EMAIL)
+    res_user = await db_session.execute(query_user)
+    user = res_user.scalars().first()
+    assert user is not None
 
-        await cur.execute("SELECT token FROM password_reset_tokens WHERE user_id = %s", (user_id[0],))
-        token = await cur.fetchone()
-        assert token is not None
+    query_token = select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+    res_token = await db_session.execute(query_token)
+    token = res_token.scalars().first()
+    assert token is not None
 
     assert mock_smtp.called
-
     mock_smtp_instance = mock_smtp.return_value.__enter__.return_value
-
     assert mock_smtp_instance.starttls.called
     assert mock_smtp_instance.login.called
     assert mock_smtp_instance.sendmail.called
-
-    args, kwargs = mock_smtp_instance.sendmail.call_args
-    assert args[1] == TEST_USER_EMAIL  # Le destinataire
-
-

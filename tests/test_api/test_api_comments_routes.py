@@ -1,6 +1,9 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import User
 from tests.utils import create_headers_token
 
 @pytest.mark.asyncio
@@ -16,7 +19,7 @@ async def test_get_comments_empty(async_client: AsyncClient, setup_test_concept)
     assert data["data"] == []
 
 @pytest.mark.asyncio
-async def test_get_comments_with_data(async_client: AsyncClient,transaction, setup_test_comment, setup_test_concept):
+async def test_get_comments_with_data(async_client: AsyncClient, db_session: AsyncSession, setup_test_comment, setup_test_concept):
     """
     Teste la récupération des commentaires pour un concept avec des données.
     """
@@ -27,11 +30,12 @@ async def test_get_comments_with_data(async_client: AsyncClient,transaction, set
     assert data["success"] is True
     assert len(data["data"]) >= 1
     assert data["data"][0]["content"] == setup_test_comment["content"]
-    async with transaction.connection.cursor() as cur:
-        await cur.execute("SELECT username FROM users WHERE id = %s", (setup_test_comment["user_id"],))
-        username = await cur.fetchone()
-        assert username is not None
-    assert data["data"][0]["username"] == username[0]
+    
+    query = select(User.username).where(User.id == setup_test_comment["user_id"])
+    result = await db_session.execute(query)
+    username = result.scalar_one_or_none()
+    assert username is not None
+    assert data["data"][0]["username"] == username
 
 
 # Tests pour la route POST /comments/add/{concept_id}
@@ -97,7 +101,7 @@ async def test_post_comment_unauthorized(async_client: AsyncClient, setup_test_c
 
 # Tests pour la route PATCH /comments/update/{comment_id}
 @pytest.mark.asyncio
-async def test_patch_comment_success(async_client: AsyncClient, setup_test_comment,setup_user_token_admin):
+async def test_patch_comment_success(async_client: AsyncClient, setup_test_comment, setup_user_token_admin):
     """
     Teste la mise à jour réussie d'un commentaire.
     """
@@ -105,7 +109,7 @@ async def test_patch_comment_success(async_client: AsyncClient, setup_test_comme
     comment_id = setup_test_comment["id"]
     updated_content = "Updated content from API."
     update_data = {"content": updated_content}
-    response = await async_client.patch(f"/comments/{comment_id}", json=update_data,headers=headers)
+    response = await async_client.patch(f"/comments/{comment_id}", json=update_data, headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -126,13 +130,13 @@ async def test_patch_comment_unauthorized(async_client: AsyncClient, setup_test_
     assert response.status_code == 401
 
 @pytest.mark.asyncio
-async def test_patch_comment_not_found(async_client: AsyncClient,setup_user_token_admin):
+async def test_patch_comment_not_found(async_client: AsyncClient, setup_user_token_admin):
     """
     Teste la mise à jour d'un commentaire inexistant.
     """
     headers = create_headers_token(setup_user_token_admin)
-    response = await async_client.patch("/comments/99999", json={"content": "Non existent"},headers=headers)
-    assert response.status_code == 404 # Si NotFoundException est convertie en InternalServerError
+    response = await async_client.patch("/comments/99999", json={"content": "Non existent"}, headers=headers)
+    assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
     assert "Commentaire introuvable ou supprimé" in data["error"]
@@ -140,7 +144,7 @@ async def test_patch_comment_not_found(async_client: AsyncClient,setup_user_toke
 
 # Tests pour la route DELETE /comments/delete/{comment_id}
 @pytest.mark.asyncio
-async def test_delete_comment_success(async_client: AsyncClient, setup_test_comment,setup_user_token_admin):
+async def test_delete_comment_success(async_client: AsyncClient, setup_test_comment, setup_user_token_admin):
     """
     Teste la suppression réussie d'un commentaire.
     """
@@ -148,7 +152,7 @@ async def test_delete_comment_success(async_client: AsyncClient, setup_test_comm
     comment_id = setup_test_comment["id"]
     concept_id = setup_test_comment["concept_id"]
 
-    response = await async_client.delete(f"/comments/{comment_id}",headers=headers)
+    response = await async_client.delete(f"/comments/{comment_id}", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -169,31 +173,31 @@ async def test_delete_comment_unauthorized(async_client: AsyncClient, setup_test
     assert response.status_code == 401
 
 @pytest.mark.asyncio
-async def test_delete_comment_not_found(async_client: AsyncClient,setup_user_token_admin):
+async def test_delete_comment_not_found(async_client: AsyncClient, setup_user_token_admin):
     """
     Teste la suppression d'un commentaire inexistant.
     """
     headers = create_headers_token(setup_user_token_admin)
-    response = await async_client.delete("/comments/99999",headers=headers)
-    assert response.status_code == 404 # Si NotFoundException est convertie en InternalServerError
+    response = await async_client.delete("/comments/99999", headers=headers)
+    assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
     assert "Commentaire introuvable" in data["error"]
 
 
 @pytest.mark.asyncio
-async def test_delete_comment_already_deleted(async_client: AsyncClient, setup_test_comment,setup_user_token_admin):
+async def test_delete_comment_already_deleted(async_client: AsyncClient, setup_test_comment, setup_user_token_admin):
     """
     Teste la suppression d'un commentaire déjà supprimé.
     """
     headers = create_headers_token(setup_user_token_admin)
     comment_id = setup_test_comment["id"]
     # Supprimer une première fois
-    first_delete_response = await async_client.delete(f"/comments/{comment_id}",headers=headers)
+    await async_client.delete(f"/comments/{comment_id}", headers=headers)
 
     # Tenter de supprimer une deuxième fois
-    second_delete_response = await async_client.delete(f"/comments/{comment_id}",headers=headers)
-    assert second_delete_response.status_code == 404 # Si NotFoundException est convertie en InternalServerError
+    second_delete_response = await async_client.delete(f"/comments/{comment_id}", headers=headers)
+    assert second_delete_response.status_code == 404
     data = second_delete_response.json()
     assert data["success"] is False
     assert "Commentaire déjà supprimé" in data["error"]
