@@ -2,7 +2,7 @@ import os
 from functools import lru_cache
 
 from dotenv import load_dotenv
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 from pydantic_settings import BaseSettings
 
 load_dotenv()
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production").lower()  # production, development, or testing
     PASSWORD_SALT: str = os.getenv("PASSWORD_SALT", "dev_password_salt")
     # Authentication
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev_secret_key")  # A fallback value for local testing
+    SECRET_KEY: str = Field(..., description="Clé secrète obligatoire pour JWT")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
