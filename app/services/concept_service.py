@@ -1,7 +1,7 @@
 import copy
 import json
 import logging
-from typing import List
+from typing import List, Any
 from datetime import datetime
 
 from sqlalchemy import select, func, desc, delete, or_
@@ -64,7 +64,7 @@ class ConceptService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_concept_info(self, concept_id: int) -> ConceptResponse:
+    async def get_concept_info(self, concept_id: int) -> dict[str | Any, None | dict[str, Any] | list[Any] | Any]:
         query = (
             select(Concept)
             .where(Concept.id == concept_id)
@@ -328,122 +328,37 @@ class ConceptService:
 
     async def updateConcept(self, concept_id: int, data: UpdateConceptDict, rollback: bool = False) -> None:
         data_dict = data.model_dump() if isinstance(data, UpdateConceptDict) else data
-        
+
         concept = await self.db.get(Concept, concept_id)
         if not concept:
             raise NotFoundException(detail="Concept non trouvé")
 
         field_name = data_dict["field"]
         new_value_raw = data_dict["value"]
-        old_value = None
-        new_value = None
 
+        # Routage propre vers les méthodes spécialisées
         if field_name in ["nom", "enonce", "demonstration", "verification"]:
             old_value = getattr(concept, field_name)
             setattr(concept, field_name, new_value_raw)
             new_value = new_value_raw
-
         elif field_name == "type":
-            old_value = concept.type_id
-            query_t = select(Type.id).where(Type.type == new_value_raw)
-            new_t_id = await self.db.scalar(query_t)
-            concept.type_id = new_t_id
-            new_value = new_t_id
-
+            old_value, new_value = await self._update_type(concept, new_value_raw)
         elif field_name == "categorie":
-            old_value = concept.categorie_id
-            query_c = select(Category.id).where(Category.nom == new_value_raw)
-            new_c_id = await self.db.scalar(query_c)
-            concept.categorie_id = new_c_id
-            new_value = new_c_id
-
+            old_value, new_value = await self._update_category(concept, new_value_raw)
         elif field_name == "mathematicien":
-            old_value = concept.mathematicien_id
-            query_m = select(Mathematicien.id).where(Mathematicien.nom == new_value_raw)
-            new_m_id = await self.db.scalar(query_m)
-            concept.mathematicien_id = new_m_id
-            new_value = new_m_id
-
+            old_value, new_value = await self._update_mathematicien(concept, new_value_raw)
         elif field_name == "relations":
-            # On doit charger les relations actuelles
-            query_rels = select(Relation).where(or_(Relation.concept_source == concept_id, Relation.concept_cible == concept_id))
-            res_rels = await self.db.execute(query_rels)
-            current_rels = res_rels.scalars().all()
-            
-            old_value_list = []
-            for r in current_rels:
-                old_value_list.append({
-                    "id": r.id, "concept_source": r.concept_source, "concept_cible": r.concept_cible,
-                    "type_relation": r.type_relation, "description": r.description
-                })
-            
-            # Supprimer les anciennes relations
-            await self.db.execute(delete(Relation).where(or_(Relation.concept_source == concept_id, Relation.concept_cible == concept_id)))
-            
-            new_value_list = copy.deepcopy(new_value_raw)
-            for r_data in new_value_list:
-                src_id = r_data["concept_source"]["id"] if isinstance(r_data["concept_source"], dict) else r_data["concept_source"]
-                tgt_id = r_data["concept_cible"]["id"] if isinstance(r_data["concept_cible"], dict) else r_data["concept_cible"]
-                
-                new_rel = Relation(
-                    concept_source=src_id,
-                    concept_cible=tgt_id,
-                    type_relation=r_data["type_relation"],
-                    description=r_data.get("description")
-                )
-                self.db.add(new_rel)
-                
-            old_value = json.dumps(old_value_list)
-            new_value = json.dumps(new_value_list)
-
+            old_value, new_value = await self._update_relations(concept_id, new_value_raw)
         elif field_name == "sources":
-            query_s = select(Source).join(Concept.sources).where(Concept.id == concept_id)
-            res_s = await self.db.execute(query_s)
-            current_sources = res_s.scalars().all()
-            
-            old_value_list = [
-                {"id": s.id, "titre": s.titre, "auteur": s.auteur, "annee": s.annee, "url": s.url, "type": s.type}
-                for s in current_sources
-            ]
-            
-            for s_data in new_value_raw:
-                source = await self.db.get(Source, s_data["id"])
-                if source:
-                    source.titre = s_data["titre"]
-                    source.auteur = s_data["auteur"]
-                    source.annee = s_data["annee"]
-                    source.url = s_data["url"]
-                    source.type = s_data["type"]
-            
-            new_value_list = [
-                {"id": s["id"], "titre": s["titre"], "auteur": s["auteur"], "annee": s["annee"], "url": s["url"], "type": s["type"]}
-                for s in new_value_raw
-            ]
-            old_value = json.dumps(old_value_list)
-            new_value = json.dumps(new_value_list)
-
+            old_value, new_value = await self._update_sources(concept_id, new_value_raw)
         elif field_name == "aliases":
-            query_a = select(Alias).where(Alias.concept_id == concept_id)
-            res_a = await self.db.execute(query_a)
-            current_aliases = res_a.scalars().all()
-            old_value = json.dumps([a.alias for a in current_aliases])
-            
-            await self.db.execute(delete(Alias).where(Alias.concept_id == concept_id))
-            for alias_val in new_value_raw:
-                self.db.add(Alias(concept_id=concept_id, alias=alias_val))
-            
-            new_value = json.dumps(new_value_raw)
-
+            old_value, new_value = await self._update_aliases(concept_id, new_value_raw)
         elif field_name == "noms_etrangers":
-            query_fn = select(ForeignName).where(ForeignName.concept_id == concept_id)
-            res_fn = await self.db.execute(query_fn)
-            current_fn = res_fn.scalars().all()
-            old_value = json.dumps([{"id": n.id, "concept_id": n.concept_id, "Nom_étranger": n.nom_etranger, "langue": n.langue} for n in current_fn])
-            
-            # Note: The original service logic for noms_etrangers was a bit incomplete in its update loop
-            # but it stored them in history. Let's maintain the history storage.
-            new_value = json.dumps(new_value_raw)
+            old_value, new_value = await self._update_foreign_names(concept_id, new_value_raw)
+        else:
+            old_value, new_value = None, None
 
+        # Historisation centralisée
         await self.add_concept_version(
             username=data_dict["username"],
             concept_id=concept_id,
@@ -451,10 +366,109 @@ class ConceptService:
             old_version=old_value,
             new_version=new_value,
             rollback=rollback,
-            note=data_dict["note"]
+            note=data_dict.get("note")
         )
         await self.db.flush()
 
+    async def _update_type(self, concept: Concept, new_value_raw: str):
+        old_value = concept.type_id
+        query = select(Type.id).where(Type.type == new_value_raw)
+        new_id = await self.db.scalar(query)
+        concept.type_id = new_id
+        return old_value, new_id
+
+    async def _update_category(self, concept: Concept, new_value_raw: str):
+        old_value = concept.categorie_id
+        query = select(Category.id).where(Category.nom == new_value_raw)
+        new_id = await self.db.scalar(query)
+        concept.categorie_id = new_id
+        return old_value, new_id
+
+    async def _update_mathematicien(self, concept: Concept, new_value_raw: str):
+        old_value = concept.mathematicien_id
+        query = select(Mathematicien.id).where(Mathematicien.nom == new_value_raw)
+        new_id = await self.db.scalar(query)
+        concept.mathematicien_id = new_id
+        return old_value, new_id
+
+    async def _update_relations(self, concept_id: int, new_value_raw: list):
+        query = select(Relation).where(or_(Relation.concept_source == concept_id, Relation.concept_cible == concept_id))
+        res = await self.db.execute(query)
+        current_rels = res.scalars().all()
+
+        old_value_list = [{
+            "id": r.id, "concept_source": r.concept_source, "concept_cible": r.concept_cible,
+            "type_relation": r.type_relation, "description": r.description
+        } for r in current_rels]
+
+        await self.db.execute(
+            delete(Relation).where(or_(Relation.concept_source == concept_id, Relation.concept_cible == concept_id)))
+
+        new_value_list = copy.deepcopy(new_value_raw)
+        for r_data in new_value_list:
+            src_id = r_data["concept_source"]["id"] if isinstance(r_data["concept_source"], dict) else r_data[
+                "concept_source"]
+            tgt_id = r_data["concept_cible"]["id"] if isinstance(r_data["concept_cible"], dict) else r_data[
+                "concept_cible"]
+
+            new_rel = Relation(
+                concept_source=src_id,
+                concept_cible=tgt_id,
+                type_relation=r_data["type_relation"],
+                description=r_data.get("description")
+            )
+            self.db.add(new_rel)
+
+        return json.dumps(old_value_list), json.dumps(new_value_list)
+
+    async def _update_sources(self, concept_id: int, new_value_raw: list):
+        query = select(Source).join(Concept.sources).where(Concept.id == concept_id)
+        res = await self.db.execute(query)
+        current_sources = res.scalars().all()
+
+        old_value_list = [
+            {"id": s.id, "titre": s.titre, "auteur": s.auteur, "annee": s.annee, "url": s.url, "type": s.type}
+            for s in current_sources
+        ]
+
+        for s_data in new_value_raw:
+            source = await self.db.get(Source, s_data["id"])
+            if source:
+                source.titre = s_data["titre"]
+                source.auteur = s_data["auteur"]
+                source.annee = s_data["annee"]
+                source.url = s_data["url"]
+                source.type = s_data["type"]
+
+        new_value_list = [
+            {"id": s["id"], "titre": s["titre"], "auteur": s["auteur"], "annee": s["annee"], "url": s["url"],
+             "type": s["type"]}
+            for s in new_value_raw
+        ]
+        return json.dumps(old_value_list), json.dumps(new_value_list)
+
+    async def _update_aliases(self, concept_id: int, new_value_raw: list):
+        query = select(Alias).where(Alias.concept_id == concept_id)
+        res = await self.db.execute(query)
+        current_aliases = res.scalars().all()
+        old_value = json.dumps([a.alias for a in current_aliases])
+
+        await self.db.execute(delete(Alias).where(Alias.concept_id == concept_id))
+        for alias_val in new_value_raw:
+            self.db.add(Alias(concept_id=concept_id, alias=alias_val))
+
+        return old_value, json.dumps(new_value_raw)
+
+    async def _update_foreign_names(self, concept_id: int, new_value_raw: list):
+        query = select(ForeignName).where(ForeignName.concept_id == concept_id)
+        res = await self.db.execute(query)
+        current_fn = res.scalars().all()
+        old_value = json.dumps(
+            [{"id": n.id, "concept_id": n.concept_id, "Nom_étranger": n.nom_etranger, "langue": n.langue} for n in
+             current_fn])
+
+        new_value = json.dumps(new_value_raw)
+        return old_value, new_value
     async def get_editable_fields_options(self):
         types = (await self.db.execute(select(Type.type).distinct())).scalars().all()
         categories = (await self.db.execute(select(Category.nom).distinct())).scalars().all()
