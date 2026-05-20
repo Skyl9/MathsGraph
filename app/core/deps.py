@@ -1,7 +1,10 @@
 import logging
+from typing import Optional
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
+from fastapi.security import OAuth2PasswordBearer, OAuth2
+from fastapi.security.utils import get_authorization_scheme_param
 from sqlalchemy import select
 
 from app.core.exceptions import AuthenticationException, ForbiddenException
@@ -12,6 +15,31 @@ from app.db.models import User
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 logger = logging.getLogger(__name__)
+
+
+class OAuth2PasswordBearerWithCookie(OAuth2):
+    def __init__(self, tokenUrl: str):
+        super().__init__(flows=OAuthFlowsModel(password={"tokenUrl": tokenUrl}))
+
+    async def __call__(self, request: Request) -> Optional[str]:
+        # 1. On cherche d'abord le token dans les cookies HttpOnly
+        token = request.cookies.get("access_token")
+
+        # 2. Plan B : On regarde dans les headers (indispensable pour Swagger UI)
+        if not token:
+            header_authorization: str = request.headers.get("Authorization")
+            scheme, token = get_authorization_scheme_param(header_authorization)
+            if scheme.lower() != "bearer":
+                token = None
+
+        if not token:
+            raise AuthenticationException(detail="Authentification requise : aucun token trouvé.")
+
+        return token
+
+
+# On remplace l'ancienne stratégie par la nôtre
+oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="token")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), session=Depends(AsyncSessionLocal)):
@@ -31,8 +59,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session=Depends(
         raise credentials_exception
 
     stmt = select(User).where(User.username == username)
-
-    user = session.scalar(stmt)
+    user = await session.scalar(stmt)
     if user is None:
         raise credentials_exception
 

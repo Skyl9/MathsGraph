@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends,Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,9 +20,9 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),
+async def login_for_access_token(response: Response,form_data: OAuth2PasswordRequestForm = Depends(),
                                  db: AsyncSession = Depends(get_db)):
-    token: Token = await AuthService(db).login_for_access_token(form_data)
+    token: Token = await AuthService(db).login_for_access_token(form_data,response)
     # login_for_access_token ne fait que du SELECT, pas besoin de commit
     logger.debug("Route POST /token: access token generated successfully")
     return token

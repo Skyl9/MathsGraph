@@ -24,12 +24,14 @@ logger = logging.getLogger(__name__)
 
 def error_response(status_code: int, error: str):
     return {"success": False, "error": error, "data": None}
+is_dev = settings.ENVIRONMENT == "development"
 app = FastAPI(
     title="Math Concepts API",
     description="API pour gérer les concepts mathématiques",
     version="1.0.0",
-    docs_url="/docs",  # URL pour Swagger UI
-    redoc_url="/redoc",  # URL pour ReDoc
+    docs_url="/docs" if is_dev else None,  # URL pour Swagger UI
+    redoc_url="/redoc" if is_dev else None,  # URL pour ReDoc
+    openapi_url="/openapi.json" if is_dev else None, # Cache aussi le fichier JSON brut
     redirect_slashes=False
 
 )

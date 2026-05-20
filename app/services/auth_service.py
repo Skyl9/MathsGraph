@@ -1,20 +1,21 @@
+import logging
 import secrets
 import smtplib
 from datetime import timedelta, datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from fastapi import HTTPException, Depends, status
+from fastapi import HTTPException, status
+from fastapi import Response
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
 
 from app import settings
-from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.exceptions import BadRequestException, AuthenticationException, ConflictException
-from app.schemas.auth import PasswordResetConfirmSchema, UserCreate
+from app.core.security import get_password_hash, verify_password, create_access_token
 from app.db.models import User, PasswordResetToken
-import logging
+from app.schemas.auth import PasswordResetConfirmSchema, UserCreate
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class AuthService:
                 raise ConflictException(detail="Ce nom d'utilisateur est déjà pris.")
             else:
                 raise ConflictException(detail="Cet email est déjà associé à un compte.")
-        
+
         # Hasher le mot de passe
         hashed_password = get_password_hash(user.password)
 
@@ -56,7 +57,7 @@ class AuthService:
             "created_at": new_user.created_at
         }
 
-    async def login_for_access_token(self, form_data: OAuth2PasswordRequestForm = Depends()):
+    async def login_for_access_token(self, form_data: OAuth2PasswordRequestForm, response: Response):
         query = select(User).where(User.username == form_data.username)
         result = await self.db.execute(query)
         user = result.scalars().first()
@@ -73,6 +74,18 @@ class AuthService:
             data={"sub": user.username, "id": user.id, "role": user.role}, expires_delta=access_token_expires
         )
 
+        # 🌟 NOUVEAU : Sécurisation par Cookie HttpOnly
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,  # Empêche le Javascript de lire le token (Immunité XSS)
+            secure=not settings.DEBUG,  # True en production (HTTPS obligatoire)
+            samesite="lax",  # Protection contre les attaques CSRF
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            path="/"  # Disponible sur l'ensemble de l'API
+        )
+
+        # On garde le retour classique pour ne pas casser le typage Pydantic de la route
         return {"access_token": access_token, "token_type": "bearer"}
 
     @staticmethod
@@ -102,7 +115,7 @@ class AuthService:
         query = select(User).where(User.email == email)
         result = await self.db.execute(query)
         user = result.scalars().first()
-        
+
         if not user:
             raise HTTPException(
                 status_code=404,

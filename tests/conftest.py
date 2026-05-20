@@ -5,6 +5,7 @@ from logging.config import dictConfig
 
 import pytest
 import pytest_asyncio
+from fastapi import Response
 from fastapi.security import OAuth2PasswordRequestForm
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import text
@@ -156,7 +157,8 @@ def event_loop():
 async def setup_test_user(db_session: AsyncSession):
     password_hash = get_password_hash(TEST_PASSWORD)
     result = await db_session.execute(
-        text("INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role) RETURNING *"),
+        text(
+            "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role) RETURNING *"),
         {
             "username": TEST_USER_NAME,
             "email": TEST_USER_EMAIL,
@@ -167,6 +169,7 @@ async def setup_test_user(db_session: AsyncSession):
     )
     await db_session.commit()
     yield dict(result.mappings().first())
+
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_type(db_session: AsyncSession):
@@ -445,7 +448,6 @@ async def setup_fav_user(db_session: AsyncSession, setup_test_user, setup_test_c
 async def setup_user_token_admin(db_session: AsyncSession):
     password_hash = get_password_hash('admin')
 
-    # On ajoute try/except au cas où l'utilisateur admin existerait déjà, bien que la DB soit nettoyée
     await db_session.execute(
         text(
             "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role)"),
@@ -458,8 +460,11 @@ async def setup_user_token_admin(db_session: AsyncSession):
         "username": "admin",
         "password": "admin"
     }
-    # On passe db_session à AuthService au lieu de l'ancienne transaction
+
+    dummy_response = Response()
+
     tokenJson = await AuthService(db_session).login_for_access_token(
-        OAuth2PasswordRequestForm(username=login_data['username'], password=login_data['password'])
+        OAuth2PasswordRequestForm(username=login_data['username'], password=login_data['password']),
+        response=dummy_response
     )
     yield tokenJson
