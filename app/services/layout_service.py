@@ -5,6 +5,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InternalServerError
+from app.core.redis_client import redis_db
 from app.db.models import Concept, Relation, Position
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,7 @@ class LayoutService:
 
             self.db.add_all(new_positions)
             await self.db.flush()
+            await redis_db.delete("mathgraph:data")
 
             logger.info("Layouts 'physique' et 'grille' recalculés et sauvegardés avec succès !")
 
