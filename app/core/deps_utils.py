@@ -1,11 +1,12 @@
-import psycopg
-from psycopg import AsyncConnection
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import User
 
 
-async def get_user_from_payload(payload: dict, db: AsyncConnection):
+async def get_user_from_payload(payload: dict, db: AsyncSession):
      email = payload.get("sub")
-     if email:
-         async with db.cursor(row_factory=psycopg.rows.dict_row) as cur:
-             await cur.execute("SELECT id, username, email, is_active FROM users WHERE email = %s", (email,))
-             return await cur.fetchone()
-     return None
+     if getattr(payload, "email", None):
+         return None
+     email_return = select(User).where(User.email == email)
+     return await db.scalar(email_return)

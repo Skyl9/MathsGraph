@@ -1,16 +1,20 @@
-import psycopg
+import logging
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import logging
+from sqlalchemy import select
+
 from app.core.exceptions import AuthenticationException, ForbiddenException
-from app.db.database import get_db
 from app.core.security import decode_token
+from app.db.database import AsyncSessionLocal
+from app.db.models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 logger = logging.getLogger(__name__)
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+
+async def get_current_user(token: str = Depends(oauth2_scheme), session=Depends(AsyncSessionLocal)):
     """Récupère l'utilisateur actuel à partir du token. Lève une erreur si le token est invalide."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -22,24 +26,17 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     if payload is None:
         raise credentials_exception
 
-    username: str = payload.get("sub")
-    if username is None:
+    username = payload.get("sub")
+    if not isinstance(username, str):
         raise credentials_exception
 
-    conn = await get_db()
-    cursor = conn.cursor(cursor_factory=psycopg.extras.DictCursor)
-    try:
-        cursor.execute(
-            "SELECT id, username, email, is_active FROM users WHERE username = %s",
-            (username,)
-        )
-        user = cursor.fetchone()
-        if user is None:
-            raise credentials_exception
-        return dict(user)
-    finally:
-        cursor.close()
-        conn.close()
+    stmt = select(User).where(User.username == username)
+
+    user = session.scalar(stmt)
+    if user is None:
+        raise credentials_exception
+
+    return user
 
 
 async def get_current_active_user(current_user=Depends(get_current_user)):
@@ -65,6 +62,7 @@ def get_current_admin_payload(token: str = Depends(oauth2_scheme)):
     logger.info("admin payload verified")
     return payload
 
+
 def get_current_moderator_payload(token: str = Depends(oauth2_scheme)):
     """Décode le token et vérifie si le rôle est 'admin'."""
 
@@ -80,6 +78,7 @@ def get_current_moderator_payload(token: str = Depends(oauth2_scheme)):
         raise ForbiddenException(detail="The user does not have enough privileges")
     logger.info("Moderator or admin payload verified")
     return payload
+
 
 def get_current_user_payload(token: str = Depends(oauth2_scheme)):
     """Décode le token et vérifie si le rôle est 'admin'."""

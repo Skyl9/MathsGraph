@@ -1,7 +1,6 @@
 from typing import List
 
 from fastapi import APIRouter, Depends
-from psycopg import AsyncConnection
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
