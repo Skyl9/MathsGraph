@@ -1,11 +1,11 @@
-import os
+import logging
 from functools import lru_cache
 
-from dotenv import load_dotenv
-from pydantic import ConfigDict, Field
+# load_dotenv() n'est plus nécessaire car pydantic_settings lit le .env nativement !
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -14,38 +14,45 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
     TESTING: bool = False
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production").lower()  # production, development, or testing
-    PASSWORD_SALT: str = os.getenv("PASSWORD_SALT", "dev_password_salt")
+
+    ENVIRONMENT: str = "production"
+    PASSWORD_SALT: str = "dev_password_salt"
+
     # Authentication
     SECRET_KEY: str = Field(..., description="Clé secrète obligatoire pour JWT")
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Database
-    DB_USER: str = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "password")
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
-    DB_PORT: str = os.getenv("DB_PORT", "5432")
-    DB_NAME: str = os.getenv("DB_NAME", "app_db")
-    DBTESTLINK: str | None = os.getenv("DBTESTLINK")  # Optional during testing
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "password"
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 5432
+    DB_NAME: str = "app_db"
+    DBTESTLINK: str | None = None
 
-    SMTP_HOST:str = os.getenv("SMTP_HOST")
-    SMTP_PORT:str = os.getenv("SMTP_PORT")
-    SMTP_USER:str = os.getenv("SMTP_USER")
-    SMTP_PASSWORD:str = os.getenv("SMTP_PASSWORD")
+    # E-mail
+    SMTP_HOST: str
+    SMTP_PORT: int
+    SMTP_USER: str
+    SMTP_PASSWORD: str
+
+    # CORS
+    BACKEND_CORS_ORIGINS: list[str] = ["*"]
+
+    model_config = ConfigDict(env_file=".env", case_sensitive=True)
+
+    @field_validator("ENVIRONMENT", mode="before")
+    @classmethod
+    def lowercase_environment(cls, v: str) -> str:
+        return v.lower() if isinstance(v, str) else v
 
     @property
     def DATABASE_URL(self) -> str:
         if self.ENVIRONMENT == "testing":
-            print("Test Environment")
-            return self.DBTESTLINK or "sqlite:///./test.db"  # Defaults to SQLite for testing if DBTESTLINK is not provided
-        else:
-            print(f"{'Development' if self.ENVIRONMENT == 'development' else 'Production'} Environment")
-            return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            return self.DBTESTLINK or "sqlite:///./test.db"
 
-    # CORS
-    BACKEND_CORS_ORIGINS: list = ["*"]
-    model_config = ConfigDict(env_file=".env", case_sensitive=True)
+        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 
 @lru_cache()
@@ -59,10 +66,9 @@ def get_settings() -> Settings:
     elif settings.ENVIRONMENT == "development":
         settings.DEBUG = True
         settings.TESTING = False
-        settings.BACKEND_CORS_ORIGINS = ["http://localhost:3000", "http://localhost:8080","http://localhost:8000"]
+        settings.BACKEND_CORS_ORIGINS = ["http://localhost:3000", "http://localhost:8080", "http://localhost:8000"]
     else:  # production
-        settings.BACKEND_CORS_ORIGINS= ["https://mathsgraph-production.up.railway.app"]
-
+        settings.BACKEND_CORS_ORIGINS = ["https://mathsgraph-production.up.railway.app"]
         settings.DEBUG = False
         settings.TESTING = False
 

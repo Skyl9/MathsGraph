@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import settings
 from app.core.exceptions import BadRequestException, AuthenticationException, ConflictException
 from app.core.security import get_password_hash, verify_password, create_access_token
-from app.db.models import User, PasswordResetToken
+from app.db.models import User, PasswordResetToken, UserSession
 from app.schemas.auth import PasswordResetConfirmSchema, UserCreate
 
 logger = logging.getLogger(__name__)
@@ -74,20 +74,25 @@ class AuthService:
             data={"sub": user.username, "id": user.id, "role": user.role}, expires_delta=access_token_expires
         )
 
-        # 🌟 NOUVEAU : Sécurisation par Cookie HttpOnly
+        new_session = UserSession(
+            user_id=user.id,
+            token=access_token,
+            expires_at=datetime.now(timezone.utc) + access_token_expires
+        )
+        self.db.add(new_session)
+        await self.db.flush()
+
         response.set_cookie(
             key="access_token",
             value=access_token,
-            httponly=True,  # Empêche le Javascript de lire le token (Immunité XSS)
-            secure=not settings.DEBUG,  # True en production (HTTPS obligatoire)
-            samesite="lax",  # Protection contre les attaques CSRF
+            httponly=True,
+            secure=True,  # Obligatoire si samesite="none" (fonctionne sur localhost)
+            samesite="none",  # Indispensable pour autoriser le cookie entre le port 3000 et 8000
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            path="/"  # Disponible sur l'ensemble de l'API
+            path="/"
         )
 
-        # On garde le retour classique pour ne pas casser le typage Pydantic de la route
         return {"access_token": access_token, "token_type": "bearer"}
-
     @staticmethod
     def send_email(to_email: str, subject: str, body: str):
         smtp_host = settings.SMTP_HOST

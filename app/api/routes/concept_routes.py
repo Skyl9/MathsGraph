@@ -7,7 +7,7 @@ from app.core.deps import get_current_user_payload
 from app.db.database import get_db
 from app.schemas import Response
 from app.schemas.EditableClass import EditableField
-from app.schemas.concept import ConceptResponse, ConceptName, RollbackConcept
+from app.schemas.concept import ConceptResponse, ConceptName, RollbackConcept, ConceptCreate
 from app.schemas.history import History
 from app.schemas.pathcClass import UpdateConceptDict
 from app.services.concept_service import ConceptService, logger
@@ -31,6 +31,16 @@ async def rollback_concept(concept_id: int, data: RollbackConcept, db: AsyncSess
     return {"error": None, "data": None, "success": True, "meta": None}
 
 
+@router.post("/concept", response_model=Response, summary="Crée un nouveau concept")
+async def create_concept_route(
+    data: ConceptCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload)
+):
+    result = await ConceptService(db).create_concept(data, current_user.get("sub"))
+    await db.commit()
+    logger.debug(f"Route POST /concept a créé le concept: {result['nom']}")
+    return {"error": None, "data": result, "success": True, "meta": None}
 @router.get("/getEditableFieldsOptions", response_model=Response[EditableField])
 async def get_editable_fields_options(db: AsyncSession = Depends(get_db)):
     editable_field: EditableField = await ConceptService(db).get_editable_fields_options()

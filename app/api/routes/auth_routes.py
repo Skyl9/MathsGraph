@@ -20,11 +20,13 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(response: Response,form_data: OAuth2PasswordRequestForm = Depends(),
+async def login_for_access_token(response: Response, form_data: OAuth2PasswordRequestForm = Depends(),
                                  db: AsyncSession = Depends(get_db)):
-    token: Token = await AuthService(db).login_for_access_token(form_data,response)
-    # login_for_access_token ne fait que du SELECT, pas besoin de commit
-    logger.debug("Route POST /token: access token generated successfully")
+    token: Token = await AuthService(db).login_for_access_token(form_data, response)
+
+    await db.commit()
+
+    logger.debug("Route POST /token: access token generated and session saved successfully")
     return token
 
 
@@ -42,3 +44,13 @@ async def reset_password(reset_data: PasswordResetConfirmSchema, db: AsyncSessio
     await db.commit()
     logger.debug(f"Route POST /password-reset/confirm s'est exécuté correctement, {detail}")
     return {"error": None, "success": True, "data": detail, "meta": None}
+
+@router.post("/logout", summary="Déconnecte l'utilisateur")
+async def logout(response: Response):
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        secure=True,
+        samesite="none"
+    )
+    return {"success": True, "data": None, "error": None, "meta": None}

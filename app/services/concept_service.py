@@ -8,9 +8,9 @@ from sqlalchemy import select, func, desc, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
-from app.core.exceptions import NotFoundException, InternalServerError
+from app.core.exceptions import NotFoundException, InternalServerError, ConflictException
 from app.schemas import UpdateConceptDict
-from app.schemas.concept import ConceptName, ConceptResponse, RollbackConcept
+from app.schemas.concept import ConceptName, ConceptResponse, RollbackConcept, ConceptCreate
 from app.schemas.history import History
 from app.services.tags_service import TagsService
 from app.db.models import Concept, ConceptVersion, User, Type, Category, Mathematicien, Alias, Source, ForeignName, Relation
@@ -499,3 +499,42 @@ class ConceptService:
             "field_modified": v.field_modified,
             "is_rollback": v.is_rollback
         } for v in versions]
+
+    async def create_concept(self, data: ConceptCreate, username: str) -> dict:
+        data_dict = data.model_dump()
+
+        # Vérifier que le nom n'existe pas déjà
+        query = select(Concept.id).where(Concept.nom == data_dict["nom"])
+        result = await self.db.execute(query)
+        if result.scalars().first():
+            raise ConflictException("Un concept avec ce nom existe déjà.")
+
+        # Résolution des types par défaut si non fournis
+        type_id = await self.db.scalar(select(Type.id).where(Type.type == data_dict.get("type")))
+        if not type_id:
+            type_id = await self.db.scalar(select(Type.id).where(Type.type == 'théorème'))
+
+        new_concept = Concept(
+            nom=data_dict["nom"],
+            enonce=data_dict["enonce"],
+            demonstration=data_dict.get("demonstration"),
+            type_id=type_id,
+            categorie_id=data_dict.get("categorie_id"),
+            mathematicien_id=data_dict.get("mathematicien_id"),
+            verification=False
+        )
+
+        self.db.add(new_concept)
+        await self.db.flush()  # Pour récupérer l'ID généré
+
+        # Historisation de la création
+        await self.add_concept_version(
+            username=username,
+            concept_id=new_concept.id,
+            field_modified="creation",
+            old_version=None,
+            new_version=data_dict["nom"],
+            note="Création initiale"
+        )
+
+        return {"id": new_concept.id, "nom": new_concept.nom}
