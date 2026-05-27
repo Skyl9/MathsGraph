@@ -18,5 +18,5 @@ class ConceptRelation(BaseModel):
 class RelationResponse(RelationType):
     concept_source: ConceptRelation
     concept_cible: ConceptRelation
-    type_relation: Literal["reciproque", "equivalence", "implication","usage"]
+    type_relation: Literal["reciproque", "equivalence", "implication","usage","utilise"]
 
