@@ -43,15 +43,14 @@ class GraphService:
         edges = []
         
         for concept in concepts:
-            # Construction du dictionnaire des positions filtrées
+            # Construction du dictionnaire des positions
             pos_dict = {}
             for pos in concept.positions:
-                if pos.vue in ['grille', 'arbre', 'physique']:
-                    pos_dict[pos.vue] = {
-                        "x": pos.x,
-                        "y": pos.y,
-                        "z": pos.z
-                    }
+                pos_dict[pos.vue] = {
+                    "x": pos.x,
+                    "y": pos.y,
+                    "z": pos.z
+                }
             
             # Extraction du nœud au format attendu
             nodes.append({
