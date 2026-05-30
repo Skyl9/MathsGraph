@@ -56,5 +56,11 @@ jobs:
         echo "SMTP_PASSWORD=test_password" >> .env
 
     - name: Run Pytest
+      env:
+        DB_USER: postgres
+        DB_PASSWORD: password
+        DB_NAME: test_fastapi_db
+        DB_HOST: localhost
+        DB_PORT: 5432
       run: |
         uv run pytest tests/

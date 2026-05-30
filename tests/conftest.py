@@ -6,6 +6,7 @@ from logging.config import dictConfig
 
 import pytest
 import pytest_asyncio
+from dotenv import load_dotenv
 from fastapi import Response
 from fastapi.security import OAuth2PasswordRequestForm
 from httpx import AsyncClient, ASGITransport
@@ -19,6 +20,8 @@ from app.main import app
 from app.services import AuthService
 from app.services.comments_service import CommentsService
 from tests.constants import TEST_PASSWORD, TEST_USER_NAME, TEST_USER_EMAIL
+
+load_dotenv()
 
 TEST_DB_CONFIG = {
     "user": os.getenv("DB_USER", "postgres"),
