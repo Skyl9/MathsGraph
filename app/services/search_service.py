@@ -1,5 +1,5 @@
 import logging
-from sqlalchemy import select, literal, union_all
+from sqlalchemy import select, literal, union_all, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # N'oublie pas d'importer tes modèles
@@ -55,7 +55,7 @@ class SearchService:
 
         # pour respecter le fonctionnement de la session SQLAlchemy
         if filters.get("concept"):
-            results.extend(await self._search_concepts(search_pattern, filters))
+            results.extend(await self._search_concepts(search_term, search_pattern, filters))
         if filters.get("mathematicien"):
             results.extend(await self._search_maths(search_pattern))
         if filters.get("category"):
@@ -63,13 +63,21 @@ class SearchService:
 
         return results
 
-    async def _search_concepts(self, pattern: str, filters: dict):
+    async def _search_concepts(self, search_term: str, pattern: str, filters: dict):
+        ts_vector = func.to_tsvector('french', Concept.nom + ' ' + Concept.enonce)
+        ts_query = func.plainto_tsquery('french', search_term)
+
         stmt = select(
             Concept.id,
             Concept.nom,
             Concept.enonce.label("extrait"),
             literal("concept").label("entity_type")
-        ).where(Concept.nom.ilike(pattern)).limit(50)
+        ).where(
+            or_(
+                Concept.nom.ilike(pattern),
+                ts_vector.op('@@')(ts_query)
+            )
+        ).limit(50)
 
         result = await self.db.execute(stmt)
 

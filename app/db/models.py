@@ -21,7 +21,7 @@ class Base(DeclarativeBase):
 concept_tags = Table(
     "concept_tags",
     Base.metadata,
-    Column("concept_id", Integer, ForeignKey("concepts.id"), primary_key=True),
+    Column("concept_id", Integer, ForeignKey("concepts.id", ondelete="CASCADE"), primary_key=True),
     Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )

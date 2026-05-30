@@ -24,15 +24,15 @@ async def get_stats(db: AsyncSession = Depends(get_db), _payload: dict = Depends
 
 
 @router.get("/users", response_model=Response[List[User]])
-async def get_users(db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
-    data: List[User] = await AdminService(db).get_users()
+async def get_users(skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
+    data: List[User] = await AdminService(db).get_users(skip=skip, limit=limit)
     logger.debug(f"Route GET /{router.prefix}/users a renvoyé : {str(data)}")
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
 @router.get("/contents", response_model=Response[List[ConceptForAdmin]])
-async def get_contents(db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
-    data: List[ConceptForAdmin] = await AdminService(db).get_concepts_admin()
+async def get_contents(skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
+    data: List[ConceptForAdmin] = await AdminService(db).get_concepts_admin(skip=skip, limit=limit)
     logger.debug(f"Route GET /{router.prefix}/contents a renvoyé : {str(data)} ")
     return {"error": None, "data": data, "success": True, "meta": None}
 

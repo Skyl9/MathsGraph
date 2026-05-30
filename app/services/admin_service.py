@@ -29,8 +29,8 @@ class AdminService:
             "mathematicien": mathematicien_count,
         }
 
-    async def get_users(self):
-        query = select(User)
+    async def get_users(self, skip: int = 0, limit: int = 50):
+        query = select(User).offset(skip).limit(limit)
         result = await self.db.execute(query)
         users = result.scalars().all()
         
@@ -46,8 +46,8 @@ class AdminService:
             for u in users
         ]
 
-    async def get_concepts_admin(self):
-        query = select(Concept).options(selectinload(Concept.type))
+    async def get_concepts_admin(self, skip: int = 0, limit: int = 50):
+        query = select(Concept).options(selectinload(Concept.type)).offset(skip).limit(limit)
         result = await self.db.execute(query)
         concepts = result.scalars().all()
         
