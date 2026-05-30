@@ -21,7 +21,7 @@ async def test_advanced_search_success(async_client: AsyncClient, setup_test_con
     Teste la recherche avancée avec un payload complet.
     """
     payload = {
-        "query": setup_test_concept["nom"][:4],
+        "q": setup_test_concept["nom"][:4],
         "filters": {
             "concept": True,
             "mathematicien": False,
@@ -30,6 +30,7 @@ async def test_advanced_search_success(async_client: AsyncClient, setup_test_con
     }
     
     response = await async_client.post("/search/advanced", json=payload)
+    print(response.json())
     assert response.status_code == 200
     data = response.json()
     
