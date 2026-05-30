@@ -213,3 +213,13 @@ async def test_add_user_fav_no_user(async_client: AsyncClient, setup_test_user, 
     data = response.json()
     assert data["success"] is False
     assert "User not found" in data["error"]
+
+@pytest.mark.asyncio
+async def test_get_user_history(async_client: AsyncClient, setup_test_user, setup_user_token_admin):
+    headers = create_headers_token(setup_user_token_admin)
+    user_id = setup_test_user["id"]
+    response = await async_client.get(f"/user/history/{user_id}", headers=headers)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["success"] is True
+    assert isinstance(response_data["data"], list)

@@ -19,14 +19,14 @@ from app.db.models import Base
 from app.main import app
 from app.services import AuthService
 from app.services.comments_service import CommentsService
-from tests.constants import TEST_PASSWORD, TEST_USER_NAME, TEST_USER_EMAIL
+from tests.constants import TEST_PASSWORD, TEST_USER_NAME, TEST_USER_EMAIL, ADMIN_USER_NAME, ADMIN_EMAIL, ADMIN_PASSWORD
 
 load_dotenv()
 
 TEST_DB_CONFIG = {
     "user": os.getenv("DB_USER", "postgres"),
     "password": os.getenv("DB_PASSWORD", ""),  # Uses CI password, falls back to "" locally
-    "database": os.getenv("DB_NAME", "test_fastapi_db"),
+    "database": "test_fastapi_db", # FORCE TEST DB TO PREVENT ACCIDENTAL TRUNCATE
     "host": os.getenv("DB_HOST", "localhost"),
     "port": os.getenv("DB_PORT", "5432"),
 }
@@ -58,7 +58,8 @@ async def clean_database():
                                     users, concepts, categories, mathematiciens, type,
                                     sources, concepts_sources, relations, aliases, foreign_name,
                                     comments, concept_tags, tags, concept_versions, positions,
-                                    user_favorites, password_reset_tokens, api_logs
+                                    user_favorites, password_reset_tokens, api_logs,
+                                    user_sessions, user_contributions
                                     RESTART IDENTITY CASCADE;
                                 """))
 
@@ -450,19 +451,19 @@ async def setup_fav_user(db_session: AsyncSession, setup_test_user, setup_test_c
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_user_token_admin(db_session: AsyncSession):
-    password_hash = get_password_hash('admin')
+    password_hash = get_password_hash(ADMIN_PASSWORD)
 
     await db_session.execute(
         text(
             "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role)"),
-        {"username": "admin", "email": "tristan.rigaud@nrmi.fr", "password_hash": password_hash, "is_active": True,
+        {"username": ADMIN_USER_NAME, "email": ADMIN_EMAIL, "password_hash": password_hash, "is_active": True,
          "role": 'admin'}
     )
     await db_session.commit()
 
     login_data = {
-        "username": "admin",
-        "password": "admin"
+        "username": ADMIN_USER_NAME,
+        "password": ADMIN_PASSWORD
     }
 
     dummy_response = Response()

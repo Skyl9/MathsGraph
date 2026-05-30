@@ -91,3 +91,16 @@ async def test_request_password_token(mock_send, async_client, db_session: Async
 
     # Vérifier que aiosmtplib.send a été appelé une fois
     assert mock_send.called
+
+@pytest.mark.asyncio
+async def test_logout(async_client):
+    response = await async_client.post("/logout")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["success"] is True
+    # Vérifier que le cookie access_token est supprimé
+    # (FastAPI renvoie un set-cookie avec max-age=0)
+    set_cookie_header = response.headers.get("set-cookie")
+    assert set_cookie_header is not None
+    assert "access_token=" in set_cookie_header
+    assert "Max-Age=0" in set_cookie_header or "expires=" in set_cookie_header.lower()

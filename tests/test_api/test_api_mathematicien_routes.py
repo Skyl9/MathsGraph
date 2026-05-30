@@ -64,3 +64,22 @@ async def test_get_one_mathematicien_not_found(async_client: AsyncClient):
     res_data = response.json()
     assert res_data["success"] is False
     assert "error" in res_data
+
+@pytest.mark.asyncio
+async def test_get_mathematiciens_timeline(async_client: AsyncClient, db_session: AsyncSession):
+    """
+    Teste la récupération de la timeline des mathématiciens.
+    """
+    # Create a mathematician with date_naissance
+    from datetime import date
+    new_math = Mathematicien(nom="Timeline Math", date_naissance=date(1990, 1, 1))
+    db_session.add(new_math)
+    await db_session.commit()
+
+    response = await async_client.get("/mathematicien/timeline/all")
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["success"] is True
+    assert isinstance(res_data["data"], list)
+    # The setup_test_mathematicien should be in the list
+    assert any(m["nom"] == "Timeline Math" for m in res_data["data"])

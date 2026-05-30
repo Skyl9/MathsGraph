@@ -278,7 +278,7 @@ class Comment(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("comments.id", onupdate="CASCADE", ondelete="CASCADE"))
     is_deleted: Mapped[bool] = mapped_column(Boolean, server_default="false")
     field: Mapped[str] = mapped_column(Text, nullable=False)
@@ -362,6 +362,16 @@ class UserFavorite(Base):
     category: Mapped[Optional["Category"]] = relationship("Category", back_populates="user_favorites")
     mathematicien: Mapped[Optional["Mathematicien"]] = relationship("Mathematicien", back_populates="user_favorites")
     type: Mapped[Optional["Type"]] = relationship("Type", back_populates="user_favorites")
+
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN concept_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN category_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN mathematicien_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN type_id IS NOT NULL THEN 1 ELSE 0 END) = 1",
+            name="chk_single_favorite_target"
+        ),
+    )
 
 
 class UserSession(Base):
