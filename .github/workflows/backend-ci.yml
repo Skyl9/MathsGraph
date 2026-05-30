@@ -35,9 +35,7 @@ jobs:
         enable-cache: true
 
     - name: Install dependencies
-      run: |
-        uv venv --allow-existing
-        uv pip install -r requirements.txt pytest pytest-asyncio httpx
+      run: uv sync --locked --all-extras --dev
 
     - name: Create .env file for tests
       run: |
