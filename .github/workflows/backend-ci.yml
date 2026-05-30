@@ -28,15 +28,17 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up uv and Python 3.12
+    - name: Set up uv and Python 3.13
       uses: astral-sh/setup-uv@v5
       with:
-        python-version: "3.12"
+        python-version: "3.13"
         enable-cache: true
 
     - name: Install dependencies
       run: |
-        uv pip install --system -e . pytest pytest-asyncio httpx
+        uv venv
+        uv pip install -r requirements.txt pytest pytest-asyncio httpx
+
     - name: Create .env file for tests
       run: |
         echo "DB_NAME=test_fastapi_db" > .env
@@ -53,4 +55,4 @@ jobs:
 
     - name: Run Pytest
       run: |
-        pytest tests/
+        uv run pytest tests/
