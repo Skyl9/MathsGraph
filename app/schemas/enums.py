@@ -1,7 +1,7 @@
 from enum import Enum
 
 class VueLayout(str, Enum):
-    PHYSIQUE = "physique"
-    GRILLE = "grille"
-    ARBRE = "arbre"
-    TIMELINE = "timeline"
+    physique = "physique"
+    grille = "grille"
+    arbre = "arbre"
+    timeline = "timeline"
