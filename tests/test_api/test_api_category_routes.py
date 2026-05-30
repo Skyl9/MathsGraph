@@ -28,7 +28,7 @@ async def test_update_category(async_client: AsyncClient, setup_test_categorie,s
     headers = create_headers_token(setup_user_token_admin)
     category_id = setup_test_categorie["id"]
     updated_name = "Updated Test Category"
-    update_data = {"field": "nom", "value": updated_name}
+    update_data = {"field": "nom", "value": updated_name, "username": "admin_test"}
 
     response = await async_client.patch(f"/category/{category_id}", json=update_data,headers=headers)
     assert response.status_code == 200

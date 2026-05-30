@@ -4,7 +4,8 @@ from sqlalchemy import select
 
 from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException
 from app.schemas import CreateData
-from app.schemas.categorie import CategorieBase, CategoryUpdate
+from app.schemas.categorie import CategorieBase
+from app.schemas.patchClass import UpdateConceptDict
 from app.db.models import Category
 
 logger = logging.getLogger(__name__)
@@ -41,9 +42,9 @@ class CategoryService:
             "parent_id": category.parent_id,
         }
 
-    async def update_category(self, id_category: int, data: CategoryUpdate) -> None:
+    async def update_category(self, id_category: int, data: UpdateConceptDict) -> None:
         allowed_fields = {"nom", "description", "parent_id"}
-        data_dict = data.model_dump() if isinstance(data, CategoryUpdate) else data
+        data_dict = data.model_dump() if hasattr(data, "model_dump") else data
         field = data_dict["field"]
         if field not in allowed_fields:
             raise ForbiddenException(f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")

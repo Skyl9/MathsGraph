@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
 from app.db.database import get_db
-from app.schemas import CreateData, Response
+from app.schemas import CreateData, Response, UpdateConceptDict
 from app.schemas.categorie import CategorieBase
 from app.services import CategoryService
 from app.services.category_service import logger
@@ -21,7 +21,7 @@ async def get_one_category_E(id_category: int, db: AsyncSession = Depends(get_db
 @router.patch("/{id_category}", response_model=Response)
 async def update_category_E(
     id_category: int, 
-    data: dict, 
+    data: UpdateConceptDict, 
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload)
 ):

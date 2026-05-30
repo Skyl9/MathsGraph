@@ -10,7 +10,7 @@ class Position(BaseModel):
 class Nodes(BaseModel):
     id: int
     nom: str
-    typeMath:str
+    typeMath: Optional[str] = None
     position: Dict[str, Position]
 
 class Edge(BaseModel):

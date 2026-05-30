@@ -9,7 +9,7 @@ from app.schemas import Response
 from app.schemas.EditableClass import EditableField
 from app.schemas.concept import ConceptResponse, ConceptName, RollbackConcept, ConceptCreate
 from app.schemas.history import History
-from app.schemas.pathcClass import UpdateConceptDict
+from app.schemas.patchClass import UpdateConceptDict
 from app.services.concept_service import ConceptService, logger
 
 router = APIRouter(prefix="", tags=["concepts"])

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from relation import RelationResponse
     from source import SourceResponse
+    from tags import Tag
 
 
 class ConceptBase(BaseModel):
@@ -46,4 +47,4 @@ class ConceptResponse(ConceptBase):
     relations: Optional[List["RelationResponse"]] = []
     noms_etrangers: Optional[List[Dict]] = []
     date_modification: Optional[datetime]
-    tags:Optional[List] = None
+    tags: Optional[List["Tag"]] = []

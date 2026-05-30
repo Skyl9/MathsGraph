@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     DB_PORT: int = 5432
     DB_NAME: str = "app_db"
     DBTESTLINK: str | None = None
+    REDIS_URL: str = "redis://localhost:6379"
 
     # E-mail
     SMTP_HOST: str

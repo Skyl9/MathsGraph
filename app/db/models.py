@@ -4,10 +4,12 @@ from typing import List, Optional
 from sqlalchemy import (
     String, Integer, Boolean, DateTime, Date, ForeignKey, 
     Text, Float, CheckConstraint, UniqueConstraint, Index, 
-    Table, Column, func
+    Table, Column, func, Enum
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from app.schemas.enums import VueLayout
 
 
 class Base(DeclarativeBase):
@@ -198,7 +200,7 @@ class Position(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     concept_id: Mapped[int] = mapped_column(ForeignKey("concepts.id", ondelete="CASCADE"), nullable=False)
-    vue: Mapped[str] = mapped_column(String(100), nullable=False)
+    vue: Mapped[VueLayout] = mapped_column(Enum(VueLayout, native_enum=False, length=100), nullable=False)
     x: Mapped[float] = mapped_column(Float, nullable=False)
     y: Mapped[float] = mapped_column(Float, nullable=False)
     z: Mapped[float] = mapped_column(Float, nullable=False)

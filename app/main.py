@@ -10,6 +10,8 @@ from sqlalchemy import text
 from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.responses import JSONResponse
 
+logger = logging.getLogger(__name__)
+
 from app import settings
 from app.api.routes import concept_routes, auth_routes, mathematicien_routes, categorie_routes, type_routes, \
     source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes, \

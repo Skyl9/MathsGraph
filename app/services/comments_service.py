@@ -1,5 +1,5 @@
 import logging
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -104,7 +104,6 @@ class CommentsService:
         # Dans models.py: created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
         # updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
         # Il manque onupdate sur updated_at dans models.py, mais gardons la logique du service original:
-        from sqlalchemy import func
         comment.updated_at = func.now()
 
         await self.db.flush()

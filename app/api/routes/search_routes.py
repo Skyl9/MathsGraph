@@ -1,13 +1,8 @@
 from fastapi import APIRouter, Depends
 from psycopg import AsyncConnection
-from pydantic import BaseModel
-
+from app.schemas.search import AdvancedSearchPayload
 from app.db.database import get_db
 from app.services.search_service import SearchService
-
-class AdvancedSearchPayload(BaseModel):
-    q: str
-    filters: dict
 
 router = APIRouter(prefix="/search", tags=["search"])
 

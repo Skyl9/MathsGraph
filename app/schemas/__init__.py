@@ -11,7 +11,8 @@ from .GraphData import GraphData,Nodes,Position
 from .Views import Views
 from .EditableClass import EditableField
 from .response import Response
-from .pathcClass import UpdateConceptDict,CreateData,CreateAlias,Relation,CreateRelation,Source,CreateSource
+from .patchClass import UpdateConceptDict,CreateData,CreateAlias,Relation,CreateRelation,Source,CreateSource
+from .tags import Tag
 
 # Reconstruire les modèles après avoir tout importé
 ConceptResponse.model_rebuild()
@@ -23,6 +24,7 @@ UserResponse.model_rebuild()
 Nodes.model_rebuild()
 History.model_rebuild()
 User.model_rebuild()
+Tag.model_rebuild()
 
 
 __all__ = [
@@ -38,5 +40,6 @@ __all__ = [
     "EditableField",
     "Response",
     "History",
+    "Tag",
     "CreateData", "CreateAlias", "Relation", "CreateRelation", "Source", "CreateSource","UpdateConceptDict"
 ]

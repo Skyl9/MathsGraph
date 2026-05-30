@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException, InternalServerError, ConflictException, NotFoundException
 from app.schemas import CreateData
+from app.schemas.patchClass import UpdateConceptDict
 from app.schemas.mathematicien import MathematicienResponse, MathematicienUpdate
 from app.db.models import Mathematicien
 
@@ -37,8 +38,8 @@ class MathematicienService:
             "epoque": math.epoque,
         }
 
-    async def update_mathematicien(self, id_mathematicien: int, data: MathematicienUpdate):
-        data_dict = data.model_dump() if isinstance(data, MathematicienUpdate) else data
+    async def update_mathematicien(self, id_mathematicien: int, data: UpdateConceptDict):
+        data_dict = data.model_dump() if hasattr(data, "model_dump") else data
 
         allowed_fields = {"nom", "date_naissance", "date_deces", "biographie", "nationalite", "domaine", "url",
                           "recompenses", "epoque"}

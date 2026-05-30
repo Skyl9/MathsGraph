@@ -1,3 +1,5 @@
+from app.schemas.enums import VueLayout
+
 import math
 import logging
 import networkx as nx
@@ -54,7 +56,7 @@ class LayoutService:
                 new_positions.append(
                     Position(
                         concept_id=node_id,
-                        vue='physique',
+                        vue=VueLayout.PHYSIQUE,
                         x=float(coords[0]),
                         y=float(coords[1]),
                         z=float(coords[2])
@@ -76,7 +78,7 @@ class LayoutService:
                 new_positions.append(
                     Position(
                         concept_id=node_id,
-                        vue='grille',
+                        vue=VueLayout.GRILLE,
                         x=float((x_idx - side / 2) * spacing),
                         y=float((y_idx - side / 2) * spacing),
                         z=float((z_idx - side / 2) * spacing)
@@ -114,7 +116,7 @@ class LayoutService:
 
                 if n == 1:
                     new_positions.append(
-                        Position(concept_id=node_list[0], vue='arbre', x=0.0, y=y, z=0.0)
+                        Position(concept_id=node_list[0], vue=VueLayout.ARBRE, x=0.0, y=y, z=0.0)
                     )
                 else:
                     # Distribution circulaire sur le plan X-Z pour chaque couche
@@ -124,7 +126,7 @@ class LayoutService:
                         x = radius * math.cos(angle)
                         z = radius * math.sin(angle)
                         new_positions.append(
-                            Position(concept_id=node_id, vue='arbre', x=float(x), y=y, z=float(z))
+                            Position(concept_id=node_id, vue=VueLayout.ARBRE, x=float(x), y=y, z=float(z))
                         )
 
             # ==========================================
@@ -156,7 +158,7 @@ class LayoutService:
 
                 if n == 1:
                     new_positions.append(
-                        Position(concept_id=node_list[0], vue='timeline', x=0.0, y=0.0, z=z)
+                        Position(concept_id=node_list[0], vue=VueLayout.TIMELINE, x=0.0, y=0.0, z=z)
                     )
                 else:
                     # Distribution circulaire sur le plan X-Y pour éviter les superpositions à la même date
@@ -166,21 +168,21 @@ class LayoutService:
                         x = radius * math.cos(angle)
                         y = radius * math.sin(angle)
                         new_positions.append(
-                            Position(concept_id=node_id, vue='timeline', x=float(x), y=float(y), z=z)
+                            Position(concept_id=node_id, vue=VueLayout.TIMELINE, x=float(x), y=float(y), z=z)
                         )
 
             # ==========================================
             # 7. SAUVEGARDE EN BASE DE DONNÉES
             # ==========================================
             await self.db.execute(
-                delete(Position).where(Position.vue.in_(['physique', 'grille', 'arbre', 'timeline']))
+                delete(Position).where(Position.vue.in_([VueLayout.PHYSIQUE, VueLayout.GRILLE, VueLayout.ARBRE, VueLayout.TIMELINE]))
             )
 
             self.db.add_all(new_positions)
             await self.db.flush()
             await redis_db.delete("mathgraph:data")
 
-            logger.info("Layouts 'physique', 'grille', 'arbre', et 'timeline' recalculés et sauvegardés avec succès !")
+            logger.info("Layouts VueLayout.PHYSIQUE, VueLayout.GRILLE, VueLayout.ARBRE, et VueLayout.TIMELINE recalculés et sauvegardés avec succès !")
 
         except Exception as e:
             logger.error(f"Erreur lors de la sauvegarde des positions : {e}")

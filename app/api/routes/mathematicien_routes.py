@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
 from app.db.database import get_db
-from app.schemas import CreateData, Response
+from app.schemas import CreateData, Response, UpdateConceptDict
 from app.schemas.mathematicien import MathematicienResponse, MathematicienName
 from app.services import MathematicienService
 from app.services.mathematicien_service import logger
@@ -23,7 +23,7 @@ async def get_one_mathematicien_E(id_mathematicien: int, db: AsyncSession = Depe
 @router.patch("/{id_mathematicien}", response_model=Response)
 async def updateOneCategoryMathematicien_E(
     id_mathematicien: int, 
-    data: dict, 
+    data: UpdateConceptDict, 
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload)
 ):
