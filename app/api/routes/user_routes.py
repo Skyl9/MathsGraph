@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
+from app.core.exceptions import ForbiddenException
 from app.db.database import get_db
 from app.schemas import Response, UserResponse
 from app.schemas.user import UserId, UpdateUser, Favorite, FavoriteResponse
@@ -59,6 +60,11 @@ async def delete_favorite_user(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload)
 ):
+    caller_id = current_user.get("id")
+    caller_role = current_user.get("role", "").lower()
+    if int(data.user_id) != caller_id and caller_role != "admin":
+        raise ForbiddenException(detail="Not authorized to modify this user's favorites")
+
     await UserService(db).delete_favorite_user(general_id, data)
     await db.commit()
     return {"error": None, "data": None, "success": True, "meta": None}
@@ -71,6 +77,11 @@ async def add_favorite_user(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload)
 ):
+    caller_id = current_user.get("id")
+    caller_role = current_user.get("role", "").lower()
+    if int(data.user_id) != caller_id and caller_role != "admin":
+        raise ForbiddenException(detail="Not authorized to modify this user's favorites")
+
     await UserService(db).add_favorite_user(general_id, data)
     await db.commit()
     logger.debug(f"Route POST /{router.prefix}/favorite/add/{general_id} a correctement ajouté le favori")
