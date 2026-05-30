@@ -134,3 +134,18 @@ async def test_recalculate_graph_layout(
     assert "arbre" in vues
     assert "timeline" in vues
 
+
+@pytest.mark.asyncio
+async def test_get_analytics_success(async_client: AsyncClient, setup_user_token_admin):
+    """
+    Teste la récupération des statistiques API de l'admin.
+    """
+    headers = create_headers_token(setup_user_token_admin)
+    response = await async_client.get("/admin/analytics", headers=headers)
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert data["success"] is True
+    assert "daily_hits" in data["data"]
+    assert "top_routes" in data["data"]
+    assert isinstance(data["data"]["top_routes"], list)

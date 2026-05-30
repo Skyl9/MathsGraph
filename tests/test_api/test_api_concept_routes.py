@@ -269,3 +269,43 @@ async def test_get_concept_history_success(async_client: AsyncClient, setup_full
     assert any(h["note"] == "Note 1" for h in history_list)
     assert all(h["modified_by"] is not None for h in history_list)  # Vérifier que l'utilisateur est bien lié
 
+
+@pytest.mark.asyncio
+async def test_create_concept_success(async_client: AsyncClient, access_token: str):
+    """
+    Teste la création réussie d'un concept via POST /concept
+    """
+    headers = create_headers_token(access_token)
+    payload = {
+        "nom": "Nouveau Concept Test",
+        "enonce": "Ceci est un énoncé de test",
+        "demonstration": "Démo de test",
+        "verification": True,
+        "type": "Théorème",
+        "mathematicien_id": None,
+        "categorie_id": None
+    }
+    
+    response = await async_client.post("/concept", json=payload, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["success"] is True
+    assert data["data"]["nom"] == "Nouveau Concept Test"
+    assert data["data"]["enonce"] == "Ceci est un énoncé de test"
+    assert data["data"]["type"] == "Théorème"
+    assert "id" in data["data"]
+
+
+@pytest.mark.asyncio
+async def test_get_recent_history_success(async_client: AsyncClient, setup_full_test_concept):
+    """
+    Teste la récupération de l'historique récent global via GET /recent-history
+    """
+    response = await async_client.get("/recent-history?limit=10")
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["success"] is True
+    assert "data" in data
+    assert isinstance(data["data"], list)
