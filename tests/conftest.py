@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import os
 from logging.config import dictConfig
 
 import pytest
@@ -20,11 +21,11 @@ from app.services.comments_service import CommentsService
 from tests.constants import TEST_PASSWORD, TEST_USER_NAME, TEST_USER_EMAIL
 
 TEST_DB_CONFIG = {
-    "user": "postgres",
-    "password": "",
-    "database": "test_fastapi_db",
-    "host": "localhost",
-    "port": "5432",
+    "user": os.getenv("DB_USER", "postgres"),
+    "password": os.getenv("DB_PASSWORD", ""),  # Uses CI password, falls back to "" locally
+    "database": os.getenv("DB_NAME", "test_fastapi_db"),
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": os.getenv("DB_PORT", "5432"),
 }
 TEST_SQLALCHEMY_URL = (
     f"postgresql+psycopg://{TEST_DB_CONFIG['user']}:{TEST_DB_CONFIG['password']}"
