@@ -50,6 +50,10 @@ jobs:
         echo "ENVIRONMENT=test" >> .env
         echo "DBTESTLINK=postgresql://postgres:password@localhost:5432/test_fastapi_db" >> .env
         echo "PASSWORD_SALT=test_salt" >> .env
+        echo "SMTP_HOST=localhost" >> .env
+        echo "SMTP_PORT=1025" >> .env
+        echo "SMTP_USER=test_user" >> .env
+        echo "SMTP_PASSWORD=test_password" >> .env
 
     - name: Run Pytest
       run: |
