@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,15 +57,17 @@ async def test_reset_password(async_client, db_session: AsyncSession, setup_rese
     assert response_data["success"] is True
 
     # Vérifier que le mot de passe a été mis à jour (via le login par exemple, ou en vérifiant le hash)
-    # Ici on fait simple: on vérifie que le token a été supprimé
+    # Ici on fait simple: on vérifie que le token a été marqué comme utilisé
     query = select(PasswordResetToken).where(PasswordResetToken.token == setup_reset_token["token"])
     result = await db_session.execute(query)
-    assert result.scalars().first() is None
+    token_db = result.scalars().first()
+    assert token_db is not None
+    assert token_db.used is True
 
 
 @pytest.mark.asyncio
-@patch("app.services.auth_service.smtplib.SMTP")
-async def test_request_password_token(mock_smtp, async_client, db_session: AsyncSession, setup_test_user):
+@patch("app.services.auth_service.aiosmtplib.send", new_callable=AsyncMock)
+async def test_request_password_token(mock_send, async_client, db_session: AsyncSession, setup_test_user):
     login_data = {
         "email": TEST_USER_EMAIL,
     }
@@ -87,8 +89,5 @@ async def test_request_password_token(mock_smtp, async_client, db_session: Async
     token = res_token.scalars().first()
     assert token is not None
 
-    assert mock_smtp.called
-    mock_smtp_instance = mock_smtp.return_value.__enter__.return_value
-    assert mock_smtp_instance.starttls.called
-    assert mock_smtp_instance.login.called
-    assert mock_smtp_instance.sendmail.called
+    # Vérifier que aiosmtplib.send a été appelé une fois
+    assert mock_send.called

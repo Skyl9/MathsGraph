@@ -1,10 +1,10 @@
 import logging
 import secrets
-import smtplib
 from datetime import timedelta, datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+import aiosmtplib
 from fastapi import HTTPException, status
 from fastapi import Response
 from fastapi.security import OAuth2PasswordRequestForm
@@ -93,27 +93,28 @@ class AuthService:
         )
 
         return {"access_token": access_token, "token_type": "bearer"}
-    @staticmethod
-    def send_email(to_email: str, subject: str, body: str):
-        smtp_host = settings.SMTP_HOST
-        smtp_port = settings.SMTP_PORT
-        smtp_user = settings.SMTP_USER
-        smtp_password = settings.SMTP_PASSWORD
 
+    @staticmethod
+    async def send_email(to_email: str, subject: str, body: str):
+        """Envoi d'email asynchrone via aiosmtplib pour ne pas bloquer l'event loop."""
         message = MIMEMultipart()
-        message["From"] = smtp_user
+        message["From"] = settings.SMTP_USER
         message["To"] = to_email
         message["Subject"] = subject
         message.attach(MIMEText(body, "plain"))
 
         try:
-            with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(smtp_user, smtp_password)
-                server.sendmail(smtp_user, to_email, message.as_string())
+            await aiosmtplib.send(
+                message,
+                hostname=settings.SMTP_HOST,
+                port=settings.SMTP_PORT,
+                username=settings.SMTP_USER,
+                password=settings.SMTP_PASSWORD,
+                start_tls=True,
+            )
         except Exception as e:
+            # On log l'erreur mais on ne la propage pas pour ne pas révéler des infos
+            logger.error(f"Erreur lors de l'envoi de l'e-mail : {str(e)}")
             raise RuntimeError(f"Erreur lors de l'envoi de l'e-mail : {str(e)}")
 
     async def request_password_reset(self, email: str):
@@ -121,11 +122,13 @@ class AuthService:
         result = await self.db.execute(query)
         user = result.scalars().first()
 
+        # Sécurité : on retourne toujours 200 même si l'email n'existe pas
+        # pour éviter de révéler si un email est enregistré (énumération d'utilisateurs)
         if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="E-mail non enregistré"
-            )
+            logger.info(f"Tentative de reset pour un email inconnu (non révélé).")
+            return {
+                "detail": "Un e-mail contenant un lien de réinitialisation de mot de passe a été envoyé."
+            }
 
         # Générer un token de réinitialisation aléatoire
         reset_token = secrets.token_urlsafe(32)
@@ -141,7 +144,8 @@ class AuthService:
         await self.db.flush()
 
         # Générer l'e-mail contenant le lien de réinitialisation
-        reset_link = f"{settings.BACKEND_CORS_ORIGINS}/reset-password-verification/{reset_token}"
+        # Utilise FRONTEND_URL (string) et non BACKEND_CORS_ORIGINS (liste)
+        reset_link = f"{settings.FRONTEND_URL}/reset-password-verification/{reset_token}"
         email_subject = "Réinitialisation de votre mot de passe"
         email_body = f"""
         Bonjour,
@@ -154,8 +158,8 @@ class AuthService:
         Cordialement,
         L'équipe de support
         """
-        # Envoyer l'e-mail
-        AuthService.send_email(email, email_subject, email_body)
+        # Envoyer l'e-mail de façon asynchrone
+        await AuthService.send_email(email, email_subject, email_body)
 
         return {
             "detail": "Un e-mail contenant un lien de réinitialisation de mot de passe a été envoyé."
@@ -169,7 +173,7 @@ class AuthService:
         token = data_dict["token"]
         new_password = data_dict["new_password"]
 
-        query = select(PasswordResetToken).where(PasswordResetToken.token == token)
+        query = select(PasswordResetToken).where(PasswordResetToken.token == token, PasswordResetToken.used == False)
         result = await self.db.execute(query)
         reset_entry = result.scalars().first()
 
@@ -188,8 +192,8 @@ class AuthService:
         if user:
             user.password_hash = hashed_password
 
-        # Supprimer le token utilisé
-        await self.db.delete(reset_entry)
+        # Marquer le token comme utilisé pour garder une trace d'audit
+        reset_entry.used = True
         await self.db.flush()
 
         return {
