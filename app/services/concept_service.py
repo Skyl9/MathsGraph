@@ -199,6 +199,37 @@ class ConceptService:
         result = await self.db.execute(query)
         versions = result.scalars().all()
         
+        math_ids = set()
+        cat_ids = set()
+        type_ids = set()
+        
+        for v in versions:
+            if v.field_modified == "mathematicien":
+                if v.old_value and v.old_value.isdigit(): math_ids.add(int(v.old_value))
+                if v.new_value and v.new_value.isdigit(): math_ids.add(int(v.new_value))
+            elif v.field_modified == "categorie":
+                if v.old_value and v.old_value.isdigit(): cat_ids.add(int(v.old_value))
+                if v.new_value and v.new_value.isdigit(): cat_ids.add(int(v.new_value))
+            elif v.field_modified == "type":
+                if v.old_value and v.old_value.isdigit(): type_ids.add(int(v.old_value))
+                if v.new_value and v.new_value.isdigit(): type_ids.add(int(v.new_value))
+                
+        # Prefetching
+        math_dict = {}
+        if math_ids:
+            res = await self.db.execute(select(Mathematicien).where(Mathematicien.id.in_(math_ids)))
+            math_dict = {m.id: m.nom for m in res.scalars()}
+            
+        cat_dict = {}
+        if cat_ids:
+            res = await self.db.execute(select(Category).where(Category.id.in_(cat_ids)))
+            cat_dict = {c.id: c.nom for c in res.scalars()}
+            
+        type_dict = {}
+        if type_ids:
+            res = await self.db.execute(select(Type).where(Type.id.in_(type_ids)))
+            type_dict = {t.id: t.type for t in res.scalars()}
+
         res_versions = []
         for v in versions:
             v_dict = {
@@ -218,27 +249,21 @@ class ConceptService:
             # Résolution des noms
             if v.field_modified == "mathematicien":
                 if v.old_value and v.old_value.isdigit():
-                    old_m = await self.db.get(Mathematicien, int(v.old_value))
-                    v_dict["old_value"] = old_m.nom if old_m else v.old_value
+                    v_dict["old_value"] = math_dict.get(int(v.old_value), v.old_value)
                 if v.new_value and v.new_value.isdigit():
-                    new_m = await self.db.get(Mathematicien, int(v.new_value))
-                    v_dict["new_value"] = new_m.nom if new_m else v.new_value
+                    v_dict["new_value"] = math_dict.get(int(v.new_value), v.new_value)
             
             elif v.field_modified == "categorie":
                 if v.old_value and v.old_value.isdigit():
-                    old_c = await self.db.get(Category, int(v.old_value))
-                    v_dict["old_value"] = old_c.nom if old_c else v.old_value
+                    v_dict["old_value"] = cat_dict.get(int(v.old_value), v.old_value)
                 if v.new_value and v.new_value.isdigit():
-                    new_c = await self.db.get(Category, int(v.new_value))
-                    v_dict["new_value"] = new_c.nom if new_c else v.new_value
+                    v_dict["new_value"] = cat_dict.get(int(v.new_value), v.new_value)
                     
             elif v.field_modified == "type":
                 if v.old_value and v.old_value.isdigit():
-                    old_t = await self.db.get(Type, int(v.old_value))
-                    v_dict["old_value"] = old_t.type if old_t else v.old_value
+                    v_dict["old_value"] = type_dict.get(int(v.old_value), v.old_value)
                 if v.new_value and v.new_value.isdigit():
-                    new_t = await self.db.get(Type, int(v.new_value))
-                    v_dict["new_value"] = new_t.type if new_t else v.new_value
+                    v_dict["new_value"] = type_dict.get(int(v.new_value), v.new_value)
 
             elif v.field_modified == "sources":
                 try:
