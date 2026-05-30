@@ -56,7 +56,7 @@ class LayoutService:
                 new_positions.append(
                     Position(
                         concept_id=node_id,
-                        vue=VueLayout.PHYSIQUE,
+                        vue=VueLayout.physique,
                         x=float(coords[0]),
                         y=float(coords[1]),
                         z=float(coords[2])
@@ -78,7 +78,7 @@ class LayoutService:
                 new_positions.append(
                     Position(
                         concept_id=node_id,
-                        vue=VueLayout.GRILLE,
+                        vue=VueLayout.grille,
                         x=float((x_idx - side / 2) * spacing),
                         y=float((y_idx - side / 2) * spacing),
                         z=float((z_idx - side / 2) * spacing)
@@ -104,30 +104,19 @@ class LayoutService:
                 if not changed:
                     break
 
-            # Grouper les nœuds par niveau
-            level_nodes = {}
-            for c_id, lvl in levels.items():
-                level_nodes.setdefault(lvl, []).append(c_id)
-
-            spacing_y = 10.0  # Espacement vertical
-            for lvl, node_list in level_nodes.items():
-                n = len(node_list)
-                y = float(lvl * spacing_y)  # Les axiomes (niveau 0) restent à y=0, les théorèmes montent
-
-                if n == 1:
-                    new_positions.append(
-                        Position(concept_id=node_list[0], vue=VueLayout.ARBRE, x=0.0, y=y, z=0.0)
-                    )
-                else:
-                    # Distribution circulaire sur le plan X-Z pour chaque couche
-                    radius = max(4.0, math.sqrt(n) * 3.5)
-                    for idx, node_id in enumerate(node_list):
-                        angle = (2 * math.pi * idx) / n
-                        x = radius * math.cos(angle)
-                        z = radius * math.sin(angle)
-                        new_positions.append(
-                            Position(concept_id=node_id, vue=VueLayout.ARBRE, x=float(x), y=y, z=float(z))
-                        )
+            # Calculer un layout 2D pour organiser les branches spatialement sans qu'elles se croisent trop
+            pos_2d = nx.spring_layout(G, dim=2, scale=40.0, iterations=100)
+            
+            spacing_y = 15.0  # Espacement vertical
+            for node_id, coords in pos_2d.items():
+                lvl = levels.get(node_id, 0)
+                y = float(lvl * spacing_y)
+                x = float(coords[0])
+                z = float(coords[1])
+                
+                new_positions.append(
+                    Position(concept_id=node_id, vue=VueLayout.arbre, x=x, y=y, z=z)
+                )
 
             # ==========================================
             # 6. CALCUL DU LAYOUT CHRONOLOGIQUE (Timeline)
@@ -158,7 +147,7 @@ class LayoutService:
 
                 if n == 1:
                     new_positions.append(
-                        Position(concept_id=node_list[0], vue=VueLayout.TIMELINE, x=0.0, y=0.0, z=z)
+                        Position(concept_id=node_list[0], vue=VueLayout.timeline, x=0.0, y=0.0, z=z)
                     )
                 else:
                     # Distribution circulaire sur le plan X-Y pour éviter les superpositions à la même date
@@ -168,14 +157,14 @@ class LayoutService:
                         x = radius * math.cos(angle)
                         y = radius * math.sin(angle)
                         new_positions.append(
-                            Position(concept_id=node_id, vue=VueLayout.TIMELINE, x=float(x), y=float(y), z=z)
+                            Position(concept_id=node_id, vue=VueLayout.timeline, x=float(x), y=float(y), z=z)
                         )
 
             # ==========================================
             # 7. SAUVEGARDE EN BASE DE DONNÉES
             # ==========================================
             await self.db.execute(
-                delete(Position).where(Position.vue.in_([VueLayout.PHYSIQUE, VueLayout.GRILLE, VueLayout.ARBRE, VueLayout.TIMELINE]))
+                delete(Position).where(Position.vue.in_([VueLayout.physique, VueLayout.grille, VueLayout.arbre, VueLayout.timeline]))
             )
 
             self.db.add_all(new_positions)

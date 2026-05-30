@@ -56,6 +56,7 @@ class GraphService:
             nodes.append({
                 "id": concept.id,
                 "nom": concept.nom,
+                "enonce": concept.enonce,
                 "typeMath": concept.type.type if concept.type else None,
                 "position": pos_dict
             })

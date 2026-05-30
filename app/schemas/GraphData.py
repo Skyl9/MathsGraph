@@ -10,6 +10,7 @@ class Position(BaseModel):
 class Nodes(BaseModel):
     id: int
     nom: str
+    enonce: Optional[str] = None
     typeMath: Optional[str] = None
     position: Dict[str, Position]
 
