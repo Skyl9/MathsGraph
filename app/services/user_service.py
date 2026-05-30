@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import NotFoundException, BadRequestException, InternalServerError
+from app.core.exceptions import NotFoundException, BadRequestException, InternalServerError, ForbiddenException
 from app.schemas.user import UserId, UpdateUser, Favorite
 from app.db.models import User, UserFavorite, Concept, Mathematicien, Category, Type, ConceptVersion
 
@@ -44,11 +44,27 @@ class UserService:
             raise NotFoundException(detail="User not found")
         return {"id": user_id}
 
-    async def patch_user(self, id: int, data: UpdateUser) -> None:
+    async def patch_user(self, id: int, data: UpdateUser, current_user: dict) -> None:
+        """Met à jour un champ utilisateur. Un utilisateur ne peut modifier que son propre profil.
+        Les admins peuvent modifier n'importe quel profil."""
         data_dict = data.model_dump() if isinstance(data, UpdateUser) else data
-        allowed_fields = {"username", "email", "is_active", "role", "preferred_language", "avatar_url", "bio"}
+        allowed_fields = {"username", "email", "preferred_language", "avatar_url", "bio"}
+        # Les admins peuvent aussi modifier is_active et role
+        admin_only_fields = {"is_active", "role"}
+
         field: str = data_dict["field"]
-        if field not in allowed_fields:
+        caller_role = current_user.get("role", "").lower()
+        caller_id = current_user.get("id")
+
+        # Vérification d'autorisation : seul l'utilisateur lui-même ou un admin peut modifier
+        if caller_id != id and caller_role != "admin":
+            raise ForbiddenException(detail="Vous ne pouvez modifier que votre propre profil.")
+
+        # Les champs sensibles (rôle, is_active) sont réservés aux admins
+        if field in admin_only_fields and caller_role != "admin":
+            raise ForbiddenException(detail="Seul un administrateur peut modifier ce champ.")
+
+        if field not in allowed_fields and field not in admin_only_fields:
             raise BadRequestException(detail="Mauvais champ donné")
 
         query = select(User).where(User.id == id)
@@ -113,54 +129,86 @@ class UserService:
     async def delete_favorite_user(self, general_id: int, data: Favorite) -> None:
         data_dict = data.model_dump() if isinstance(data, Favorite) else data
         user_id = int(data_dict["user_id"])
-        
+        entity_type = data_dict["type"]
+
         query_user = select(User.id).where(User.id == user_id)
         res_user = await self.db.execute(query_user)
         if not res_user.scalars().first():
             raise NotFoundException(detail="User not found")
-            
-        query_concept = select(Concept.id).where(Concept.id == general_id)
-        res_concept = await self.db.execute(query_concept)
-        if not res_concept.scalars().first():
-            raise NotFoundException(detail="Concept not found")
+
+        # Vérifier l'existence de l'entité correcte selon son type
+        if entity_type == "concept":
+            res = await self.db.execute(select(Concept.id).where(Concept.id == general_id))
+            if not res.scalars().first():
+                raise NotFoundException(detail="Concept not found")
+        elif entity_type == "mathematicien":
+            res = await self.db.execute(select(Mathematicien.id).where(Mathematicien.id == general_id))
+            if not res.scalars().first():
+                raise NotFoundException(detail="Mathématicien not found")
+        elif entity_type == "category":
+            res = await self.db.execute(select(Category.id).where(Category.id == general_id))
+            if not res.scalars().first():
+                raise NotFoundException(detail="Catégorie not found")
+        elif entity_type == "type":
+            res = await self.db.execute(select(Type.id).where(Type.id == general_id))
+            if not res.scalars().first():
+                raise NotFoundException(detail="Type not found")
+        else:
+            raise BadRequestException(detail=f"Type de favori inconnu : {entity_type}")
 
         stmt = delete(UserFavorite).where(UserFavorite.user_id == user_id)
-        if data_dict["type"] == "concept":
+        if entity_type == "concept":
             stmt = stmt.where(UserFavorite.concept_id == general_id)
-        elif data_dict["type"] == "mathematicien":
+        elif entity_type == "mathematicien":
             stmt = stmt.where(UserFavorite.mathematicien_id == general_id)
-        elif data_dict["type"] == "category":
+        elif entity_type == "category":
             stmt = stmt.where(UserFavorite.category_id == general_id)
-        elif data_dict["type"] == "type":
+        elif entity_type == "type":
             stmt = stmt.where(UserFavorite.type_id == general_id)
-        
+
         await self.db.execute(stmt)
         await self.db.flush()
 
     async def add_favorite_user(self, general_id: int, data: Favorite) -> None:
         data_dict = data.model_dump() if isinstance(data, Favorite) else data
         user_id = int(data_dict["user_id"])
+        entity_type = data_dict["type"]
 
         query_user = select(User.id).where(User.id == user_id)
         res_user = await self.db.execute(query_user)
         if not res_user.scalars().first():
             raise NotFoundException(detail="User not found")
-            
-        query_concept = select(Concept.id).where(Concept.id == general_id)
-        res_concept = await self.db.execute(query_concept)
-        if not res_concept.scalars().first():
-            raise NotFoundException(detail="Concept not found")
+
+        # Vérifier l'existence de l'entité correcte selon son type
+        if entity_type == "concept":
+            res = await self.db.execute(select(Concept.id).where(Concept.id == general_id))
+            if not res.scalars().first():
+                raise NotFoundException(detail="Concept not found")
+        elif entity_type == "mathematicien":
+            res = await self.db.execute(select(Mathematicien.id).where(Mathematicien.id == general_id))
+            if not res.scalars().first():
+                raise NotFoundException(detail="Mathématicien not found")
+        elif entity_type == "category":
+            res = await self.db.execute(select(Category.id).where(Category.id == general_id))
+            if not res.scalars().first():
+                raise NotFoundException(detail="Catégorie not found")
+        elif entity_type == "type":
+            res = await self.db.execute(select(Type.id).where(Type.id == general_id))
+            if not res.scalars().first():
+                raise NotFoundException(detail="Type not found")
+        else:
+            raise BadRequestException(detail=f"Type de favori inconnu : {entity_type}")
 
         new_fav = UserFavorite(user_id=user_id)
-        if data_dict["type"] == "concept":
+        if entity_type == "concept":
             new_fav.concept_id = general_id
-        elif data_dict["type"] == "mathematicien":
+        elif entity_type == "mathematicien":
             new_fav.mathematicien_id = general_id
-        elif data_dict["type"] == "category":
+        elif entity_type == "category":
             new_fav.category_id = general_id
-        elif data_dict["type"] == "type":
+        elif entity_type == "type":
             new_fav.type_id = general_id
-            
+
         self.db.add(new_fav)
         await self.db.flush()
 

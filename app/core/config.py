@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = ["*"]
 
+    # Frontend URL (utilisé pour les liens dans les emails)
+    FRONTEND_URL: str = "http://localhost:8000"
+
     model_config = ConfigDict(env_file=".env", case_sensitive=True)
 
     @field_validator("ENVIRONMENT", mode="before")
@@ -67,8 +70,10 @@ def get_settings() -> Settings:
         settings.DEBUG = True
         settings.TESTING = False
         settings.BACKEND_CORS_ORIGINS = ["http://localhost:3000", "http://localhost:8080", "http://localhost:8000"]
+        settings.FRONTEND_URL = "http://localhost:8000"
     else:  # production
         settings.BACKEND_CORS_ORIGINS = ["https://mathsgraph-production.up.railway.app"]
+        settings.FRONTEND_URL = "https://mathsgraph-production.up.railway.app"
         settings.DEBUG = False
         settings.TESTING = False
 

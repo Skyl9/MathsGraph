@@ -467,6 +467,15 @@ class ConceptService:
             [{"id": n.id, "concept_id": n.concept_id, "Nom_étranger": n.nom_etranger, "langue": n.langue} for n in
              current_fn])
 
+        # Supprimer les anciens noms étrangers et insérer les nouveaux
+        await self.db.execute(delete(ForeignName).where(ForeignName.concept_id == concept_id))
+        for fn_data in new_value_raw:
+            self.db.add(ForeignName(
+                concept_id=concept_id,
+                nom_etranger=fn_data.get("nom_etranger") or fn_data.get("Nom_étranger", ""),
+                langue=fn_data.get("langue", "")
+            ))
+
         new_value = json.dumps(new_value_raw)
         return old_value, new_value
     async def get_editable_fields_options(self):

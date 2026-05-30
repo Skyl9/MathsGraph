@@ -100,7 +100,7 @@ def get_current_moderator_payload(token: str = Depends(oauth2_scheme)):
         raise AuthenticationException(detail="Could not validate credentials")
 
     user_role: str = payload.get("role")
-    if user_role is None or user_role.lower() != "admin" or user_role.lower() != "moderator":
+    if user_role is None or user_role.lower() not in ["admin", "moderator"]:
         # Utilisation de l'exception personnalisée
         raise ForbiddenException(detail="The user does not have enough privileges")
     logger.info("Moderator or admin payload verified")

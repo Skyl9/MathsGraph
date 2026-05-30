@@ -33,7 +33,7 @@ async def patch_user(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload)
 ):
-    await UserService(db).patch_user(id_user, data)
+    await UserService(db).patch_user(id_user, data, current_user)
     await db.commit()
     logger.debug(f"Route PATCH /{router.prefix}/update/{id_user} a correctement mis à jour l'utilisateur d'id : {id_user}")
     return {"error": None, "data": None, "success": True, "meta": None}
