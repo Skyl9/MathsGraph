@@ -1,25 +1,13 @@
 # Use a lightweight official Python image as the base
 FROM python:3.12-slim
 
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
 
-# Set the working directory inside the container
+# Copy the application into the container.
+COPY . /app
+
+# Install the application dependencies.
 WORKDIR /app
+RUN uv sync --frozen --no-cache
 
-# Install dependencies from requirements.txt
-# This layer is cached if the file doesn't change
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy your application code into the container
-# The 'app' folder and its contents are copied to /app/app
-COPY ./app /app/app
-
-# Command to run your FastAPI application using Uvicorn
 # The --port $PORT part is crucial for Railway, as it uses a dynamic port
-CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+CMD ["/app/.venv/bin/fastapi", "run", "app/main.py", "--port $PORT", "--host", "0.0.0.0"]

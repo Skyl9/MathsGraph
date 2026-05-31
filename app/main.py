@@ -8,8 +8,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from starlette.background import BackgroundTask, BackgroundTasks
-from starlette.responses import JSONResponse, RedirectResponse
-import os
+from starlette.responses import JSONResponse
 import asyncio
 
 from app.api.routes import (
@@ -228,12 +227,14 @@ app.include_router(admin_routes.router)
 
 app.include_router(search_routes.router)
 
-
+"""
 @app.get("/")
 async def redirect_to_new_domain():
-    """
+    ""
     Route catch-all pour rediriger le trafic de l'ancien domaine (Railway)
     vers le nouveau domaine (Scaleway).
-    """
+    ""
     target_url = os.getenv("NEW_FRONTEND_URL", "https://mathsgraph.com")
     return RedirectResponse(url=target_url, status_code=301)
+
+"""
