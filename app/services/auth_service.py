@@ -11,11 +11,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import settings
+from app.core.config import settings
 from app.core.exceptions import BadRequestException, AuthenticationException, ConflictException
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.db.models import User, PasswordResetToken, UserSession
 from app.schemas.auth import PasswordResetConfirmSchema, UserCreate
+from app.schemas.TokenType import TokenPayload
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +41,7 @@ class AuthService:
         hashed_password = get_password_hash(user.password)
 
         # Créer l'utilisateur
-        new_user = User(
-            username=user.username,
-            email=user.email,
-            password_hash=hashed_password
-        )
+        new_user = User(username=user.username, email=user.email, password_hash=hashed_password)
         self.db.add(new_user)
         await self.db.flush()
 
@@ -54,7 +51,7 @@ class AuthService:
             "email": new_user.email,
             "is_active": new_user.is_active,
             "role": new_user.role,
-            "created_at": new_user.created_at
+            "created_at": new_user.created_at,
         }
 
     async def login_for_access_token(self, form_data: OAuth2PasswordRequestForm, response: Response):
@@ -71,17 +68,14 @@ class AuthService:
 
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.username, "id": user.id, "role": user.role}, expires_delta=access_token_expires
+            data=TokenPayload(sub=user.username, id=user.id, role=user.role), expires_delta=access_token_expires
         )
 
         new_session = UserSession(
-            user_id=user.id,
-            token=access_token,
-            expires_at=datetime.now(timezone.utc) + access_token_expires
+            user_id=user.id, token=access_token, expires_at=datetime.now(timezone.utc) + access_token_expires
         )
         self.db.add(new_session)
         await self.db.flush()
-
         response.set_cookie(
             key="access_token",
             value=access_token,
@@ -89,7 +83,7 @@ class AuthService:
             secure=True,  # Obligatoire si samesite="none" (fonctionne sur localhost)
             samesite="none",  # Indispensable pour autoriser le cookie entre le port 3000 et 8000
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            path="/"
+            path="/",
         )
 
         return {"access_token": access_token, "token_type": "bearer"}
@@ -125,21 +119,15 @@ class AuthService:
         # Sécurité : on retourne toujours 200 même si l'email n'existe pas
         # pour éviter de révéler si un email est enregistré (énumération d'utilisateurs)
         if not user:
-            logger.info(f"Tentative de reset pour un email inconnu (non révélé).")
-            return {
-                "detail": "Un e-mail contenant un lien de réinitialisation de mot de passe a été envoyé."
-            }
+            logger.info("Tentative de reset pour un email inconnu (non révélé).")
+            return {"detail": "Un e-mail contenant un lien de réinitialisation de mot de passe a été envoyé."}
 
         # Générer un token de réinitialisation aléatoire
         reset_token = secrets.token_urlsafe(32)
         expires_at = datetime.now(tz=timezone.utc) + timedelta(hours=1)
 
         # Sauvegarder le token
-        new_token = PasswordResetToken(
-            user_id=user.id,
-            token=reset_token,
-            expires_at=expires_at
-        )
+        new_token = PasswordResetToken(user_id=user.id, token=reset_token, expires_at=expires_at)
         self.db.add(new_token)
         await self.db.flush()
 
@@ -161,9 +149,7 @@ class AuthService:
         # Envoyer l'e-mail de façon asynchrone
         await AuthService.send_email(email, email_subject, email_body)
 
-        return {
-            "detail": "Un e-mail contenant un lien de réinitialisation de mot de passe a été envoyé."
-        }
+        return {"detail": "Un e-mail contenant un lien de réinitialisation de mot de passe a été envoyé."}
 
     async def reset_password(self, reset_data: PasswordResetConfirmSchema):
         data_dict = reset_data.model_dump() if isinstance(reset_data, PasswordResetConfirmSchema) else reset_data
@@ -173,7 +159,7 @@ class AuthService:
         token = data_dict["token"]
         new_password = data_dict["new_password"]
 
-        query = select(PasswordResetToken).where(PasswordResetToken.token == token, PasswordResetToken.used == False)
+        query = select(PasswordResetToken).where(PasswordResetToken.token == token, PasswordResetToken.used.is_(False))
         result = await self.db.execute(query)
         reset_entry = result.scalars().first()
 
@@ -196,6 +182,4 @@ class AuthService:
         reset_entry.used = True
         await self.db.flush()
 
-        return {
-            "detail": "Mot de passe réinitialisé avec succès"
-        }
+        return {"detail": "Mot de passe réinitialisé avec succès"}

@@ -1,10 +1,10 @@
 import logging
 from datetime import date
-from sqlalchemy import select, func, text, desc, cast, Numeric
+from sqlalchemy import select, func, desc, cast, Numeric
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import User, UserFavorite, Concept, Category, Mathematicien, Type, ApiLog
+from app.db.models import User, UserFavorite, Concept, Category, Mathematicien, ApiLog
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class AdminService:
         query = select(User).offset(skip).limit(limit)
         result = await self.db.execute(query)
         users = result.scalars().all()
-        
+
         return [
             {
                 "id": u.id,
@@ -50,7 +50,7 @@ class AdminService:
         query = select(Concept).options(selectinload(Concept.type)).offset(skip).limit(limit)
         result = await self.db.execute(query)
         concepts = result.scalars().all()
-        
+
         return [
             {
                 "id": c.id,
@@ -68,7 +68,7 @@ class AdminService:
                 ApiLog.method,
                 ApiLog.endpoint,
                 func.count().label("total_hits"),
-                func.round(cast(func.avg(ApiLog.duration_ms), Numeric), 2).label("avg_duration_ms")
+                func.round(cast(func.avg(ApiLog.duration_ms), Numeric), 2).label("avg_duration_ms"),
             )
             .group_by(ApiLog.method, ApiLog.endpoint)
             .order_by(desc("total_hits"))
@@ -89,7 +89,8 @@ class AdminService:
                     "method": row.method,
                     "endpoint": row.endpoint,
                     "total_hits": row.total_hits,
-                    "avg_duration": float(row.avg_duration_ms)
-                } for row in top_routes
-            ]
+                    "avg_duration": float(row.avg_duration_ms),
+                }
+                for row in top_routes
+            ],
         }

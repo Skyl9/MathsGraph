@@ -1,4 +1,3 @@
-from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
@@ -23,7 +22,7 @@ class UserService:
 
         if user is None:
             raise NotFoundException(detail="User not found")
-        
+
         return {
             "id": user.id,
             "username": user.username,
@@ -42,7 +41,7 @@ class UserService:
         user_id = result.scalars().first()
         if user_id is None:
             raise NotFoundException(detail="User not found")
-        return {"id": user_id}
+        return UserId(id=user_id)
 
     async def patch_user(self, id: int, data: UpdateUser, current_user: dict) -> None:
         """Met à jour un champ utilisateur. Un utilisateur ne peut modifier que son propre profil.
@@ -84,7 +83,7 @@ class UserService:
 
         if not user:
             raise NotFoundException(detail="User not found")
-            
+
         query_fav = (
             select(UserFavorite)
             .where(UserFavorite.user_id == user_id)
@@ -92,38 +91,22 @@ class UserService:
                 selectinload(UserFavorite.concept),
                 selectinload(UserFavorite.mathematicien),
                 selectinload(UserFavorite.category),
-                selectinload(UserFavorite.type)
+                selectinload(UserFavorite.type),
             )
         )
         result_fav = await self.db.execute(query_fav)
         favorites = result_fav.scalars().all()
-        
+
         dictList = []
         for fav in favorites:
             if fav.concept:
-                dictList.append({
-                    "id": fav.concept.id,
-                    "nom": fav.concept.nom,
-                    "category": "concept"
-                })
+                dictList.append({"id": fav.concept.id, "nom": fav.concept.nom, "category": "concept"})
             elif fav.mathematicien:
-                dictList.append({
-                    "id": fav.mathematicien.id,
-                    "nom": fav.mathematicien.nom,
-                    "category": "mathematicien"
-                })
+                dictList.append({"id": fav.mathematicien.id, "nom": fav.mathematicien.nom, "category": "mathematicien"})
             elif fav.category:
-                dictList.append({
-                    "id": fav.category.id,
-                    "nom": fav.category.nom,
-                    "category": "category"
-                })
+                dictList.append({"id": fav.category.id, "nom": fav.category.nom, "category": "category"})
             elif fav.type:
-                dictList.append({
-                    "id": fav.type.id,
-                    "nom": fav.type.type,
-                    "category": "type"
-                })
+                dictList.append({"id": fav.type.id, "nom": fav.type.type, "category": "type"})
         return dictList
 
     async def delete_favorite_user(self, general_id: int, data: Favorite) -> None:
@@ -232,15 +215,17 @@ class UserService:
 
             contributions = []
             for v in versions:
-                contributions.append({
-                    "id": v.id,
-                    "concept_id": v.concept_id,
-                    "concept_nom": v.concept.nom if v.concept else None,
-                    "username": v.modifier.username if v.modifier else None,
-                    "modified_at": v.modified_at.isoformat() if v.modified_at else None,
-                    "field_modified": v.field_modified,
-                    "is_rollback": v.is_rollback
-                })
+                contributions.append(
+                    {
+                        "id": v.id,
+                        "concept_id": v.concept_id,
+                        "concept_nom": v.concept.nom if v.concept else None,
+                        "username": v.modifier.username if v.modifier else None,
+                        "modified_at": v.modified_at.isoformat() if v.modified_at else None,
+                        "field_modified": v.field_modified,
+                        "is_rollback": v.is_rollback,
+                    }
+                )
 
             return contributions
 

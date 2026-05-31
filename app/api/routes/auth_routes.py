@@ -27,7 +27,7 @@ async def login_for_access_token(
     request: Request,
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     token: Token = await AuthService(db).login_for_access_token(form_data, response)
     await db.commit()
@@ -38,13 +38,11 @@ async def login_for_access_token(
 @router.post("/password-reset/request", response_model=ApiResponse)
 @limiter.limit("3/minute")  # Max 3 demandes de reset par IP par minute
 async def request_password_reset(
-    request: Request,
-    email: PasswordResetRequestSchema,
-    db: AsyncSession = Depends(get_db)
+    request: Request, email: PasswordResetRequestSchema, db: AsyncSession = Depends(get_db)
 ):
     message: dict = await AuthService(db).request_password_reset(email.email)
     await db.commit()
-    logger.debug(f"Route POST /password-request/request Requête envoyé avec succèes")
+    logger.debug("Route POST /password-request/request Requête envoyé avec succèes")
     return {"error": None, "success": True, "data": message, "meta": None}
 
 
@@ -58,10 +56,5 @@ async def reset_password(reset_data: PasswordResetConfirmSchema, db: AsyncSessio
 
 @router.post("/logout", summary="Déconnecte l'utilisateur")
 async def logout(response: Response):
-    response.delete_cookie(
-        key="access_token",
-        path="/",
-        secure=True,
-        samesite="none"
-    )
+    response.delete_cookie(key="access_token", path="/", secure=True, samesite="none")
     return {"success": True, "data": None, "error": None, "meta": None}

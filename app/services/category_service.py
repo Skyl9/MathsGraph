@@ -19,14 +19,14 @@ class CategoryService:
         query = select(Category)
         result = await self.db.execute(query)
         categories = result.scalars().all()
-        
+
         return [
-            {
-                "id": c.id,
-                "nom": c.nom,
-                "description": c.description,
-                "parent_id": c.parent_id,
-            }
+            CategorieBase(
+                id=c.id,
+                nom=c.nom,
+                description=c.description,
+                parent_id=c.parent_id,
+            )
             for c in categories
         ]
 
@@ -35,16 +35,16 @@ class CategoryService:
         if not category:
             raise NotFoundException(detail=f"Category {id_category} not found")
 
-        return {
-            "id": category.id,
-            "nom": category.nom,
-            "description": category.description,
-            "parent_id": category.parent_id,
-        }
+        return CategorieBase(
+            id=category.id,
+            nom=category.nom,
+            description=category.description,
+            parent_id=category.parent_id,
+        )
 
     async def update_category(self, id_category: int, data: UpdateConceptDict) -> None:
         allowed_fields = {"nom", "description", "parent_id"}
-        data_dict = data.model_dump() if hasattr(data, "model_dump") else data
+        data_dict = data.model_dump() if isinstance(data, UpdateConceptDict) else data
         field = data_dict["field"]
         if field not in allowed_fields:
             raise ForbiddenException(f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")
@@ -59,7 +59,7 @@ class CategoryService:
     async def add_category(self, data: CreateData) -> None:
         payload = data.model_dump() if isinstance(data, CreateData) else data
         nom = payload["value"]
-        
+
         query = select(Category).where(Category.nom == nom)
         result = await self.db.execute(query)
         if result.scalars().first() is not None:

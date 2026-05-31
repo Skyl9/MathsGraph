@@ -2,8 +2,8 @@ import logging
 from functools import lru_cache
 
 # load_dotenv() n'est plus nécessaire car pydantic_settings lit le .env nativement !
-from pydantic import ConfigDict, Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     # Frontend URL (utilisé pour les liens dans les emails)
     FRONTEND_URL: str = "http://localhost:8000"
 
-    model_config = ConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
     @field_validator("ENVIRONMENT", mode="before")
     @classmethod
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    settings = Settings()
+    settings = Settings()  # type: ignore
 
     # Environment-specific overrides
     if settings.ENVIRONMENT == "testing":

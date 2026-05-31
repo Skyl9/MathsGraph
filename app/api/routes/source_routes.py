@@ -11,11 +11,9 @@ router = APIRouter(prefix="/source", tags=["source"])
 
 @router.post("", summary="Crée une nouvelle source", response_model=Response)
 async def create_source(
-    data: CreateSource, 
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user_payload)
+    data: CreateSource, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
     await SourceService(db).create_source(data)
     await db.commit()
-    logger.debug(f"Route POST /source a correctement créé une source")
+    logger.debug("Route POST /source a correctement créé une source")
     return {"error": None, "data": None, "success": True, "meta": None}

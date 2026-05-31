@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 
-from . import tags_routes, comments_routes
 from .concept_routes import router as concept_router
 from .auth_routes import router as auth_router
 from .mathematicien_routes import router as mathematicien_router
@@ -18,76 +17,20 @@ from .search_routes import router as search_router
 
 api_router = APIRouter()
 
-api_router.include_router(
-    graph_router,
-    prefix="/graph",
-    tags=["graph"]
-)
-api_router.include_router(
-    alias_router,
-    prefix="/alias",
-    tags=["alias"]
-)
-api_router.include_router(
-    relation_router,
-    prefix="/relation",
-    tags=["relation"]
-)
-api_router.include_router(
-    source_router,
-    prefix="/source",
-    tags=["source"]
-)
-api_router.include_router(
-    concept_router,
-    prefix="/concepts",
-    tags=["concepts"]
-)
+api_router.include_router(graph_router, prefix="/graph", tags=["graph"])
+api_router.include_router(alias_router, prefix="/alias", tags=["alias"])
+api_router.include_router(relation_router, prefix="/relation", tags=["relation"])
+api_router.include_router(source_router, prefix="/source", tags=["source"])
+api_router.include_router(concept_router, prefix="/concepts", tags=["concepts"])
 
-api_router.include_router(
-    auth_router,
-    prefix="/auth",
-    tags=["authentication"]
-)
+api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 
-api_router.include_router(
-    mathematicien_router,
-    prefix="/mathematicien",
-    tags=["mathematicien"]
-)
+api_router.include_router(mathematicien_router, prefix="/mathematicien", tags=["mathematicien"])
 
-api_router.include_router(
-    categorie_router,
-    prefix="/category",
-    tags=["category"]
-)
-api_router.include_router(
-    type_router,
-    prefix="/type",
-    tags=["type"]
-)
-api_router.include_router(
-    user_router,
-    prefix="/user",
-    tags=["user"]
-)
-api_router.include_router(
-    tags_router,
-    prefix="/tags",
-    tags=["tags"]
-)
-api_router.include_router(
-    comments_router,
-    prefix="/comments",
-    tags=["comments"]
-)
-api_router.include_router(
-    admin_router,
-    prefix="/admin",
-    tags=["admin"]
-)
-api_router.include_router(
-    search_router,
-    prefix="/search",
-    tags=["search"]
-)
+api_router.include_router(categorie_router, prefix="/category", tags=["category"])
+api_router.include_router(type_router, prefix="/type", tags=["type"])
+api_router.include_router(user_router, prefix="/user", tags=["user"])
+api_router.include_router(tags_router, prefix="/tags", tags=["tags"])
+api_router.include_router(comments_router, prefix="/comments", tags=["comments"])
+api_router.include_router(admin_router, prefix="/admin", tags=["admin"])
+api_router.include_router(search_router, prefix="/search", tags=["search"])

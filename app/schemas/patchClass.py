@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -6,30 +6,37 @@ from pydantic import BaseModel
 class UpdateConceptDict(BaseModel):
     field: str
     value: Any
-    username:str
-    note:Optional[str] = None
+    username: str
+    note: Optional[str] = None
+
 
 class CreateData(BaseModel):
-    value:str
+    value: str
+
 
 class CreateAlias(CreateData):
-    id:int
+    id: int
+
 
 class Relation(BaseModel):
-    théo1:str
-    théo2:str
-    relation:str
-    desc:str
+    théo1: str
+    théo2: str
+    relation: str
+    desc: str
+
+
 class CreateRelation(BaseModel):
     value: Relation
 
+
 class Source(BaseModel):
-    id:int
-    source:str
-    auteur:str
-    annee:int
-    url:str
-    type:str
+    id: int
+    source: str
+    auteur: str
+    annee: int
+    url: str
+    type: str
+
 
 class CreateSource(BaseModel):
-    value:Source
+    value: Source

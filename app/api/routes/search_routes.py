@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends
-from psycopg import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.search import AdvancedSearchPayload
 from app.db.database import get_db
 from app.services.search_service import SearchService
 
 router = APIRouter(prefix="/search", tags=["search"])
 
+
 @router.get("/quick", summary="Recherche globale rapide")
-async def quick_search(q: str, db: AsyncConnection = Depends(get_db)):
+async def quick_search(q: str, db: AsyncSession = Depends(get_db)):
     if len(q) < 2:
         return {"success": True, "data": [], "error": None, "meta": None}
 
@@ -15,8 +16,8 @@ async def quick_search(q: str, db: AsyncConnection = Depends(get_db)):
     return {"success": True, "data": results, "error": None, "meta": None}
 
 
-@router.post("/advanced",summary="Recherche spécifique à une catégorie choisi")
-async def advanced_search(payload :AdvancedSearchPayload, db: AsyncConnection = Depends(get_db)):
+@router.post("/advanced", summary="Recherche spécifique à une catégorie choisi")
+async def advanced_search(payload: AdvancedSearchPayload, db: AsyncSession = Depends(get_db)):
     if len(payload.q) < 2:
         return {"success": True, "data": [], "error": None, "meta": None}
 

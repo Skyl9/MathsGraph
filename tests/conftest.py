@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import logging
 import os
@@ -26,7 +25,7 @@ load_dotenv()
 TEST_DB_CONFIG = {
     "user": os.getenv("DB_USER", "postgres"),
     "password": os.getenv("DB_PASSWORD", ""),  # Uses CI password, falls back to "" locally
-    "database": "test_fastapi_db", # FORCE TEST DB TO PREVENT ACCIDENTAL TRUNCATE
+    "database": "test_fastapi_db",  # FORCE TEST DB TO PREVENT ACCIDENTAL TRUNCATE
     "host": os.getenv("DB_HOST", "localhost"),
     "port": os.getenv("DB_PORT", "5432"),
 }
@@ -53,7 +52,9 @@ async def setup_test_schema():
 async def clean_database():
     """Vide explicitement toutes les tables avant chaque test via SQLAlchemy."""
     async with test_engine.begin() as conn:
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
                                 TRUNCATE TABLE
                                     users, concepts, categories, mathematiciens, type,
                                     sources, concepts_sources, relations, aliases, foreign_name,
@@ -61,7 +62,9 @@ async def clean_database():
                                     user_favorites, password_reset_tokens, api_logs,
                                     user_sessions, user_contributions
                                     RESTART IDENTITY CASCADE;
-                                """))
+                                """
+            )
+        )
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -93,16 +96,12 @@ def setup_test_logging():
     test_logging_config = {
         "version": 1,
         "disable_existing_loggers": False,
-        "formatters": {
-            "standard": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            }
-        },
+        "formatters": {"standard": {"format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"}},
         "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
                 "formatter": "standard",
-                "level": "DEBUG"  # <<<<<< ICI : Défini le niveau du gestionnaire de console à DEBUG
+                "level": "DEBUG",  # <<<<<< ICI : Défini le niveau du gestionnaire de console à DEBUG
             },
             # Si vous voulez également un fichier de log spécifique pour les tests,
             # vous pouvez le configurer ici. Sinon, vous pouvez supprimer ce gestionnaire.
@@ -113,19 +112,17 @@ def setup_test_logging():
                 "filename": "test_app.log",  # Nom de fichier de log distinct pour les tests
                 "maxBytes": 10_000_000,
                 "backupCount": 1,
-                "encoding": "utf8"
-            }
+                "encoding": "utf8",
+            },
         },
         "loggers": {
             "": {  # logger racine
                 "handlers": ["console", "file"],  # Attache les gestionnaires à la racine
                 "level": "DEBUG",  # Le logger racine est aussi au niveau DEBUG
-                "propagate": False
+                "propagate": False,
             },
-            "uvicorn.error": {
-                "level": "WARNING"
-            }
-        }
+            "uvicorn.error": {"level": "WARNING"},
+        },
     }
 
     # Applique la configuration de logging spécifique aux tests
@@ -146,31 +143,20 @@ def setup_test_logging():
     logging.info("Configuration de logging réinitialisée après la session de tests.")
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """
-    Creates a new event loop for the entire test session.
-    Modern pytest-asyncio often handles this, but explicitly defining it
-    can prevent issues in some environments.
-    """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_user(db_session: AsyncSession):
     password_hash = get_password_hash(TEST_PASSWORD)
     result = await db_session.execute(
         text(
-            "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role) RETURNING *"),
+            "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role) RETURNING *"
+        ),
         {
             "username": TEST_USER_NAME,
             "email": TEST_USER_EMAIL,
             "password_hash": password_hash,
             "is_active": True,
-            "role": 'user'
-        }
+            "role": "user",
+        },
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -179,8 +165,7 @@ async def setup_test_user(db_session: AsyncSession):
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_type(db_session: AsyncSession):
     result = await db_session.execute(
-        text("INSERT INTO type (type) VALUES (:type_val) RETURNING *"),
-        {"type_val": "Type 1"}
+        text("INSERT INTO type (type) VALUES (:type_val) RETURNING *"), {"type_val": "Type 1"}
     )
 
     await db_session.commit()
@@ -192,16 +177,12 @@ async def setup_test_type(db_session: AsyncSession):
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_concept(db_session: AsyncSession, setup_test_type):
-    type_id = setup_test_type['id']
+    type_id = setup_test_type["id"]
     result = await db_session.execute(
         text(
-            "INSERT INTO concepts (nom, enonce, demonstration, type_id) VALUES (:nom, :enonce, :demo, :type_id) RETURNING *"),
-        {
-            "nom": "Concept 1",
-            "enonce": "Enonce 1",
-            "demo": "Demonstration 1",
-            "type_id": type_id
-        }
+            "INSERT INTO concepts (nom, enonce, demonstration, type_id) VALUES (:nom, :enonce, :demo, :type_id) RETURNING *"
+        ),
+        {"nom": "Concept 1", "enonce": "Enonce 1", "demo": "Demonstration 1", "type_id": type_id},
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -210,8 +191,7 @@ async def setup_test_concept(db_session: AsyncSession, setup_test_type):
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_mathematicien(db_session: AsyncSession):
     result = await db_session.execute(
-        text("INSERT INTO mathematiciens (nom) VALUES (:nom) RETURNING *"),
-        {"nom": "Mathematicien 1"}
+        text("INSERT INTO mathematiciens (nom) VALUES (:nom) RETURNING *"), {"nom": "Mathematicien 1"}
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -220,8 +200,7 @@ async def setup_test_mathematicien(db_session: AsyncSession):
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_categorie(db_session: AsyncSession):
     result = await db_session.execute(
-        text("INSERT INTO categories (nom) VALUES (:nom) RETURNING *"),
-        {"nom": "Categorie 1"}
+        text("INSERT INTO categories (nom) VALUES (:nom) RETURNING *"), {"nom": "Categorie 1"}
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -231,7 +210,7 @@ async def setup_test_categorie(db_session: AsyncSession):
 async def setup_test_source(db_session: AsyncSession):
     result = await db_session.execute(
         text("INSERT INTO sources (titre, auteur) VALUES (:titre, :auteur) RETURNING *"),
-        {"titre": "Source 1", "auteur": "Auteur 1"}
+        {"titre": "Source 1", "auteur": "Auteur 1"},
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -243,8 +222,9 @@ async def setup_reset_token(db_session: AsyncSession, setup_test_user):
     time = datetime.datetime.now() + datetime.timedelta(days=1)
     result = await db_session.execute(
         text(
-            "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (:user_id, :token, :expires_at) RETURNING *"),
-        {"user_id": user["id"], "token": "token", "expires_at": time}
+            "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (:user_id, :token, :expires_at) RETURNING *"
+        ),
+        {"user_id": user["id"], "token": "token", "expires_at": time},
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -259,18 +239,20 @@ def comments_service_instance(db_session: AsyncSession):
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_comment(db_session: AsyncSession, setup_test_concept, setup_test_user):
     result = await db_session.execute(
-        text("""
+        text(
+            """
              INSERT INTO comments (concept_id, user_id, content, field, parent_id)
              VALUES (:concept_id, :user_id, :content, :field, :parent_id)
              RETURNING id, concept_id, user_id, content, created_at, updated_at, parent_id, is_deleted, field
-             """),
+             """
+        ),
         {
             "concept_id": setup_test_concept["id"],
             "user_id": setup_test_user["id"],
             "content": "Initial test comment",
             "field": "general",
-            "parent_id": None
-        }
+            "parent_id": None,
+        },
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -280,8 +262,15 @@ async def setup_test_comment(db_session: AsyncSession, setup_test_concept, setup
 async def setup_test_source_full(db_session: AsyncSession):
     result = await db_session.execute(
         text(
-            "INSERT INTO sources (titre, auteur, annee, url, type) VALUES (:titre, :auteur, :annee, :url, :type) RETURNING *"),
-        {"titre": "Full Test Source", "auteur": "Full Author", "annee": 2020, "url": "http://full.com", "type": "livre"}
+            "INSERT INTO sources (titre, auteur, annee, url, type) VALUES (:titre, :auteur, :annee, :url, :type) RETURNING *"
+        ),
+        {
+            "titre": "Full Test Source",
+            "auteur": "Full Author",
+            "annee": 2020,
+            "url": "http://full.com",
+            "type": "livre",
+        },
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -289,20 +278,22 @@ async def setup_test_source_full(db_session: AsyncSession):
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_full_test_concept(
-        db_session: AsyncSession,
-        setup_test_type,
-        setup_test_categorie,
-        setup_test_mathematicien,
-        setup_test_user,
-        setup_test_source_full
+    db_session: AsyncSession,
+    setup_test_type,
+    setup_test_categorie,
+    setup_test_mathematicien,
+    setup_test_user,
+    setup_test_source_full,
 ):
     # Insert a base concept
     result = await db_session.execute(
-        text("""
+        text(
+            """
              INSERT INTO concepts (nom, enonce, demonstration, verification, type_id, categorie_id, mathematicien_id)
              VALUES (:nom, :enonce, :demo, :verif, :type_id, :cat_id, :math_id)
              RETURNING *
-             """),
+             """
+        ),
         {
             "nom": "Full Test Concept",
             "enonce": "Enonce complet du concept de test.",
@@ -310,45 +301,59 @@ async def setup_full_test_concept(
             "verif": True,
             "type_id": setup_test_type["id"],
             "cat_id": setup_test_categorie["id"],
-            "math_id": setup_test_mathematicien["id"]
-        }
+            "math_id": setup_test_mathematicien["id"],
+        },
     )
     concept = dict(result.mappings().first())
     concept_id = concept["id"]
 
     # Add aliases
-    await db_session.execute(text("INSERT INTO aliases (concept_id, alias) VALUES (:cid, :alias1)"),
-                             {"cid": concept_id, "alias1": "Full Alias A"})
-    await db_session.execute(text("INSERT INTO aliases (concept_id, alias) VALUES (:cid, :alias2)"),
-                             {"cid": concept_id, "alias2": "Full Alias B"})
+    await db_session.execute(
+        text("INSERT INTO aliases (concept_id, alias) VALUES (:cid, :alias1)"),
+        {"cid": concept_id, "alias1": "Full Alias A"},
+    )
+    await db_session.execute(
+        text("INSERT INTO aliases (concept_id, alias) VALUES (:cid, :alias2)"),
+        {"cid": concept_id, "alias2": "Full Alias B"},
+    )
 
     # Link the full source
     await db_session.execute(
         text("INSERT INTO concepts_sources (concept_id, source_id) VALUES (:cid, :sid)"),
-        {"cid": concept_id, "sid": setup_test_source_full["id"]}
+        {"cid": concept_id, "sid": setup_test_source_full["id"]},
     )
 
     # Add a foreign name
     await db_session.execute(
         text('INSERT INTO foreign_name (concept_id, "Nom_étranger", langue) VALUES (:cid, :nom_etranger, :langue)'),
-        {"cid": concept_id, "nom_etranger": "Complete Foreign Name", "langue": "en"}
+        {"cid": concept_id, "nom_etranger": "Complete Foreign Name", "langue": "en"},
     )
 
     # Add a related concept for relations
     res_related = await db_session.execute(
         text(
-            "INSERT INTO concepts (nom, enonce, demonstration, type_id) VALUES (:nom, :enonce, :demo, :type_id) RETURNING id"),
-        {"nom": "Related Concept for Full Test", "enonce": "Enonce du concept lié", "demo": "Demo du concept lié",
-         "type_id": setup_test_type["id"]}
+            "INSERT INTO concepts (nom, enonce, demonstration, type_id) VALUES (:nom, :enonce, :demo, :type_id) RETURNING id"
+        ),
+        {
+            "nom": "Related Concept for Full Test",
+            "enonce": "Enonce du concept lié",
+            "demo": "Demo du concept lié",
+            "type_id": setup_test_type["id"],
+        },
     )
     related_concept_id = res_related.mappings().first()["id"]
 
     # Add a relation
     await db_session.execute(
         text(
-            "INSERT INTO relations (concept_source, concept_cible, type_relation, description) VALUES (:c_source, :c_cible, :type_rel, :desc)"),
-        {"c_source": concept_id, "c_cible": related_concept_id, "type_rel": "implication",
-         "desc": "Description de la relation complète."}
+            "INSERT INTO relations (concept_source, concept_cible, type_relation, description) VALUES (:c_source, :c_cible, :type_rel, :desc)"
+        ),
+        {
+            "c_source": concept_id,
+            "c_cible": related_concept_id,
+            "type_rel": "implication",
+            "desc": "Description de la relation complète.",
+        },
     )
 
     await db_session.commit()
@@ -363,7 +368,7 @@ async def setup_full_test_concept(
         "username": setup_test_user["username"],
         "type": setup_test_type["type"],
         "mathematicien": setup_test_mathematicien["nom"],
-        "categorie": setup_test_categorie["nom"]
+        "categorie": setup_test_categorie["nom"],
     }
 
 
@@ -375,7 +380,7 @@ async def setup_graph(db_session: AsyncSession, setup_test_concept):
 
     await db_session.execute(
         text("INSERT INTO positions (concept_id, x, y, z, vue) VALUES (:cid, :x, :y, :z, :vue)"),
-        {"cid": setup_test_concept["id"], "x": posDict["x"], "y": posDict["y"], "z": posDict["z"], "vue": "grille"}
+        {"cid": setup_test_concept["id"], "x": posDict["x"], "y": posDict["y"], "z": posDict["z"], "vue": "grille"},
     )
     await db_session.commit()
     yield node
@@ -391,21 +396,22 @@ async def setup_two_concepts(db_session: AsyncSession):
     type_row = res_type.mappings().first()
 
     if not type_row:
-        res_new_type = await db_session.execute(text("INSERT INTO type (type) VALUES (:type) RETURNING *"),
-                                                {"type": "Type de Test"})
+        res_new_type = await db_session.execute(
+            text("INSERT INTO type (type) VALUES (:type) RETURNING *"), {"type": "Type de Test"}
+        )
         type_row = res_new_type.mappings().first()
 
     type_id = type_row["id"]
 
     res_c1 = await db_session.execute(
         text("INSERT INTO concepts (nom, type_id, enonce) VALUES (:nom, :type_id, :enonce) RETURNING id"),
-        {"nom": concept1_name, "type_id": type_id, "enonce": "Enonce 1"}
+        {"nom": concept1_name, "type_id": type_id, "enonce": "Enonce 1"},
     )
     concept1_id = res_c1.mappings().first()["id"]
 
     res_c2 = await db_session.execute(
         text("INSERT INTO concepts (nom, type_id, enonce) VALUES (:nom, :type_id, :enonce) RETURNING id"),
-        {"nom": concept2_name, "type_id": type_id, "enonce": "Enonce 2"}
+        {"nom": concept2_name, "type_id": type_id, "enonce": "Enonce 2"},
     )
     concept2_id = res_c2.mappings().first()["id"]
 
@@ -433,7 +439,7 @@ async def setup_tag_concept(db_session: AsyncSession, setup_test_concept):
 
     await db_session.execute(
         text("INSERT INTO concept_tags (concept_id, tag_id) VALUES (:cid, :tid)"),
-        {"cid": setup_test_concept["id"], "tid": tag["id"]}
+        {"cid": setup_test_concept["id"], "tid": tag["id"]},
     )
     await db_session.commit()
     yield dict(tag)
@@ -443,7 +449,7 @@ async def setup_tag_concept(db_session: AsyncSession, setup_test_concept):
 async def setup_fav_user(db_session: AsyncSession, setup_test_user, setup_test_concept):
     result = await db_session.execute(
         text("INSERT INTO user_favorites (user_id, concept_id) VALUES (:uid, :cid) RETURNING *"),
-        {"uid": setup_test_user["id"], "cid": setup_test_concept["id"]}
+        {"uid": setup_test_user["id"], "cid": setup_test_concept["id"]},
     )
     await db_session.commit()
     yield dict(result.mappings().first())
@@ -455,21 +461,24 @@ async def setup_user_token_admin(db_session: AsyncSession):
 
     await db_session.execute(
         text(
-            "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role)"),
-        {"username": ADMIN_USER_NAME, "email": ADMIN_EMAIL, "password_hash": password_hash, "is_active": True,
-         "role": 'admin'}
+            "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role)"
+        ),
+        {
+            "username": ADMIN_USER_NAME,
+            "email": ADMIN_EMAIL,
+            "password_hash": password_hash,
+            "is_active": True,
+            "role": "admin",
+        },
     )
     await db_session.commit()
 
-    login_data = {
-        "username": ADMIN_USER_NAME,
-        "password": ADMIN_PASSWORD
-    }
+    login_data = {"username": ADMIN_USER_NAME, "password": ADMIN_PASSWORD}
 
     dummy_response = Response()
 
     tokenJson = await AuthService(db_session).login_for_access_token(
-        OAuth2PasswordRequestForm(username=login_data['username'], password=login_data['password']),
-        response=dummy_response
+        OAuth2PasswordRequestForm(username=login_data["username"], password=login_data["password"]),
+        response=dummy_response,
     )
     yield tokenJson

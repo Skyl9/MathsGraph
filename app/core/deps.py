@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class OAuth2PasswordBearerWithCookie(OAuth2):
     def __init__(self, tokenUrl: str):
-        super().__init__(flows=OAuthFlowsModel(password={"tokenUrl": tokenUrl}))
+        super().__init__(flows=OAuthFlowsModel(password={"tokenUrl": tokenUrl}))  # type: ignore
 
     async def __call__(self, request: Request) -> Optional[str]:
         # 1. On cherche d'abord le token dans les cookies HttpOnly
@@ -27,7 +27,7 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
 
         # 2. Plan B : On regarde dans les headers (indispensable pour Swagger UI)
         if not token:
-            header_authorization: str = request.headers.get("Authorization")
+            header_authorization: str = request.headers.get("Authorization")  # type: ignore
             scheme, token = get_authorization_scheme_param(header_authorization)
             if scheme.lower() != "bearer":
                 token = None
@@ -39,7 +39,7 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
 
 
 # On remplace l'ancienne stratégie par la nôtre
-oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="token")
+oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearerWithCookie(tokenUrl="token")  # type: ignore
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), session=Depends(AsyncSessionLocal)):
@@ -82,7 +82,7 @@ def get_current_admin_payload(token: str = Depends(oauth2_scheme)):
         # Utilisation de l'exception personnalisée
         raise AuthenticationException(detail="Could not validate credentials")
 
-    user_role: str = payload.get("role")
+    user_role: str = payload.get("role")  # type: ignore
     if user_role is None or user_role.lower() != "admin":
         # Utilisation de l'exception personnalisée
         raise ForbiddenException(detail="The user does not have enough privileges")
@@ -99,7 +99,7 @@ def get_current_moderator_payload(token: str = Depends(oauth2_scheme)):
         # Utilisation de l'exception personnalisée
         raise AuthenticationException(detail="Could not validate credentials")
 
-    user_role: str = payload.get("role")
+    user_role: str = payload.get("role")  # type: ignore
     if user_role is None or user_role.lower() not in ["admin", "moderator"]:
         # Utilisation de l'exception personnalisée
         raise ForbiddenException(detail="The user does not have enough privileges")

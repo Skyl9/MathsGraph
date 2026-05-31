@@ -1,12 +1,11 @@
 import logging
-from typing import List, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
 from app.schemas import Nodes, GraphData
-from app.schemas.GraphData import Edge
-from app.db.models import Concept, Position, Relation, Type
+from app.schemas.GraphData import Edge, Position
+from app.db.models import Concept
 
 logger = logging.getLogger(__name__)
 
@@ -29,47 +28,47 @@ class GraphService:
         stmt = (
             select(Concept)
             .options(
-                joinedload(Concept.type),
-                selectinload(Concept.positions),
-                selectinload(Concept.outgoing_relations)
+                joinedload(Concept.type), selectinload(Concept.positions), selectinload(Concept.outgoing_relations)
             )
             .order_by(Concept.id)
         )
-        
+
         result = await self.db.execute(stmt)
         concepts = result.scalars().all()
 
         nodes = []
         edges = []
-        
+
         for concept in concepts:
             # Construction du dictionnaire des positions
             pos_dict = {}
             for pos in concept.positions:
-                pos_dict[pos.vue] = {
-                    "x": pos.x,
-                    "y": pos.y,
-                    "z": pos.z
-                }
-            
+                pos_dict[pos.vue.value if hasattr(pos.vue, "value") else str(pos.vue)] = Position(
+                    x=pos.x, y=pos.y, z=pos.z
+                )
+
             # Extraction du nœud au format attendu
-            nodes.append({
-                "id": concept.id,
-                "nom": concept.nom,
-                "enonce": concept.enonce,
-                "typeMath": concept.type.type if concept.type else None,
-                "position": pos_dict
-            })
+            nodes.append(
+                Nodes(
+                    id=concept.id,
+                    nom=concept.nom,
+                    enonce=concept.enonce,
+                    typeMath=concept.type.type if concept.type else None,
+                    position=pos_dict,
+                )
+            )
 
             # Construction des arêtes à partir des relations sortantes (source -> cible)
             for rel in concept.outgoing_relations:
-                edges.append({
-                    "start": rel.concept_source,
-                    "end": rel.concept_cible,
-                    "type": rel.type_relation
-                })
+                edges.append(
+                    Edge(
+                        start=int(rel.concept_source) if rel.concept_source else 0,
+                        end=int(rel.concept_cible) if rel.concept_cible else 0,
+                        type=rel.type_relation,
+                    )
+                )
 
         logger.info(f"Graphe extrait avec succès : {len(nodes)} noeuds, {len(edges)} arêtes")
 
         # Retourne les données sous forme de dictionnaire compatible avec le schéma Pydantic GraphData
-        return {"nodes": nodes, "edges": edges}
+        return GraphData(nodes=nodes, edges=edges)

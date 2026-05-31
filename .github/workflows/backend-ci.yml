@@ -59,6 +59,12 @@ jobs:
         echo "SMTP_USER=test_user" >> .env
         echo "SMTP_PASSWORD=test_password" >> .env
 
+    - name: Run Ruff Linting
+      run: uv run ruff check .
+
+    - name: Run Mypy
+      run: uv run mypy app/
+
     - name: Run Pytest
       env:
         DB_USER: postgres

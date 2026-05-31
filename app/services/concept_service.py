@@ -2,18 +2,28 @@ import copy
 import json
 import logging
 from typing import List, Any
-from datetime import datetime
 
 from sqlalchemy import select, func, desc, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
-from app.core.exceptions import NotFoundException, InternalServerError, ConflictException
+from app.core.exceptions import NotFoundException, ConflictException
 from app.schemas import UpdateConceptDict
-from app.schemas.concept import ConceptName, ConceptResponse, RollbackConcept, ConceptCreate
+from app.schemas.concept import ConceptName, RollbackConcept, ConceptCreate
 from app.schemas.history import History
 from app.services.tags_service import TagsService
-from app.db.models import Concept, ConceptVersion, User, Type, Category, Mathematicien, Alias, Source, ForeignName, Relation
+from app.db.models import (
+    Concept,
+    ConceptVersion,
+    User,
+    Type,
+    Category,
+    Mathematicien,
+    Alias,
+    Source,
+    ForeignName,
+    Relation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +52,16 @@ def format_relation(relation):
 def format_source(source):
     string_source = ""
     for i in source:
-        string = "Titre : " + i["titre"] + " - Auteur : " + i["auteur"] + " - année " + str(i["annee"]) + " - type : " + \
-                 i["type"]
+        string = (
+            "Titre : "
+            + i["titre"]
+            + " - Auteur : "
+            + i["auteur"]
+            + " - année "
+            + str(i["annee"])
+            + " - type : "
+            + i["type"]
+        )
         if i["url"]:
             string += " - url : " + i["url"] + "\n"
         else:
@@ -89,21 +107,28 @@ class ConceptService:
         # Fusion des relations entrantes et sortantes pour correspondre au format attendu
         all_relations = []
         for r in concept_obj.outgoing_relations:
-            all_relations.append({
-                "id": r.id,
-                "concept_source": {"id": r.concept_source, "nom": concept_obj.nom},
-                "concept_cible": {"id": r.concept_cible, "nom": r.target_concept.nom if r.target_concept else None},
-                "type_relation": r.type_relation,
-                "description": r.description,
-            })
+            all_relations.append(
+                {
+                    "id": r.id,
+                    "concept_source": {"id": r.concept_source, "nom": concept_obj.nom},
+                    "concept_cible": {"id": r.concept_cible, "nom": r.target_concept.nom if r.target_concept else None},
+                    "type_relation": r.type_relation,
+                    "description": r.description,
+                }
+            )
         for r in concept_obj.incoming_relations:
-            all_relations.append({
-                "id": r.id,
-                "concept_source": {"id": r.concept_source, "nom": r.source_concept.nom if r.source_concept else None},
-                "concept_cible": {"id": r.concept_cible, "nom": concept_obj.nom},
-                "type_relation": r.type_relation,
-                "description": r.description,
-            })
+            all_relations.append(
+                {
+                    "id": r.id,
+                    "concept_source": {
+                        "id": r.concept_source,
+                        "nom": r.source_concept.nom if r.source_concept else None,
+                    },
+                    "concept_cible": {"id": r.concept_cible, "nom": concept_obj.nom},
+                    "type_relation": r.type_relation,
+                    "description": r.description,
+                }
+            )
 
         tags = await TagsService(self.db).get_tags_name_and_id_by_concept_id(concept_id, False)
 
@@ -116,9 +141,11 @@ class ConceptService:
             "verification": concept_obj.verification,
             "date_modification": concept_obj.date_modification,
             "mathematicien": {"id": concept_obj.mathematicien_id, "mathematicien": concept_obj.mathematicien.nom}
-            if concept_obj.mathematicien else None,
+            if concept_obj.mathematicien
+            else None,
             "categorie": {"id": concept_obj.categorie_id, "category": concept_obj.category.nom}
-            if concept_obj.category else None,
+            if concept_obj.category
+            else None,
             "aliases": [a.alias for a in concept_obj.aliases],
             "sources": [
                 {
@@ -128,7 +155,8 @@ class ConceptService:
                     "annee": s.annee,
                     "url": s.url,
                     "type": s.type,
-                } for s in concept_obj.sources
+                }
+                for s in concept_obj.sources
             ],
             "relations": all_relations,
             "noms_etrangers": [
@@ -137,42 +165,44 @@ class ConceptService:
                     "Nom_francais": concept_obj.nom,
                     "Nom_étranger": n.nom_etranger,
                     "langue": n.langue,
-                } for n in concept_obj.foreign_names
+                }
+                for n in concept_obj.foreign_names
             ],
-            "tags": tags if tags else None
+            "tags": tags if tags else None,
         }
 
     async def rollback_history(self, concept_id: int, data: RollbackConcept) -> None:
         data_dict = data.model_dump() if isinstance(data, RollbackConcept) else data
-        
+
         query = select(ConceptVersion).where(
             ConceptVersion.concept_id == concept_id,
             ConceptVersion.version_number == data_dict["version_number"],
-            ConceptVersion.field_modified == data_dict["field_modified"]
+            ConceptVersion.field_modified == data_dict["field_modified"],
         )
         result = await self.db.execute(query)
         version = result.scalars().first()
-        
+
         if not version:
             raise NotFoundException(detail="Version non trouvée")
-            
+
         note = version.note
-        note = f"Rollback from version number {data_dict['version_number']}" if note is None else f"{note} - Rollback from {data_dict['version_number']}"
-        
+        note = (
+            f"Rollback from version number {data_dict['version_number']}"
+            if note is None
+            else f"{note} - Rollback from {data_dict['version_number']}"
+        )
+
         value = await self.get_name_by_id(version.old_value, data_dict["field_modified"])
-        
+
         update_data = UpdateConceptDict(
-            field=version.field_modified,
-            value=value,
-            username=data_dict["username"],
-            note=note
+            field=version.field_modified, value=value, username=data_dict["username"], note=note
         )
         await self.updateConcept(concept_id, update_data, rollback=True)
 
     async def get_name_by_id(self, id_val, field_type):
         if not id_val:
             return id_val
-            
+
         if field_type == "mathematicien":
             math = await self.db.get(Mathematicien, int(id_val))
             return math.nom if math else id_val
@@ -182,7 +212,7 @@ class ConceptService:
         if field_type == "type":
             t = await self.db.get(Type, int(id_val))
             return t.type if t else id_val
-            
+
         if field_type in ["sources", "aliases", "noms_etrangers", "relations"]:
             try:
                 return json.loads(id_val)
@@ -198,37 +228,43 @@ class ConceptService:
         )
         result = await self.db.execute(query)
         versions = result.scalars().all()
-        
+
         math_ids = set()
         cat_ids = set()
         type_ids = set()
-        
+
         for v in versions:
             if v.field_modified == "mathematicien":
-                if v.old_value and v.old_value.isdigit(): math_ids.add(int(v.old_value))
-                if v.new_value and v.new_value.isdigit(): math_ids.add(int(v.new_value))
+                if v.old_value and v.old_value.isdigit():
+                    math_ids.add(int(v.old_value))
+                if v.new_value and v.new_value.isdigit():
+                    math_ids.add(int(v.new_value))
             elif v.field_modified == "categorie":
-                if v.old_value and v.old_value.isdigit(): cat_ids.add(int(v.old_value))
-                if v.new_value and v.new_value.isdigit(): cat_ids.add(int(v.new_value))
+                if v.old_value and v.old_value.isdigit():
+                    cat_ids.add(int(v.old_value))
+                if v.new_value and v.new_value.isdigit():
+                    cat_ids.add(int(v.new_value))
             elif v.field_modified == "type":
-                if v.old_value and v.old_value.isdigit(): type_ids.add(int(v.old_value))
-                if v.new_value and v.new_value.isdigit(): type_ids.add(int(v.new_value))
-                
+                if v.old_value and v.old_value.isdigit():
+                    type_ids.add(int(v.old_value))
+                if v.new_value and v.new_value.isdigit():
+                    type_ids.add(int(v.new_value))
+
         # Prefetching
         math_dict = {}
         if math_ids:
-            res = await self.db.execute(select(Mathematicien).where(Mathematicien.id.in_(math_ids)))
-            math_dict = {m.id: m.nom for m in res.scalars()}
-            
+            res_math = await self.db.execute(select(Mathematicien).where(Mathematicien.id.in_(math_ids)))
+            math_dict = {m.id: m.nom for m in res_math.scalars()}
+
         cat_dict = {}
         if cat_ids:
-            res = await self.db.execute(select(Category).where(Category.id.in_(cat_ids)))
-            cat_dict = {c.id: c.nom for c in res.scalars()}
-            
+            res_cat = await self.db.execute(select(Category).where(Category.id.in_(cat_ids)))
+            cat_dict = {c.id: c.nom for c in res_cat.scalars()}
+
         type_dict = {}
         if type_ids:
-            res = await self.db.execute(select(Type).where(Type.id.in_(type_ids)))
-            type_dict = {t.id: t.type for t in res.scalars()}
+            res_type = await self.db.execute(select(Type).where(Type.id.in_(type_ids)))
+            type_dict = {t.id: t.type for t in res_type.scalars()}
 
         res_versions = []
         for v in versions:
@@ -245,20 +281,20 @@ class ConceptService:
                 "is_rollback": v.is_rollback,
                 "note": v.note,
             }
-            
+
             # Résolution des noms
             if v.field_modified == "mathematicien":
                 if v.old_value and v.old_value.isdigit():
                     v_dict["old_value"] = math_dict.get(int(v.old_value), v.old_value)
                 if v.new_value and v.new_value.isdigit():
                     v_dict["new_value"] = math_dict.get(int(v.new_value), v.new_value)
-            
+
             elif v.field_modified == "categorie":
                 if v.old_value and v.old_value.isdigit():
                     v_dict["old_value"] = cat_dict.get(int(v.old_value), v.old_value)
                 if v.new_value and v.new_value.isdigit():
                     v_dict["new_value"] = cat_dict.get(int(v.new_value), v.new_value)
-                    
+
             elif v.field_modified == "type":
                 if v.old_value and v.old_value.isdigit():
                     v_dict["old_value"] = type_dict.get(int(v.old_value), v.old_value)
@@ -269,25 +305,28 @@ class ConceptService:
                 try:
                     v_dict["old_value"] = format_source(json.loads(v.old_value)) if v.old_value else ""
                     v_dict["new_value"] = format_source(json.loads(v.new_value)) if v.new_value else ""
-                except (json.JSONDecodeError, TypeError): pass
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
             elif v.field_modified == "aliases":
                 try:
                     v_dict["old_value"] = format_alias(json.loads(v.old_value)) if v.old_value else ""
                     v_dict["new_value"] = format_alias(json.loads(v.new_value)) if v.new_value else ""
-                except (json.JSONDecodeError, TypeError): pass
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
             elif v.field_modified == "noms_etrangers":
                 try:
                     v_dict["old_value"] = format_foreign_name(json.loads(v.old_value)) if v.old_value else ""
                     v_dict["new_value"] = format_foreign_name(json.loads(v.new_value)) if v.new_value else ""
-                except (json.JSONDecodeError, TypeError): pass
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
             elif v.field_modified == "relations":
                 try:
                     old_rels = json.loads(v.old_value) if v.old_value else []
                     new_rels = json.loads(v.new_value) if v.new_value else []
-                    
+
                     for i in old_rels:
                         src = await self.db.get(Concept, i["concept_source"])
                         tgt = await self.db.get(Concept, i["concept_cible"])
@@ -298,17 +337,40 @@ class ConceptService:
                         tgt = await self.db.get(Concept, j["concept_cible"])
                         j["concept_source"] = src.nom if src else str(j["concept_source"])
                         j["concept_cible"] = tgt.nom if tgt else str(j["concept_cible"])
-                        
+
                     v_dict["old_value"] = format_relation(old_rels)
                     v_dict["new_value"] = format_relation(new_rels)
-                except (json.JSONDecodeError, TypeError): pass
-            
-            res_versions.append(v_dict)
-            
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+            res_versions.append(
+                History(
+                    id=v_dict["id"],  # type: ignore
+                    concept_id=v_dict["concept_id"],  # type: ignore
+                    modified_by=v_dict["modified_by"],  # type: ignore
+                    modified_at=v_dict["modified_at"],  # type: ignore
+                    field_modified=v_dict["field_modified"],  # type: ignore
+                    old_value=v_dict["old_value"],
+                    new_value=v_dict["new_value"],
+                    version_number=v_dict["version_number"],  # type: ignore
+                    global_version=v_dict["global_version"],  # type: ignore
+                    is_rollback=v_dict["is_rollback"],  # type: ignore
+                    note=v_dict["note"],  # type: ignore
+                )
+            )
+
         return res_versions
 
-    async def add_concept_version(self, username: str, concept_id: int, field_modified: str, old_version, new_version,
-                                  note: str = None, rollback: bool = False):
+    async def add_concept_version(
+        self,
+        username: str,
+        concept_id: int,
+        field_modified: str,
+        old_version,
+        new_version,
+        note: str | None = None,
+        rollback: bool = False,
+    ):
         if str(old_version) == str(new_version):
             return
 
@@ -321,8 +383,7 @@ class ConceptService:
 
         # Calculer le numéro de version
         query_v = select(func.coalesce(func.max(ConceptVersion.version_number), 0) + 1).where(
-            ConceptVersion.concept_id == concept_id,
-            ConceptVersion.field_modified == field_modified
+            ConceptVersion.concept_id == concept_id, ConceptVersion.field_modified == field_modified
         )
         version_number = await self.db.scalar(query_v)
 
@@ -341,7 +402,7 @@ class ConceptService:
             note=note,
             global_version=global_version,
             version_number=version_number,
-            is_rollback=rollback
+            is_rollback=rollback,
         )
         self.db.add(new_v)
         await self.db.flush()
@@ -349,7 +410,7 @@ class ConceptService:
     async def get_all_concepts_name(self) -> list[ConceptName]:
         query = select(Concept.id, Concept.nom)
         result = await self.db.execute(query)
-        return [{"id": row[0], "nom": row[1]} for row in result.all()]
+        return [ConceptName(id=row[0], nom=row[1]) for row in result.all()]
 
     async def updateConcept(self, concept_id: int, data: UpdateConceptDict, rollback: bool = False) -> None:
         data_dict = data.model_dump() if isinstance(data, UpdateConceptDict) else data
@@ -391,15 +452,16 @@ class ConceptService:
             old_version=old_value,
             new_version=new_value,
             rollback=rollback,
-            note=data_dict.get("note")
+            note=data_dict.get("note"),
         )
         await self.db.flush()
 
     async def _update_type(self, concept: Concept, new_value_raw: str):
         old_value = concept.type_id
         query = select(Type.id).where(Type.type == new_value_raw)
-        new_id = await self.db.scalar(query)
-        concept.type_id = new_id
+        new_id: int | None = await self.db.scalar(query)
+        if new_id is not None:
+            concept.type_id = new_id
         return old_value, new_id
 
     async def _update_category(self, concept: Concept, new_value_raw: str):
@@ -421,26 +483,37 @@ class ConceptService:
         res = await self.db.execute(query)
         current_rels = res.scalars().all()
 
-        old_value_list = [{
-            "id": r.id, "concept_source": r.concept_source, "concept_cible": r.concept_cible,
-            "type_relation": r.type_relation, "description": r.description
-        } for r in current_rels]
+        old_value_list = [
+            {
+                "id": r.id,
+                "concept_source": r.concept_source,
+                "concept_cible": r.concept_cible,
+                "type_relation": r.type_relation,
+                "description": r.description,
+            }
+            for r in current_rels
+        ]
 
         await self.db.execute(
-            delete(Relation).where(or_(Relation.concept_source == concept_id, Relation.concept_cible == concept_id)))
+            delete(Relation).where(or_(Relation.concept_source == concept_id, Relation.concept_cible == concept_id))
+        )
 
         new_value_list = copy.deepcopy(new_value_raw)
         for r_data in new_value_list:
-            src_id = r_data["concept_source"]["id"] if isinstance(r_data["concept_source"], dict) else r_data[
-                "concept_source"]
-            tgt_id = r_data["concept_cible"]["id"] if isinstance(r_data["concept_cible"], dict) else r_data[
-                "concept_cible"]
+            src_id = (
+                r_data["concept_source"]["id"]
+                if isinstance(r_data["concept_source"], dict)
+                else r_data["concept_source"]
+            )
+            tgt_id = (
+                r_data["concept_cible"]["id"] if isinstance(r_data["concept_cible"], dict) else r_data["concept_cible"]
+            )
 
             new_rel = Relation(
                 concept_source=src_id,
                 concept_cible=tgt_id,
                 type_relation=r_data["type_relation"],
-                description=r_data.get("description")
+                description=r_data.get("description"),
             )
             self.db.add(new_rel)
 
@@ -466,8 +539,14 @@ class ConceptService:
                 source.type = s_data["type"]
 
         new_value_list = [
-            {"id": s["id"], "titre": s["titre"], "auteur": s["auteur"], "annee": s["annee"], "url": s["url"],
-             "type": s["type"]}
+            {
+                "id": s["id"],
+                "titre": s["titre"],
+                "auteur": s["auteur"],
+                "annee": s["annee"],
+                "url": s["url"],
+                "type": s["type"],
+            }
             for s in new_value_raw
         ]
         return json.dumps(old_value_list), json.dumps(new_value_list)
@@ -489,30 +568,32 @@ class ConceptService:
         res = await self.db.execute(query)
         current_fn = res.scalars().all()
         old_value = json.dumps(
-            [{"id": n.id, "concept_id": n.concept_id, "Nom_étranger": n.nom_etranger, "langue": n.langue} for n in
-             current_fn])
+            [
+                {"id": n.id, "concept_id": n.concept_id, "Nom_étranger": n.nom_etranger, "langue": n.langue}
+                for n in current_fn
+            ]
+        )
 
         # Supprimer les anciens noms étrangers et insérer les nouveaux
         await self.db.execute(delete(ForeignName).where(ForeignName.concept_id == concept_id))
         for fn_data in new_value_raw:
-            self.db.add(ForeignName(
-                concept_id=concept_id,
-                nom_etranger=fn_data.get("nom_etranger") or fn_data.get("Nom_étranger", ""),
-                langue=fn_data.get("langue", "")
-            ))
+            self.db.add(
+                ForeignName(
+                    concept_id=concept_id,
+                    nom_etranger=fn_data.get("nom_etranger") or fn_data.get("Nom_étranger", ""),
+                    langue=fn_data.get("langue", ""),
+                )
+            )
 
         new_value = json.dumps(new_value_raw)
         return old_value, new_value
+
     async def get_editable_fields_options(self):
         types = (await self.db.execute(select(Type.type).distinct())).scalars().all()
         categories = (await self.db.execute(select(Category.nom).distinct())).scalars().all()
         mathematiciens = (await self.db.execute(select(Mathematicien.nom).distinct())).scalars().all()
-        
-        return {
-            "mathematicien": list(mathematiciens),
-            "categorie": list(categories),
-            "type": list(types)
-        }
+
+        return {"mathematicien": list(mathematiciens), "categorie": list(categories), "type": list(types)}
 
     async def get_recent_history(self, limit: int = 50) -> list[dict]:
         query = (
@@ -524,15 +605,18 @@ class ConceptService:
         result = await self.db.execute(query)
         versions = result.scalars().all()
 
-        return [{
-            "id": v.id,
-            "concept_id": v.concept_id,
-            "concept_nom": v.concept.nom if v.concept else None,
-            "username": v.modifier.username if v.modifier else None,
-            "modified_at": v.modified_at.isoformat() if v.modified_at else None,
-            "field_modified": v.field_modified,
-            "is_rollback": v.is_rollback
-        } for v in versions]
+        return [
+            {
+                "id": v.id,
+                "concept_id": v.concept_id,
+                "concept_nom": v.concept.nom if v.concept else None,
+                "username": v.modifier.username if v.modifier else None,
+                "modified_at": v.modified_at.isoformat() if v.modified_at else None,
+                "field_modified": v.field_modified,
+                "is_rollback": v.is_rollback,
+            }
+            for v in versions
+        ]
 
     async def create_concept(self, data: ConceptCreate, username: str) -> dict:
         data_dict = data.model_dump()
@@ -546,7 +630,7 @@ class ConceptService:
         # Résolution des types par défaut si non fournis
         type_id = await self.db.scalar(select(Type.id).where(Type.type == data_dict.get("type")))
         if not type_id:
-            type_id = await self.db.scalar(select(Type.id).where(Type.type == 'théorème'))
+            type_id = await self.db.scalar(select(Type.id).where(Type.type == "théorème"))
 
         new_concept = Concept(
             nom=data_dict["nom"],
@@ -555,7 +639,7 @@ class ConceptService:
             type_id=type_id,
             categorie_id=data_dict.get("categorie_id"),
             mathematicien_id=data_dict.get("mathematicien_id"),
-            verification=False
+            verification=False,
         )
 
         self.db.add(new_concept)
@@ -568,7 +652,7 @@ class ConceptService:
             field_modified="creation",
             old_version=None,
             new_version=data_dict["nom"],
-            note="Création initiale"
+            note="Création initiale",
         )
 
         return {"id": new_concept.id, "nom": new_concept.nom}

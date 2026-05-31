@@ -19,7 +19,7 @@ class TypeService:
         result = await self.db.execute(query)
         types_fetched = result.scalars().all()
 
-        return [{"id": t.id, "type": t.type} for t in types_fetched]
+        return [TypeNom(id=t.id, nom=t.type) for t in types_fetched]
 
     async def get_one_type(self, id_type: int) -> TypeResponse:
         type_fetched = await self.db.get(Type, id_type)
@@ -27,10 +27,10 @@ class TypeService:
         if not type_fetched:
             raise NotFoundException(f"Type introuvable : {id_type}")
 
-        return {
-            "id": type_fetched.id,
-            "type": type_fetched.type,
-        }
+        return TypeResponse(
+            id=type_fetched.id,
+            type=type_fetched.type,
+        )
 
     async def update_type(self, id_type: int, data: TypeUpdate):
         data_dict = data.model_dump() if isinstance(data, TypeUpdate) else data

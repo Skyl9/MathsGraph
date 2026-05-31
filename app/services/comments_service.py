@@ -16,13 +16,13 @@ class CommentsService:
     async def get_comments(self, concept_id: int) -> list[dict]:
         query = (
             select(Comment)
-            .where(Comment.concept_id == concept_id, Comment.is_deleted == False)
+            .where(Comment.concept_id == concept_id, Comment.is_deleted.is_(False))
             .options(selectinload(Comment.user))
             .order_by(Comment.created_at.asc())
         )
         result = await self.db.execute(query)
         comments = result.scalars().all()
-        
+
         return [
             {
                 "id": c.id,
@@ -40,12 +40,12 @@ class CommentsService:
         ]
 
     async def add_comment(
-            self,
-            concept_id: int,
-            field: str,
-            username: str | None,
-            content: str,
-            parent_id: int | None = None,
+        self,
+        concept_id: int,
+        field: str,
+        username: str | None,
+        content: str,
+        parent_id: int | None = None,
     ) -> dict:
         # Récupérer l'ID utilisateur
         query_user = select(User.id).where(User.username == username)
@@ -60,17 +60,13 @@ class CommentsService:
             raise NotFoundException(detail="Concept introuvable")
 
         actual_parent_id = None if parent_id == 0 else parent_id
-        
+
         new_comment = Comment(
-            concept_id=concept_id,
-            user_id=user_id,
-            content=content,
-            parent_id=actual_parent_id,
-            field=field
+            concept_id=concept_id, user_id=user_id, content=content, parent_id=actual_parent_id, field=field
         )
         self.db.add(new_comment)
         await self.db.flush()
-        
+
         return {
             "id": new_comment.id,
             "concept_id": new_comment.concept_id,
@@ -80,27 +76,27 @@ class CommentsService:
             "updated_at": new_comment.updated_at,
             "parent_id": new_comment.parent_id,
             "is_deleted": new_comment.is_deleted,
-            "field": new_comment.field
+            "field": new_comment.field,
         }
 
     async def update_comment(self, comment_id: int, content: str, current_user: dict) -> dict:
         comment = await self.db.get(Comment, comment_id)
-        
+
         if not comment or comment.is_deleted:
             raise NotFoundException(detail="Commentaire introuvable ou supprimé")
 
-        comment_user_id = int(comment.user_id)
-        token_user_id = int(current_user.get("id"))
+        comment_user_id = int(comment.user_id) if comment.user_id else 0
+        token_user_id = int(current_user.get("id", 0))
 
-        is_author = (token_user_id == comment_user_id)
+        is_author = token_user_id == comment_user_id
         is_admin = current_user.get("role") in ["admin", "moderator"]
 
         if not (is_author or is_admin):
             raise ForbiddenException(detail="Vous n'êtes pas autorisé à modifier ce commentaire.")
 
         comment.content = content
-        # updated_at est géré par server_default=func.now() ou onupdate=func.now() dans les modèles si configuré, 
-        # sinon on peut le faire manuellement ici si nécessaire. 
+        # updated_at est géré par server_default=func.now() ou onupdate=func.now() dans les modèles si configuré,
+        # sinon on peut le faire manuellement ici si nécessaire.
         # Dans models.py: created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
         # updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
         # Il manque onupdate sur updated_at dans models.py, mais gardons la logique du service original:
@@ -108,7 +104,7 @@ class CommentsService:
 
         await self.db.flush()
         await self.db.refresh(comment)
-        
+
         return {
             "id": comment.id,
             "concept_id": comment.concept_id,
@@ -118,7 +114,7 @@ class CommentsService:
             "updated_at": comment.updated_at,
             "parent_id": comment.parent_id,
             "is_deleted": comment.is_deleted,
-            "field": comment.field
+            "field": comment.field,
         }
 
     async def delete_comment(self, comment_id: int, current_user: dict) -> None:
@@ -129,10 +125,10 @@ class CommentsService:
         if comment.is_deleted:
             raise NotFoundException("Commentaire déjà supprimé")
 
-        comment_user_id = int(comment.user_id)
-        token_user_id = int(current_user.get("id"))
+        comment_user_id = int(comment.user_id) if comment.user_id else 0
+        token_user_id = int(current_user.get("id", 0))
 
-        is_author = (token_user_id == comment_user_id)
+        is_author = token_user_id == comment_user_id
         is_admin = current_user.get("role") in ["admin", "moderator"]
 
         if not (is_author or is_admin):
@@ -144,7 +140,7 @@ class CommentsService:
     async def get_recent_comments(self, limit: int = 20) -> list[dict]:
         query = (
             select(Comment)
-            .where(Comment.is_deleted == False)
+            .where(Comment.is_deleted.is_(False))
             .options(selectinload(Comment.user), selectinload(Comment.concept))
             .order_by(desc(Comment.created_at))
             .limit(limit)
@@ -161,6 +157,7 @@ class CommentsService:
                 "username": c.user.username if c.user else None,
                 "content": c.content,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
-                "field": c.field
-            } for c in comments
+                "field": c.field,
+            }
+            for c in comments
         ]

@@ -27,9 +27,9 @@ async def get_graph(db: AsyncSession = Depends(get_db)):
     graph: GraphData = await GraphService(db).get_graph()
 
     try:
-        await redis_db.set("mathgraph:data", json.dumps(graph), ex=86400)
+        await redis_db.set("mathgraph:data", graph.model_dump_json(), ex=86400)
     except redis.exceptions.ConnectionError:
         pass
 
-    logger.debug("Route GET /graph a renvoyé %d nœuds depuis PostgreSQL", len(graph["nodes"]))
+    logger.debug("Route GET /graph a renvoyé %d nœuds depuis PostgreSQL", len(graph.nodes) if graph.nodes else 0)
     return {"success": True, "data": graph, "error": None, "meta": {"source": "db"}}

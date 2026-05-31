@@ -1,4 +1,3 @@
-import logging
 from typing import List
 
 from fastapi import APIRouter, Depends
@@ -24,14 +23,24 @@ async def get_stats(db: AsyncSession = Depends(get_db), _payload: dict = Depends
 
 
 @router.get("/users", response_model=Response[List[User]])
-async def get_users(skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
+async def get_users(
+    skip: int = 0,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    _payload: dict = Depends(get_current_admin_payload),
+):
     data: List[User] = await AdminService(db).get_users(skip=skip, limit=limit)
     logger.debug(f"Route GET /{router.prefix}/users a renvoyé : {str(data)}")
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
 @router.get("/contents", response_model=Response[List[ConceptForAdmin]])
-async def get_contents(skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
+async def get_contents(
+    skip: int = 0,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    _payload: dict = Depends(get_current_admin_payload),
+):
     data: List[ConceptForAdmin] = await AdminService(db).get_concepts_admin(skip=skip, limit=limit)
     logger.debug(f"Route GET /{router.prefix}/contents a renvoyé : {str(data)} ")
     return {"error": None, "data": data, "success": True, "meta": None}
@@ -39,8 +48,7 @@ async def get_contents(skip: int = 0, limit: int = 50, db: AsyncSession = Depend
 
 @router.post("/recalculate-graph", summary="Recalcule la physique 3D du graphe", response_model=Response)
 async def recalculate_graph_layout(
-        db: AsyncSession = Depends(get_db),
-        _payload: dict = Depends(get_current_admin_payload)
+    db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)
 ):
     await LayoutService(db).recalculate_positions()
     await db.commit()

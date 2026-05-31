@@ -33,22 +33,22 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: TokenPayload, expires_delta: Optional[timedelta] = None) -> str:
     """Crée un token JWT"""
-    to_encode = data.copy()
+    to_encode = data.model_dump()
     now = datetime.now(timezone.utc)  # Obtenez un datetime avec timezone UTC
     if expires_delta:
         expire = now + expires_delta
     else:
         expire = now + timedelta(minutes=15)
 
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    to_encode["exp"] = expire
+    encoded_jwt: str = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 
-def decode_token(token: str) -> dict:
+def decode_token(token: str) -> dict | None:
     """Décode un token JWT"""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload: dict = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except JWTError:
         return None

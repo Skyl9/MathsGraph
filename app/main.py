@@ -10,19 +10,42 @@ from sqlalchemy import text
 from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.responses import JSONResponse, RedirectResponse
 import os
+import asyncio
 
-logger = logging.getLogger(__name__)
-
-from app import settings
-from app.api.routes import concept_routes, auth_routes, mathematicien_routes, categorie_routes, type_routes, \
-    source_routes, relation_routes, alias_routes, graph_routes, user_routes, tags_routes, comments_routes, admin_routes, \
-    statistics_routes, search_routes
-from app.core.exceptions import BadRequestException, NotFoundException, AuthenticationException, ForbiddenException, \
-    InternalServerError, ConflictException
+from app.api.routes import (
+    concept_routes,
+    auth_routes,
+    mathematicien_routes,
+    categorie_routes,
+    type_routes,
+    source_routes,
+    relation_routes,
+    alias_routes,
+    graph_routes,
+    user_routes,
+    tags_routes,
+    comments_routes,
+    admin_routes,
+    statistics_routes,
+    search_routes,
+)
+from app.core.config import settings
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    AuthenticationException,
+    ForbiddenException,
+    InternalServerError,
+    ConflictException,
+)
 from app.core.logging_config import setup_logging
 from app.core.redis_client import redis_db
 from app.core.limiter import limiter
 from app.db.database import AsyncSessionLocal, engine
+from app.core.tasks import clean_expired_tokens_and_sessions
+
+logger = logging.getLogger(__name__)
+
 
 setup_logging()
 
@@ -31,20 +54,17 @@ def error_response(status_code: int, error: str):
     return {"success": False, "error": error, "data": None}
 
 
-import asyncio
-from app.core.tasks import clean_expired_tokens_and_sessions
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Démarrage de l'API MathGraph...")
-    
+
     # Lancement du job de nettoyage en arrière-plan
     cleanup_task = asyncio.create_task(clean_expired_tokens_and_sessions())
 
     yield
 
     logger.info("🛑 Extinction en cours, fermeture propre des pools de connexion...")
-    
+
     # Annulation propre de la tâche de fond
     cleanup_task.cancel()
 
@@ -64,21 +84,23 @@ app = FastAPI(
     redoc_url="/redoc" if is_dev else None,
     openapi_url="/openapi.json" if is_dev else None,
     redirect_slashes=False,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Attacher le rate limiter à l'app
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
 
 
 async def insert_api_log(endpoint: str, method: str, status_code: int, duration_ms: float):
     """Insère un log dans la base de données en arrière-plan."""
     try:
         async with AsyncSessionLocal() as session:
-            await session.execute(text(
-                "INSERT INTO api_logs (endpoint, method, status_code, duration_ms) VALUES (:ep, :meth, :status, :dur)"),
-                {"ep": endpoint, "meth": method, "status": status_code, "dur": duration_ms}
+            await session.execute(
+                text(
+                    "INSERT INTO api_logs (endpoint, method, status_code, duration_ms) VALUES (:ep, :meth, :status, :dur)"
+                ),
+                {"ep": endpoint, "meth": method, "status": status_code, "dur": duration_ms},
             )
             await session.commit()
     except Exception as e:
@@ -118,7 +140,7 @@ async def security_and_logging_middleware(request: Request, call_next):
             endpoint=request.url.path,
             method=request.method,
             status_code=response.status_code,
-            duration_ms=process_time
+            duration_ms=process_time,
         )
         if response.background is None:
             response.background = log_task
@@ -142,50 +164,32 @@ app.add_middleware(
 
 @app.exception_handler(BadRequestException)
 async def concept_exception_handler(request: Request, exc: BadRequestException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=error_response(exc.status_code, exc.detail)
-    )
+    return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(NotFoundException)
 async def not_found_exception_handler(request: Request, exc: NotFoundException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=error_response(exc.status_code, exc.detail)
-    )
+    return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(AuthenticationException)
 async def authentication_exception_handler(request: Request, exc: AuthenticationException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=error_response(exc.status_code, exc.detail)
-    )
+    return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(ForbiddenException)
 async def forbidden_exception_handler(request: Request, exc: ForbiddenException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=error_response(exc.status_code, exc.detail)
-    )
+    return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(InternalServerError)
 async def internal_server_error_handler(request: Request, exc: InternalServerError):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=error_response(exc.status_code, exc.detail)
-    )
+    return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(ConflictException)
 async def conflict_exception_handler(request: Request, exc: ConflictException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=error_response(exc.status_code, exc.detail)
-    )
+    return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(Exception)
@@ -194,8 +198,12 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
     return JSONResponse(
         status_code=500,
-        content={"success": False, "error": "Une erreur inattendue est survenue côté serveur.", "data": None,
-                 "meta": None}
+        content={
+            "success": False,
+            "error": "Une erreur inattendue est survenue côté serveur.",
+            "data": None,
+            "meta": None,
+        },
     )
 
 
@@ -220,10 +228,11 @@ app.include_router(admin_routes.router)
 
 app.include_router(search_routes.router)
 
+
 @app.get("/")
 async def redirect_to_new_domain():
     """
-    Route catch-all pour rediriger le trafic de l'ancien domaine (Railway) 
+    Route catch-all pour rediriger le trafic de l'ancien domaine (Railway)
     vers le nouveau domaine (Scaleway).
     """
     target_url = os.getenv("NEW_FRONTEND_URL", "https://mathsgraph.com")
