@@ -17,4 +17,4 @@ RUN uv sync --frozen --no-cache
 EXPOSE 8000
 
 # Run with uvicorn in production mode (Railway injects $PORT dynamically)
-CMD /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2
+CMD /app/.venv/bin/uvicorn app.main:app --host :: --port ${PORT:-8000} --workers 2
