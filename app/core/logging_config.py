@@ -9,24 +9,16 @@ def setup_logging():
             "disable_existing_loggers": False,
             "formatters": {"standard": {"format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"}},
             "handlers": {
-                "console": {"class": "logging.StreamHandler", "formatter": "standard", "level": "INFO"},
-                "file": {
-                    "class": "logging.handlers.RotatingFileHandler",
-                    "formatter": "standard",
-                    "level": "DEBUG",
-                    "filename": "app.log",
-                    "maxBytes": 10_000_000,
-                    "backupCount": 5,
-                    "encoding": "utf8",
-                },
+                "console": {"class": "logging.StreamHandler", "formatter": "standard", "level": "DEBUG"},
             },
             "loggers": {
                 "": {  # logger racine
-                    "handlers": ["console", "file"],
+                    "handlers": ["console"],
                     "level": "DEBUG",
                     "propagate": False,
                 },
-                "uvicorn.error": {"level": "WARNING"},
+                "uvicorn.error": {"level": "INFO", "handlers": ["console"], "propagate": False},
+                "uvicorn.access": {"level": "INFO", "handlers": ["console"], "propagate": False},
             },
         }
     )
