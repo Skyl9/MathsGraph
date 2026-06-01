@@ -227,6 +227,27 @@ app.include_router(admin_routes.router)
 
 app.include_router(search_routes.router)
 
+
+@app.get("/health", tags=["Diagnostics"])
+async def health_check():
+    """Route légère pour vérifier que FastAPI tourne sans taper la DB."""
+    return {"status": "ok", "message": "FastAPI is running!"}
+
+
+@app.get("/db-health", tags=["Diagnostics"])
+async def db_health_check():
+    """Tente une connexion à la DB avec un timeout de 3s."""
+    try:
+        async with asyncio.timeout(3.0):
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(text("SELECT 1"))
+                return {"status": "ok", "db": "connected", "result": result.scalar()}
+    except asyncio.TimeoutError:
+        return JSONResponse(status_code=504, content={"status": "error", "db": "timeout"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "db": "failed", "details": str(e)})
+
+
 """
 @app.get("/")
 async def redirect_to_new_domain():

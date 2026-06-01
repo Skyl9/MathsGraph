@@ -79,8 +79,6 @@ def get_settings() -> Settings:
         if settings.FRONTEND_URL == "http://localhost:8000":
             settings.FRONTEND_URL = "http://localhost:8000"
     else:  # production
-        if settings.BACKEND_CORS_ORIGINS == ["*"]:
-            settings.BACKEND_CORS_ORIGINS = ["https://mathsgraphfrontend-production.up.railway.app"]
         if settings.FRONTEND_URL == "http://localhost:8000":
             settings.FRONTEND_URL = "https://mathsgraphfrontend-production.up.railway.app"
         settings.DEBUG = False
