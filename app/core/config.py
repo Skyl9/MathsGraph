@@ -29,14 +29,15 @@ class Settings(BaseSettings):
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
     DB_NAME: str = "app_db"
+    DB_URL_ENV: str | None = Field(default=None, validation_alias="DATABASE_URL")
     DBTESTLINK: str | None = None
     REDIS_URL: str = "redis://localhost:6379"
 
     # E-mail
-    SMTP_HOST: str
-    SMTP_PORT: int
-    SMTP_USER: str
-    SMTP_PASSWORD: str
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
 
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = ["*"]
@@ -56,6 +57,9 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT == "testing":
             return self.DBTESTLINK or "sqlite:///./test.db"
 
+        if self.DB_URL_ENV:
+            return self.DB_URL_ENV
+
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 
@@ -70,11 +74,15 @@ def get_settings() -> Settings:
     elif settings.ENVIRONMENT == "development":
         settings.DEBUG = True
         settings.TESTING = False
-        settings.BACKEND_CORS_ORIGINS = ["http://localhost:3000", "http://localhost:8080", "http://localhost:8000"]
-        settings.FRONTEND_URL = "http://localhost:8000"
+        if settings.BACKEND_CORS_ORIGINS == ["*"]:
+            settings.BACKEND_CORS_ORIGINS = ["http://localhost:3000", "http://localhost:8080", "http://localhost:8000"]
+        if settings.FRONTEND_URL == "http://localhost:8000":
+            settings.FRONTEND_URL = "http://localhost:8000"
     else:  # production
-        settings.BACKEND_CORS_ORIGINS = ["https://mathsgraph-production.up.railway.app"]
-        settings.FRONTEND_URL = "https://mathsgraph-production.up.railway.app"
+        if settings.BACKEND_CORS_ORIGINS == ["*"]:
+            settings.BACKEND_CORS_ORIGINS = ["https://mathsgraphfrontend-production.up.railway.app"]
+        if settings.FRONTEND_URL == "http://localhost:8000":
+            settings.FRONTEND_URL = "https://mathsgraphfrontend-production.up.railway.app"
         settings.DEBUG = False
         settings.TESTING = False
 
