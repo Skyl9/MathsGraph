@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     PASSWORD_SALT: str = "dev_password_salt"
 
     # Authentication
-    SECRET_KEY: str = Field(..., description="Clé secrète obligatoire pour JWT")
+    SECRET_KEY: str = "default_secret_key_for_dev_change_in_prod"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
