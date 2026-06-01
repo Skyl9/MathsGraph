@@ -13,5 +13,8 @@ COPY . /app
 WORKDIR /app
 RUN uv sync --frozen --no-cache
 
+# Expose the port so Railway's proxy knows where to route traffic
+EXPOSE 8000
+
 # Run with uvicorn in production mode (Railway injects $PORT dynamically)
 CMD /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2
