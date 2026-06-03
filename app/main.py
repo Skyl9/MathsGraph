@@ -246,16 +246,3 @@ async def db_health_check():
         return JSONResponse(status_code=504, content={"status": "error", "db": "timeout"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "db": "failed", "details": str(e)})
-
-
-"""
-@app.get("/")
-async def redirect_to_new_domain():
-    ""
-    Route catch-all pour rediriger le trafic de l'ancien domaine (Railway)
-    vers le nouveau domaine (Scaleway).
-    ""
-    target_url = os.getenv("NEW_FRONTEND_URL", "https://mathsgraph.com")
-    return RedirectResponse(url=target_url, status_code=301)
-
-"""

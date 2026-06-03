@@ -2,9 +2,9 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenException, ConflictException, NotFoundException
 from app.schemas import CreateData
-from app.schemas.patchClass import UpdateConceptDict
+from app.core.exceptions import ForbiddenException, ConflictException, NotFoundException
+from app.schemas.mathematicien import MathematicienUpdate
 from app.db.models import Mathematicien
 
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ class MathematicienService:
             "epoque": math.epoque,
         }
 
-    async def update_mathematicien(self, id_mathematicien: int, data: UpdateConceptDict):
-        data_dict = data.model_dump() if isinstance(data, UpdateConceptDict) else data
+    async def update_mathematicien(self, mathematicien_id: int, payload: MathematicienUpdate) -> None:
+        payload_dict = payload.model_dump() if isinstance(payload, MathematicienUpdate) else payload
 
         allowed_fields = {
             "nom",
@@ -52,15 +52,15 @@ class MathematicienService:
             "recompenses",
             "epoque",
         }
-        field = data_dict["field"]
+        field = payload_dict["field"]
         if field not in allowed_fields:
             raise ForbiddenException(detail=f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")
 
-        math = await self.db.get(Mathematicien, id_mathematicien)
+        math = await self.db.get(Mathematicien, mathematicien_id)
         if not math:
-            raise NotFoundException(f"Mathematicien with ID {id_mathematicien} not found")
+            raise NotFoundException(f"Mathematicien with ID {mathematicien_id} not found")
 
-        setattr(math, field, data_dict["value"])
+        setattr(math, field, payload_dict["value"])
         await self.db.flush()
 
     async def get_all_mathematicien_info(self):

@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
 from app.db.database import get_db
-from app.schemas import CreateData, Response, UpdateConceptDict
-from app.schemas.categorie import CategorieBase
+from app.schemas import CreateData, Response
+from app.schemas.categorie import CategorieBase, CategoryUpdate
 from app.services import CategoryService
 from app.services.category_service import logger
 
@@ -20,15 +20,14 @@ async def get_one_category_E(id_category: int, db: AsyncSession = Depends(get_db
 
 @router.patch("/{id_category}", response_model=Response)
 async def update_category_E(
-    id_category: int, 
-    data: UpdateConceptDict, 
+    id_category: int,
+    data: CategoryUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user_payload)
+    current_user: dict = Depends(get_current_user_payload),
 ):
     await CategoryService(db).update_category(id_category, data)
     await db.commit()
-    logger.debug(
-        f"Route PATCH /{router.prefix}/update/{id_category} a modifié correctement la catégorie {id_category}")
+    logger.debug(f"Route PATCH /{router.prefix}/update/{id_category} a modifié correctement la catégorie {id_category}")
     return {"error": None, "success": True, "data": None, "meta": None}
 
 
@@ -41,9 +40,7 @@ async def all_category(db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=Response)
 async def create_category(
-    data: CreateData, 
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user_payload)
+    data: CreateData, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
     await CategoryService(db).add_category(data)
     await db.commit()

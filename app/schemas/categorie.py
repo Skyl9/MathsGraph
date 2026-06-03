@@ -1,12 +1,14 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Any
+
 
 class CategorieBase(BaseModel):
-    id:int
+    id: int
     nom: str
     description: Optional[str] = None
     parent_id: Optional[int] = None
 
+
 class CategoryUpdate(BaseModel):
-    field:str
-    value:dict
+    field: str
+    value: Any

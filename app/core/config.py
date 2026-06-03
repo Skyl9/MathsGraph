@@ -44,6 +44,7 @@ class Settings(BaseSettings):
 
     # Frontend URL (utilisé pour les liens dans les emails)
     FRONTEND_URL: str = "http://localhost:8000"
+    NEW_FRONTEND_URL: str = "https://mathsgraph.com"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
