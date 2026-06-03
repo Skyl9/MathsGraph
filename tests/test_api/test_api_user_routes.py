@@ -52,10 +52,7 @@ async def test_get_user_by_username_fail(async_client: AsyncClient, setup_user_t
 async def test_update_user(async_client: AsyncClient, setup_test_user, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     user_id = setup_test_user["id"]
-    payload = {
-        "field": "email",
-        "value": "test.r@gmail.com"
-    }
+    payload = {"field": "email", "value": "test.r@gmail.com"}
     response = await async_client.patch(f"/user/{user_id}", json=payload, headers=headers)
     assert response.status_code == 200
     response_data = response.json()
@@ -66,10 +63,7 @@ async def test_update_user(async_client: AsyncClient, setup_test_user, setup_use
 async def test_update_user_wrong_field(async_client: AsyncClient, setup_test_user, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     user_id = setup_test_user["id"]
-    payload = {
-        "field": "WrongField",
-        "value": "test.r@gmail.com"
-    }
+    payload = {"field": "WrongField", "value": "test.r@gmail.com"}
     response = await async_client.patch(f"/user/{user_id}", json=payload, headers=headers)
     assert response.status_code == 400
     data = response.json()
@@ -81,10 +75,7 @@ async def test_update_user_wrong_field(async_client: AsyncClient, setup_test_use
 async def test_update_user_not_found(async_client: AsyncClient, setup_test_user, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     user_id = 99999
-    payload = {
-        "field": "email",
-        "value": "test.r@gmail.com"
-    }
+    payload = {"field": "email", "value": "test.r@gmail.com"}
     response = await async_client.patch(f"/user/{user_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
@@ -104,7 +95,9 @@ async def test_get_user_favs_void(async_client: AsyncClient, setup_test_user, se
 
 
 @pytest.mark.asyncio
-async def test_get_user_favs_with_data(async_client: AsyncClient, setup_test_user, setup_fav_user, setup_user_token_admin):
+async def test_get_user_favs_with_data(
+    async_client: AsyncClient, setup_test_user, setup_fav_user, setup_user_token_admin
+):
     headers = create_headers_token(setup_user_token_admin)
     user_id = setup_test_user["id"]
     response = await async_client.get(f"/user/favorite/{user_id}", headers=headers)
@@ -115,7 +108,9 @@ async def test_get_user_favs_with_data(async_client: AsyncClient, setup_test_use
 
 
 @pytest.mark.asyncio
-async def test_get_user_favs_with_wrong_user(async_client: AsyncClient, setup_test_user, setup_fav_user, setup_user_token_admin):
+async def test_get_user_favs_with_wrong_user(
+    async_client: AsyncClient, setup_test_user, setup_fav_user, setup_user_token_admin
+):
     headers = create_headers_token(setup_user_token_admin)
     user_id = 99999
     response = await async_client.get(f"/user/favorite/{user_id}", headers=headers)
@@ -130,23 +125,46 @@ async def test_delete_user_fav(async_client: AsyncClient, setup_test_user, setup
     headers = create_headers_token(setup_user_token_admin)
     user_id = setup_test_user["id"]
     concept_id = setup_fav_user["concept_id"]
-    payload = {
-        "type": "concept",
-        "user_id": str(user_id)
-    }
+    payload = {"type": "concept", "user_id": str(user_id)}
     response = await async_client.request("DELETE", f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_delete_user_fav_wrong_user(async_client: AsyncClient, setup_test_concept, setup_test_user, setup_fav_user, setup_user_token_admin):
+async def test_delete_user_fav_forbidden(async_client: AsyncClient, setup_test_user, setup_fav_user):
+    # Appeler avec un token utilisateur lambda (pas admin) pour un autre utilisateur
+    from fastapi import Response
+    from tests.constants import TEST_PASSWORD, TEST_USER_NAME
+
+    # login with standard user
+    login_data = {"username": TEST_USER_NAME, "password": TEST_PASSWORD}
+    _ = Response()
+
+    # We need db_session, let's just make a POST to /token
+    response_login = await async_client.post("/token", data=login_data)
+    token = response_login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    concept_id = setup_fav_user["concept_id"]
+    payload = {
+        "type": "concept",
+        "user_id": "99999",  # Not the caller id!
+    }
+    response = await async_client.request("DELETE", f"/user/favorite/{concept_id}", json=payload, headers=headers)
+    assert response.status_code == 403
+    data = response.json()
+    assert data["success"] is False
+    assert "Not authorized to modify this user's favorites" in data["error"]
+
+
+@pytest.mark.asyncio
+async def test_delete_user_fav_wrong_user(
+    async_client: AsyncClient, setup_test_concept, setup_test_user, setup_fav_user, setup_user_token_admin
+):
     headers = create_headers_token(setup_user_token_admin)
     user_id = 99999
     concept_id = setup_fav_user["id"]
-    payload = {
-        "type": "concept",
-        "user_id": str(user_id)
-    }
+    payload = {"type": "concept", "user_id": str(user_id)}
     response = await async_client.request("DELETE", f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
@@ -155,14 +173,13 @@ async def test_delete_user_fav_wrong_user(async_client: AsyncClient, setup_test_
 
 
 @pytest.mark.asyncio
-async def test_delete_user_fav_wrong_concept(async_client: AsyncClient, setup_test_concept, setup_test_user, setup_fav_user, setup_user_token_admin):
+async def test_delete_user_fav_wrong_concept(
+    async_client: AsyncClient, setup_test_concept, setup_test_user, setup_fav_user, setup_user_token_admin
+):
     headers = create_headers_token(setup_user_token_admin)
     user_id = setup_test_user["id"]
     concept_id = setup_fav_user["id"] + 1
-    payload = {
-        "type": "concept",
-        "user_id": str(user_id)
-    }
+    payload = {"type": "concept", "user_id": str(user_id)}
     response = await async_client.request("DELETE", f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
@@ -175,23 +192,41 @@ async def test_add_user_fav(async_client: AsyncClient, setup_test_user, setup_te
     headers = create_headers_token(setup_user_token_admin)
     user_id = setup_test_user["id"]
     concept_id = setup_test_concept["id"]
-    payload = {
-        "user_id": str(user_id),
-        "type": "concept"
-    }
+    payload = {"user_id": str(user_id), "type": "concept"}
     response = await async_client.post(f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_add_user_fav_no_concept(async_client: AsyncClient, setup_test_user, setup_test_concept, setup_user_token_admin):
+async def test_add_user_fav_forbidden(async_client: AsyncClient, setup_test_user, setup_test_concept):
+    from tests.constants import TEST_PASSWORD, TEST_USER_NAME
+
+    # login with standard user
+    login_data = {"username": TEST_USER_NAME, "password": TEST_PASSWORD}
+    response_login = await async_client.post("/token", data=login_data)
+    token = response_login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    concept_id = setup_test_concept["id"]
+    payload = {
+        "user_id": "99999",  # Not the caller id!
+        "type": "concept",
+    }
+    response = await async_client.post(f"/user/favorite/{concept_id}", json=payload, headers=headers)
+    assert response.status_code == 403
+    data = response.json()
+    assert data["success"] is False
+    assert "Not authorized to modify this user's favorites" in data["error"]
+
+
+@pytest.mark.asyncio
+async def test_add_user_fav_no_concept(
+    async_client: AsyncClient, setup_test_user, setup_test_concept, setup_user_token_admin
+):
     headers = create_headers_token(setup_user_token_admin)
     user_id = setup_test_user["id"]
     concept_id = setup_test_concept["id"] + 1
-    payload = {
-        "user_id": str(user_id),
-        "type": "concept"
-    }
+    payload = {"user_id": str(user_id), "type": "concept"}
     response = await async_client.post(f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
@@ -200,19 +235,19 @@ async def test_add_user_fav_no_concept(async_client: AsyncClient, setup_test_use
 
 
 @pytest.mark.asyncio
-async def test_add_user_fav_no_user(async_client: AsyncClient, setup_test_user, setup_test_concept, setup_user_token_admin):
+async def test_add_user_fav_no_user(
+    async_client: AsyncClient, setup_test_user, setup_test_concept, setup_user_token_admin
+):
     headers = create_headers_token(setup_user_token_admin)
     user_id = 99999
     concept_id = setup_test_concept["id"]
-    payload = {
-        "user_id": str(user_id),
-        "type": "concept"
-    }
+    payload = {"user_id": str(user_id), "type": "concept"}
     response = await async_client.post(f"/user/favorite/{concept_id}", json=payload, headers=headers)
     assert response.status_code == 404
     data = response.json()
     assert data["success"] is False
     assert "User not found" in data["error"]
+
 
 @pytest.mark.asyncio
 async def test_get_user_history(async_client: AsyncClient, setup_test_user, setup_user_token_admin):

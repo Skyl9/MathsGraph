@@ -30,7 +30,7 @@ async def updateOneCategoryMathematicien_E(
     await MathematicienService(db).update_mathematicien(id_mathematicien, data)
     await db.commit()
     logger.debug(f"Route PATCH {router.prefix}/update/{id_mathematicien} a été effectué avec succès")
-    return {"success": True, "error": None, "meta": None}
+    return {"success": True, "data": None, "error": None, "meta": None}
 
 
 @router.get("/", response_model=Response[List[MathematicienName]])

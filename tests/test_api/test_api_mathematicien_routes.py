@@ -65,6 +65,7 @@ async def test_get_one_mathematicien_not_found(async_client: AsyncClient):
     assert res_data["success"] is False
     assert "error" in res_data
 
+
 @pytest.mark.asyncio
 async def test_get_mathematiciens_timeline(async_client: AsyncClient, db_session: AsyncSession):
     """
@@ -72,6 +73,7 @@ async def test_get_mathematiciens_timeline(async_client: AsyncClient, db_session
     """
     # Create a mathematician with date_naissance
     from datetime import date
+
     new_math = Mathematicien(nom="Timeline Math", date_naissance=date(1990, 1, 1))
     db_session.add(new_math)
     await db_session.commit()
@@ -83,3 +85,47 @@ async def test_get_mathematiciens_timeline(async_client: AsyncClient, db_session
     assert isinstance(res_data["data"], list)
     # The setup_test_mathematicien should be in the list
     assert any(m["nom"] == "Timeline Math" for m in res_data["data"])
+
+
+@pytest.mark.asyncio
+async def test_update_mathematicien_success(
+    async_client: AsyncClient, setup_test_mathematicien: dict, setup_user_token_admin
+):
+    """
+    Teste la mise à jour d'un mathématicien.
+    """
+    headers = create_headers_token(setup_user_token_admin)
+    mathematicien_id = setup_test_mathematicien["id"]
+    payload = {"field": "nom", "value": "Alan Turing Modifié"}
+
+    response = await async_client.patch(f"/mathematicien/{mathematicien_id}", json=payload, headers=headers)
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_get_all_mathematiciens_name(async_client: AsyncClient, setup_test_mathematicien: dict):
+    """
+    Teste la récupération de tous les noms de mathématiciens.
+    """
+    response = await async_client.get("/mathematicien/")
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["success"] is True
+    assert isinstance(res_data["data"], list)
+    assert any(m["nom"] == setup_test_mathematicien["nom"] for m in res_data["data"])
+
+
+@pytest.mark.asyncio
+async def test_get_mathematicien_by_name(async_client: AsyncClient, setup_test_mathematicien: dict):
+    """
+    Teste la récupération d'un mathématicien par nom.
+    """
+    name = setup_test_mathematicien["nom"]
+    response = await async_client.get(f"/mathematicien/name/{name}")
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["success"] is True
+    # The route returns MathematicienResponse, so data is an object
+    assert res_data["data"]["id"] == setup_test_mathematicien["id"]

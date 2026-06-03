@@ -38,7 +38,9 @@ async def test_get_graph_success(mock_redis_set, mock_redis_get, async_client: A
 @pytest.mark.asyncio
 @patch("app.api.routes.graph_routes.redis_db.get", new_callable=AsyncMock)
 @patch("app.api.routes.graph_routes.redis_db.set", new_callable=AsyncMock)
-async def test_get_graph_with_edges(mock_redis_set, mock_redis_get, db_session: AsyncSession, async_client: AsyncClient, setup_two_concepts):
+async def test_get_graph_with_edges(
+    mock_redis_set, mock_redis_get, db_session: AsyncSession, async_client: AsyncClient, setup_two_concepts
+):
     """
     Vérifie que la route GET /graph renvoie bien les arêtes s'il y a des relations.
     """
@@ -51,7 +53,7 @@ async def test_get_graph_with_edges(mock_redis_set, mock_redis_get, db_session: 
         concept_source=concept1_id,
         concept_cible=concept2_id,
         type_relation="implication",
-        description="Test de la route graph"
+        description="Test de la route graph",
     )
     db_session.add(new_rel)
     await db_session.commit()
@@ -79,7 +81,7 @@ async def test_get_graph_from_cache(mock_redis_get, async_client: AsyncClient):
     # On fabrique un faux graphe JSON
     fake_cached_data = {
         "nodes": [{"id": 999, "nom": "Théorème de Test Cache", "typeMath": "type", "position": {}}],
-        "edges": []
+        "edges": [],
     }
     # On ordonne au Mock de renvoyer ça comme si c'était Redis
     mock_redis_get.return_value = json.dumps(fake_cached_data)
@@ -93,3 +95,30 @@ async def test_get_graph_from_cache(mock_redis_get, async_client: AsyncClient):
     assert resData["meta"]["source"] == "cache"
     # On vérifie qu'on a bien reçu notre faux noeud 999
     assert resData["data"]["nodes"][0]["id"] == 999
+
+
+@pytest.mark.asyncio
+@patch("app.api.routes.graph_routes.redis_db.get", new_callable=AsyncMock)
+@patch("app.api.routes.graph_routes.redis_db.set", new_callable=AsyncMock)
+async def test_get_graph_redis_connection_error(mock_redis_set, mock_redis_get, async_client: AsyncClient, setup_graph):
+    """
+    Vérifie que la route fonctionne correctement même si Redis n'est pas joignable.
+    """
+    import redis
+
+    # Simuler une erreur de connexion Redis pour get et set
+    mock_redis_get.side_effect = redis.exceptions.ConnectionError("Redis down")
+    mock_redis_set.side_effect = redis.exceptions.ConnectionError("Redis down")
+
+    response = await async_client.get("/graph")
+    assert response.status_code == 200
+    resData = response.json()
+
+    assert resData["success"] is True
+    # La source doit être la BDD puisque le cache a échoué
+    assert resData["meta"]["source"] == "db"
+    assert resData["data"]["nodes"] is not None
+
+    # Vérifier que les méthodes Redis ont bien été appelées
+    assert mock_redis_get.called
+    assert mock_redis_set.called
