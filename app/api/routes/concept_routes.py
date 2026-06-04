@@ -31,7 +31,6 @@ async def rollback_concept(
 ):
     data.username = current_user.get("sub")  # type: ignore
     await ConceptService(db).rollback_history(concept_id, data)
-    await db.commit()
     logger.debug(
         f"Route PATCH /concept/rollback/{concept_id} a correctement rollback le concept dont l'id est:{concept_id}"
     )
@@ -43,7 +42,6 @@ async def create_concept_route(
     data: ConceptCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
     result = await ConceptService(db).create_concept(data, current_user.get("sub"))  # type: ignore
-    await db.commit()
     logger.debug(f"Route POST /concept a créé le concept: {result['nom']}")
     return {"error": None, "data": result, "success": True, "meta": None}
 
@@ -75,7 +73,6 @@ async def update_concept(
 ):
     data.username = current_user.get("sub")  # type: ignore
     await ConceptService(db).updateConcept(concept_id, data)
-    await db.commit()
     logger.debug(f"Route PATCH /update/{concept_id} a réussi la modification du concept dont l'id est:{concept_id}")
     return {"error": None, "data": None, "success": True, "meta": None}
 

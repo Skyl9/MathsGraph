@@ -224,6 +224,7 @@ class ConceptService:
         math_ids = set()
         cat_ids = set()
         type_ids = set()
+        concept_ids = set()
 
         for v in versions:
             if v.field_modified == "mathematicien":
@@ -241,6 +242,17 @@ class ConceptService:
                     type_ids.add(int(v.old_value))
                 if v.new_value and v.new_value.isdigit():
                     type_ids.add(int(v.new_value))
+            elif v.field_modified == "relations":
+                try:
+                    old_rels = json.loads(v.old_value) if v.old_value else []
+                    new_rels = json.loads(v.new_value) if v.new_value else []
+                    for i in old_rels + new_rels:
+                        if isinstance(i.get("concept_source"), (int, str)) and str(i["concept_source"]).isdigit():
+                            concept_ids.add(int(i["concept_source"]))
+                        if isinstance(i.get("concept_cible"), (int, str)) and str(i["concept_cible"]).isdigit():
+                            concept_ids.add(int(i["concept_cible"]))
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
         # Prefetching
         math_dict = {}
@@ -257,6 +269,11 @@ class ConceptService:
         if type_ids:
             res_type = await self.db.execute(select(Type).where(Type.id.in_(type_ids)))
             type_dict = {t.id: t.type for t in res_type.scalars()}
+
+        concept_dict = {}
+        if concept_ids:
+            res_concept = await self.db.execute(select(Concept.id, Concept.nom).where(Concept.id.in_(concept_ids)))
+            concept_dict = {row.id: row.nom for row in res_concept.all()}
 
         res_versions = []
         for v in versions:
@@ -320,15 +337,23 @@ class ConceptService:
                     new_rels = json.loads(v.new_value) if v.new_value else []
 
                     for i in old_rels:
-                        src = await self.db.get(Concept, i["concept_source"])
-                        tgt = await self.db.get(Concept, i["concept_cible"])
-                        i["concept_source"] = src.nom if src else str(i["concept_source"])
-                        i["concept_cible"] = tgt.nom if tgt else str(i["concept_cible"])
+                        src_id = int(i["concept_source"]) if str(i["concept_source"]).isdigit() else None
+                        tgt_id = int(i["concept_cible"]) if str(i["concept_cible"]).isdigit() else None
+                        i["concept_source"] = (
+                            concept_dict.get(src_id, str(i["concept_source"])) if src_id else str(i["concept_source"])
+                        )
+                        i["concept_cible"] = (
+                            concept_dict.get(tgt_id, str(i["concept_cible"])) if tgt_id else str(i["concept_cible"])
+                        )
                     for j in new_rels:
-                        src = await self.db.get(Concept, j["concept_source"])
-                        tgt = await self.db.get(Concept, j["concept_cible"])
-                        j["concept_source"] = src.nom if src else str(j["concept_source"])
-                        j["concept_cible"] = tgt.nom if tgt else str(j["concept_cible"])
+                        src_id = int(j["concept_source"]) if str(j["concept_source"]).isdigit() else None
+                        tgt_id = int(j["concept_cible"]) if str(j["concept_cible"]).isdigit() else None
+                        j["concept_source"] = (
+                            concept_dict.get(src_id, str(j["concept_source"])) if src_id else str(j["concept_source"])
+                        )
+                        j["concept_cible"] = (
+                            concept_dict.get(tgt_id, str(j["concept_cible"])) if tgt_id else str(j["concept_cible"])
+                        )
 
                     v_dict["old_value"] = format_relation(old_rels)
                     v_dict["new_value"] = format_relation(new_rels)
@@ -461,7 +486,7 @@ class ConceptService:
             rollback=rollback,
             note=data_dict.get("note"),
         )
-        await self.db.flush()
+        await self.db.commit()
 
     async def _update_type(self, concept: Concept, new_value_raw: str):
         old_value = concept.type_id
@@ -665,5 +690,6 @@ class ConceptService:
             new_version=data_dict["nom"],
             note="Création initiale",
         )
+        await self.db.commit()
 
         return {"id": new_concept.id, "nom": new_concept.nom}

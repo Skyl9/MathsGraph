@@ -74,7 +74,7 @@ class UserService:
             raise NotFoundException(detail="User not found")
 
         setattr(user, field, data_dict["value"])
-        await self.db.flush()
+        await self.db.commit()
 
     async def get_favorite_user(self, user_id: int):
         query = select(User).where(User.id == user_id)
@@ -109,9 +109,15 @@ class UserService:
                 dictList.append({"id": fav.type.id, "nom": fav.type.type, "category": "type"})
         return dictList
 
-    async def delete_favorite_user(self, general_id: int, data: Favorite) -> None:
+    async def delete_favorite_user(self, general_id: int, data: Favorite, current_user: dict) -> None:
         data_dict = data.model_dump() if isinstance(data, Favorite) else data
         user_id = int(data_dict["user_id"])
+
+        caller_id = current_user.get("id")
+        caller_role = current_user.get("role", "").lower()
+        if user_id != caller_id and caller_role != "admin":
+            raise ForbiddenException(detail="Not authorized to modify this user's favorites")
+
         entity_type = data_dict["type"]
 
         query_user = select(User.id).where(User.id == user_id)
@@ -150,11 +156,17 @@ class UserService:
             stmt = stmt.where(UserFavorite.type_id == general_id)
 
         await self.db.execute(stmt)
-        await self.db.flush()
+        await self.db.commit()
 
-    async def add_favorite_user(self, general_id: int, data: Favorite) -> None:
+    async def add_favorite_user(self, general_id: int, data: Favorite, current_user: dict) -> None:
         data_dict = data.model_dump() if isinstance(data, Favorite) else data
         user_id = int(data_dict["user_id"])
+
+        caller_id = current_user.get("id")
+        caller_role = current_user.get("role", "").lower()
+        if user_id != caller_id and caller_role != "admin":
+            raise ForbiddenException(detail="Not authorized to modify this user's favorites")
+
         entity_type = data_dict["type"]
 
         query_user = select(User.id).where(User.id == user_id)
@@ -193,7 +205,7 @@ class UserService:
             new_fav.type_id = general_id
 
         self.db.add(new_fav)
-        await self.db.flush()
+        await self.db.commit()
 
     async def get_history_user(self, user_id: int, limit: int = 20) -> list[dict]:
         query_user = select(User.id).where(User.id == user_id)

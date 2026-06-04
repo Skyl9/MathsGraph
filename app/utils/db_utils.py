@@ -1,15 +1,14 @@
 from typing import Any
-from sqlalchemy import text
+from sqlalchemy import select, table, column
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundException
 
 
 async def check_exists(db: AsyncSession, table_name: str, entity_id: int, error_msg: str = "Ressource introuvable"):
     """Vérifie si un ID existe dans une table spécifique, sinon lève une NotFoundException."""
-    # Note: Using text() for dynamic table names is generally risky,
-    # but here we follow the existing pattern while migrating to AsyncSession.
-    query = text(f"SELECT id FROM {table_name} WHERE id = :id LIMIT 1")
-    result = await db.execute(query, {"id": entity_id})
+    t = table(table_name, column("id"))
+    query = select(t.c.id).where(t.c.id == entity_id).limit(1)
+    result = await db.execute(query)
     if result.scalar_one_or_none() is None:
         raise NotFoundException(detail=error_msg)
 
@@ -24,8 +23,9 @@ async def get_id_by_field(
     if not field_value:
         raise NotFoundException(detail=error_msg)
 
-    query = text(f"SELECT id FROM {table_name} WHERE {field_name} = :val LIMIT 1")
-    result = await db.execute(query, {"val": field_value})
+    t = table(table_name, column("id"), column(field_name))
+    query = select(t.c.id).where(getattr(t.c, field_name) == field_value).limit(1)
+    result = await db.execute(query)
     row = result.fetchone()
 
     if row is None:
