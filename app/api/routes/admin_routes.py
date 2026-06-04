@@ -7,7 +7,7 @@ from app.core.deps import get_current_admin_payload
 from app.core.redis_client import redis_db
 from app.db.database import get_db
 from app.schemas import Response
-from app.schemas.admin import Stat, ConceptForAdmin
+from app.schemas.admin import Stat, ConceptForAdmin, RecentActivityItem
 from app.schemas.auth import User
 from app.services.admin_service import AdminService, logger
 from app.services.layout_service import LayoutService
@@ -61,4 +61,15 @@ async def recalculate_graph_layout(
 async def get_analytics(db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
     data = await AdminService(db).get_api_analytics()
     logger.debug(f"Route GET /{router.prefix}/analytics exécutée avec succès")
+    return {"error": None, "data": data, "success": True, "meta": None}
+
+
+@router.get("/recent-activity", response_model=Response[List[RecentActivityItem]])
+async def get_recent_activity(
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    _payload: dict = Depends(get_current_admin_payload),
+):
+    data = await AdminService(db).get_recent_activity(limit=limit)
+    logger.debug(f"Route GET /{router.prefix}/recent-activity a renvoyé : {str(data)}")
     return {"error": None, "data": data, "success": True, "meta": None}
