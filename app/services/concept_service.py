@@ -1,7 +1,7 @@
 import copy
 import json
 import logging
-from typing import List, Any
+from typing import List, Any, Sequence
 
 from sqlalchemy import select, func, desc, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -220,15 +220,7 @@ class ConceptService:
                 return id_val
         return id_val
 
-    async def get_concept_versions(self, concept_id: int) -> List[History]:
-        query = (
-            select(ConceptVersion)
-            .where(ConceptVersion.concept_id == concept_id)
-            .order_by(desc(ConceptVersion.version_number))
-        )
-        result = await self.db.execute(query)
-        versions = result.scalars().all()
-
+    async def _resolve_version_values(self, versions: Sequence[ConceptVersion]) -> list[dict]:
         math_ids = set()
         cat_ids = set()
         type_ids = set()
@@ -343,22 +335,37 @@ class ConceptService:
                 except (json.JSONDecodeError, TypeError):
                     pass
 
-            res_versions.append(
-                History(
-                    id=v_dict["id"],  # type: ignore
-                    concept_id=v_dict["concept_id"],  # type: ignore
-                    modified_by=v_dict["modified_by"],  # type: ignore
-                    modified_at=v_dict["modified_at"],  # type: ignore
-                    field_modified=v_dict["field_modified"],  # type: ignore
-                    old_value=v_dict["old_value"],
-                    new_value=v_dict["new_value"],
-                    version_number=v_dict["version_number"],  # type: ignore
-                    global_version=v_dict["global_version"],  # type: ignore
-                    is_rollback=v_dict["is_rollback"],  # type: ignore
-                    note=v_dict["note"],  # type: ignore
-                )
-            )
+            res_versions.append(v_dict)
 
+        return res_versions
+
+    async def get_concept_versions(self, concept_id: int) -> List[History]:
+        query = (
+            select(ConceptVersion)
+            .where(ConceptVersion.concept_id == concept_id)
+            .order_by(desc(ConceptVersion.version_number))
+        )
+        result = await self.db.execute(query)
+        versions = result.scalars().all()
+
+        res_versions_dict = await self._resolve_version_values(versions)
+
+        res_versions = [
+            History(
+                id=v_dict["id"],  # type: ignore
+                concept_id=v_dict["concept_id"],  # type: ignore
+                modified_by=v_dict["modified_by"],  # type: ignore
+                modified_at=v_dict["modified_at"],  # type: ignore
+                field_modified=v_dict["field_modified"],  # type: ignore
+                old_value=v_dict["old_value"],
+                new_value=v_dict["new_value"],
+                version_number=v_dict["version_number"],  # type: ignore
+                global_version=v_dict["global_version"],  # type: ignore
+                is_rollback=v_dict["is_rollback"],  # type: ignore
+                note=v_dict["note"],  # type: ignore
+            )
+            for v_dict in res_versions_dict
+        ]
         return res_versions
 
     async def add_concept_version(
@@ -605,6 +612,8 @@ class ConceptService:
         result = await self.db.execute(query)
         versions = result.scalars().all()
 
+        res_versions_dict = await self._resolve_version_values(versions)
+
         return [
             {
                 "id": v.id,
@@ -614,8 +623,10 @@ class ConceptService:
                 "modified_at": v.modified_at.isoformat() if v.modified_at else None,
                 "field_modified": v.field_modified,
                 "is_rollback": v.is_rollback,
+                "old_value": v_dict["old_value"],
+                "new_value": v_dict["new_value"],
             }
-            for v in versions
+            for v, v_dict in zip(versions, res_versions_dict)
         ]
 
     async def create_concept(self, data: ConceptCreate, username: str) -> dict:
