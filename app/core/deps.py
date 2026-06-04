@@ -66,6 +66,33 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session=Depends(
     return user
 
 
+async def get_optional_current_user(request: Request, session=Depends(AsyncSessionLocal)):
+    """Récupère l'utilisateur s'il est authentifié, sinon retourne None, sans lever d'erreur."""
+    token = request.cookies.get("access_token")
+    if not token:
+        header_authorization: str = request.headers.get("Authorization")  # type: ignore
+        scheme, token_header = get_authorization_scheme_param(header_authorization)
+        if scheme.lower() == "bearer":
+            token = token_header
+
+    if not token:
+        return None
+
+    try:
+        payload = decode_token(token)
+        if not payload:
+            return None
+        username: str = payload.get("sub")  # type: ignore
+        if username is None:
+            return None
+    except Exception:
+        return None
+
+    stmt = select(User).where(User.username == username)
+    user = await session.scalar(stmt)
+    return user
+
+
 async def get_current_active_user(current_user=Depends(get_current_user)):
     """Vérifie si l'utilisateur est actif"""
     if not current_user["is_active"]:

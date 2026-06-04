@@ -26,3 +26,12 @@ class StatisticsService:
             return {"total_views": row.view_count, "unique_viewers": row.unique_viewers}
         else:
             return {"total_views": 0, "unique_viewers": 0}
+
+    async def add_concept_view(self, concept_id: int, user_id: int | None = None, ip_address: str | None = None):
+        # Vérifier que le concept existe
+        await get_id_by_field(self.db, "concepts", "id", concept_id, "Concept not found")
+
+        view = ConceptView(concept_id=concept_id, user_id=user_id, ip_address=ip_address)
+        self.db.add(view)
+        await self.db.commit()
+        return {"message": "Vue enregistrée"}
