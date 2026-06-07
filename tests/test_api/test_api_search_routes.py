@@ -50,7 +50,7 @@ async def test_advanced_search_with_filters(async_client: AsyncClient, setup_tes
         "filters": {
             "concept": True,
             "categorie_id": setup_test_concept["categorie_id"],
-            "type_id": 1,
+            "type_id": setup_test_concept["type_id"],
             "verifiedOnly": False,
         },
     }

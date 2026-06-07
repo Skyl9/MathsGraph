@@ -48,30 +48,23 @@ async def setup_test_schema():
         await conn.run_sync(Base.metadata.create_all)
 
 
-@pytest_asyncio.fixture(scope="function", autouse=True)
-async def clean_database():
-    """Vide explicitement toutes les tables avant chaque test via SQLAlchemy."""
-    async with test_engine.begin() as conn:
-        await conn.execute(
-            text(
-                """
-                                TRUNCATE TABLE
-                                    users, concepts, categories, mathematiciens, type,
-                                    sources, concepts_sources, relations, aliases, foreign_name,
-                                    comments, concept_tags, tags, concept_versions, positions,
-                                    user_favorites, password_reset_tokens, api_logs,
-                                    user_sessions, user_contributions
-                                    RESTART IDENTITY CASCADE;
-                                """
-            )
-        )
-
-
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
-    """Fournit une session SQLAlchemy asynchrone."""
-    async with TestSessionLocal() as session:
+    """Fournit une session SQLAlchemy asynchrone isolée par transaction (ROLLBACK)."""
+    conn = await test_engine.connect()
+    trans = await conn.begin()
+
+    # join_transaction_mode="create_savepoint" permet aux tests de faire des commits
+    # qui seront en fait des savepoints dans la transaction parente (qui sera annulée à la fin)
+    session_maker = async_sessionmaker(
+        bind=conn, class_=AsyncSession, expire_on_commit=False, join_transaction_mode="create_savepoint"
+    )
+
+    async with session_maker() as session:
         yield session
+
+    await trans.rollback()
+    await conn.close()
 
 
 @pytest_asyncio.fixture(scope="function")

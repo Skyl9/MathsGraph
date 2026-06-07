@@ -31,11 +31,13 @@ async def test_get_concept_success(async_client: AsyncClient, setup_full_test_co
     assert "noms_etrangers" in concept
     assert len(concept["noms_etrangers"]) >= 1
     assert any(
-        n["Nom_étranger"] == setup_full_test_concept["foreign_name"]["Nom_étranger"] for n in concept["noms_etrangers"])
+        n["Nom_étranger"] == setup_full_test_concept["foreign_name"]["Nom_étranger"] for n in concept["noms_etrangers"]
+    )
     assert "relations" in concept
     assert len(concept["relations"]) >= 1
     assert any(
-        r["concept_source"]["id"] == concept_id or r["concept_cible"]["id"] == concept_id for r in concept["relations"])
+        r["concept_source"]["id"] == concept_id or r["concept_cible"]["id"] == concept_id for r in concept["relations"]
+    )
     assert concept["mathematicien"]["mathematicien"] == setup_full_test_concept["mathematicien"]
     assert concept["categorie"]["category"] == setup_full_test_concept["categorie"]
 
@@ -76,8 +78,9 @@ async def test_get_all_concept_name_success(async_client: AsyncClient, setup_tes
 
 
 @pytest.mark.asyncio
-async def test_get_editable_fields_options_success(async_client: AsyncClient, setup_test_type, setup_test_categorie,
-                                                   setup_test_mathematicien):
+async def test_get_editable_fields_options_success(
+    async_client: AsyncClient, setup_test_type, setup_test_categorie, setup_test_mathematicien
+):
     """
     Teste la récupération des options pour les champs éditables.
     """
@@ -103,7 +106,9 @@ async def test_get_editable_fields_options_success(async_client: AsyncClient, se
 
 
 @pytest.mark.asyncio
-async def test_update_concept_simple_field_success(async_client: AsyncClient, setup_full_test_concept, setup_test_user,setup_user_token_admin):
+async def test_update_concept_simple_field_success(
+    async_client: AsyncClient, setup_full_test_concept, setup_test_user, setup_user_token_admin
+):
     """
     Teste la mise à jour réussie d'un champ simple (e.g., 'nom').
     """
@@ -116,7 +121,7 @@ async def test_update_concept_simple_field_success(async_client: AsyncClient, se
         "field": "nom",
         "value": updated_name,
         "username": setup_test_user["username"],
-        "note": "Test simple field update"
+        "note": "Test simple field update",
     }
 
     get_response = await async_client.get(f"/concept/{concept_id}")
@@ -149,7 +154,7 @@ async def test_update_concept_simple_field_success(async_client: AsyncClient, se
 
 
 @pytest.mark.asyncio
-async def test_update_concept_invalid_id(async_client: AsyncClient, setup_test_user,setup_user_token_admin):
+async def test_update_concept_invalid_id(async_client: AsyncClient, setup_test_user, setup_user_token_admin):
     """
     Teste la mise à jour d'un concept avec un ID inexistant.
     """
@@ -159,16 +164,19 @@ async def test_update_concept_invalid_id(async_client: AsyncClient, setup_test_u
         "field": "nom",
         "value": "Invalid Concept",
         "note": "Test invalid ID",
-        "username": setup_test_user["username"]
+        "username": setup_test_user["username"],
     }
-    response = await async_client.patch("/concept/99999", json=update_data,headers=headers)
+    response = await async_client.patch("/concept/99999", json=update_data, headers=headers)
     assert response.status_code == 404  # Si NotFoundException est convertie en InternalServerError
     data = response.json()
     assert data["success"] is False
     assert "Concept non trouvé" in data["error"]
 
+
 @pytest.mark.asyncio
-async def test_rollback_concept_success(async_client: AsyncClient, setup_full_test_concept, setup_test_user,setup_user_token_admin):
+async def test_rollback_concept_success(
+    async_client: AsyncClient, setup_full_test_concept, setup_test_user, setup_user_token_admin
+):
     """
     Teste la restauration d'une version précédente d'un concept.
     Ceci dépend de l'historique créé par test_update_concept_simple_field_success.
@@ -183,7 +191,7 @@ async def test_rollback_concept_success(async_client: AsyncClient, setup_full_te
         "field": "nom",
         "value": "Temp Name for Rollback",
         "note": "Temporary name",
-        "username": setup_test_user["username"]
+        "username": setup_test_user["username"],
     }
     await async_client.patch(f"/concept/{concept_id}", json=first_update_data, headers=headers)
 
@@ -217,10 +225,10 @@ async def test_rollback_concept_success(async_client: AsyncClient, setup_full_te
     rollback_data = {
         "version_number": target_history_entry["version_number"],
         "field_modified": "nom",  # Le champ que nous voulons restaurer
-        "username": setup_test_user["username"]
+        "username": setup_test_user["username"],
     }
 
-    response = await async_client.patch(f"/concept/rollback/{concept_id}", json=rollback_data,headers=headers)
+    response = await async_client.patch(f"/concept/rollback/{concept_id}", json=rollback_data, headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -234,7 +242,9 @@ async def test_rollback_concept_success(async_client: AsyncClient, setup_full_te
 
 
 @pytest.mark.asyncio
-async def test_get_concept_history_success(async_client: AsyncClient, setup_full_test_concept, setup_test_user,setup_user_token_admin):
+async def test_get_concept_history_success(
+    async_client: AsyncClient, setup_full_test_concept, setup_test_user, setup_user_token_admin
+):
     """
     Teste la récupération de l'historique des versions d'un concept.
     """
@@ -242,17 +252,23 @@ async def test_get_concept_history_success(async_client: AsyncClient, setup_full
     concept_id = setup_full_test_concept["concept"]["id"]
 
     # Créer quelques entrées d'historique via des mises à jour API
-    await async_client.patch(f"/concept/{concept_id}", json={
-        "field": "nom", "value": "Name Change 1", "note": "Note 1", "username": setup_test_user["username"]
-    },headers=headers)
-    await async_client.patch(f"/concept/{concept_id}", json={
-        "field": "enonce", "value": "Enonce Change 1", "note": "Note 2", "username": setup_test_user["username"]
-    },headers=headers)
-    await async_client.patch(f"/concept/{concept_id}", json={
-        "field": "nom", "value": "Name Change 2", "note": "Note 3", "username": setup_test_user["username"]
-    },headers=headers)
+    await async_client.patch(
+        f"/concept/{concept_id}",
+        json={"field": "nom", "value": "Name Change 1", "note": "Note 1", "username": setup_test_user["username"]},
+        headers=headers,
+    )
+    await async_client.patch(
+        f"/concept/{concept_id}",
+        json={"field": "enonce", "value": "Enonce Change 1", "note": "Note 2", "username": setup_test_user["username"]},
+        headers=headers,
+    )
+    await async_client.patch(
+        f"/concept/{concept_id}",
+        json={"field": "nom", "value": "Name Change 2", "note": "Note 3", "username": setup_test_user["username"]},
+        headers=headers,
+    )
 
-    response = await async_client.get(f"/concept/history/{concept_id}",headers=headers)
+    response = await async_client.get(f"/concept/history/{concept_id}", headers=headers)
     assert response.status_code == 200
     data = response.json()
 
@@ -276,20 +292,22 @@ async def test_create_concept_success(async_client: AsyncClient, setup_user_toke
     Teste la création réussie d'un concept via POST /concept
     """
     headers = create_headers_token(setup_user_token_admin)
+    # We can just use the async_client dependency or inject it, wait, we don't need to.
+    # The route will create it ? No, the route tries to find "Théorème" and if it doesn't find it, uses None, which defaults to 1.
     payload = {
         "nom": "Nouveau Concept Test",
         "enonce": "Ceci est un énoncé de test",
         "demonstration": "Démo de test",
         "verification": True,
-        "type": "Théorème",
+        "type": setup_test_type["type"],  # Use the type we just created instead of hardcoding "Théorème"
         "mathematicien_id": None,
-        "categorie_id": None
+        "categorie_id": None,
     }
-    
+
     response = await async_client.post("/concept", json=payload, headers=headers)
     assert response.status_code == 200
     data = response.json()
-    
+
     assert data["success"] is True
     assert data["data"]["nom"] == "Nouveau Concept Test"
     assert "id" in data["data"]
@@ -303,7 +321,7 @@ async def test_get_recent_history_success(async_client: AsyncClient, setup_full_
     response = await async_client.get("/recent-history?limit=10")
     assert response.status_code == 200
     data = response.json()
-    
+
     assert data["success"] is True
     assert "data" in data
     assert isinstance(data["data"], list)
