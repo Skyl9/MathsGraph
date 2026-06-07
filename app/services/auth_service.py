@@ -8,7 +8,6 @@ import aiosmtplib
 from fastapi import HTTPException, status
 from fastapi import Response
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -17,19 +16,18 @@ from app.core.security import get_password_hash, verify_password, create_access_
 from app.db.models import User, PasswordResetToken, UserSession
 from app.schemas.auth import PasswordResetConfirmSchema, UserCreate
 from app.schemas.TokenType import TokenPayload
+from app.repositories.auth_repository import AuthRepository
 
 logger = logging.getLogger(__name__)
 
 
 class AuthService:
     def __init__(self, db: AsyncSession):
-        self.db = db
+        self.repo = AuthRepository(db)
 
     async def register_user(self, user: UserCreate):
         # Vérifier si l'utilisateur existe déjà
-        query = select(User).where((User.username == user.username) | (User.email == user.email))
-        result = await self.db.execute(query)
-        existing_user = result.scalars().first()
+        existing_user = await self.repo.get_user_by_username_or_email(user.username, user.email)
 
         if existing_user:
             if existing_user.username == user.username:
@@ -42,8 +40,7 @@ class AuthService:
 
         # Créer l'utilisateur
         new_user = User(username=user.username, email=user.email, password_hash=hashed_password)
-        self.db.add(new_user)
-        await self.db.flush()
+        await self.repo.add_user(new_user)
 
         return {
             "id": new_user.id,
@@ -55,9 +52,7 @@ class AuthService:
         }
 
     async def login_for_access_token(self, form_data: OAuth2PasswordRequestForm, response: Response):
-        query = select(User).where(User.username == form_data.username)
-        result = await self.db.execute(query)
-        user = result.scalars().first()
+        user = await self.repo.get_user_by_username(form_data.username)
 
         if not user or not verify_password(form_data.password, user.password_hash):
             raise HTTPException(
@@ -74,8 +69,7 @@ class AuthService:
         new_session = UserSession(
             user_id=user.id, token=access_token, expires_at=datetime.now(timezone.utc) + access_token_expires
         )
-        self.db.add(new_session)
-        await self.db.flush()
+        await self.repo.add_session(new_session)
         response.set_cookie(
             key="access_token",
             value=access_token,
@@ -112,9 +106,7 @@ class AuthService:
             raise RuntimeError(f"Erreur lors de l'envoi de l'e-mail : {str(e)}")
 
     async def request_password_reset(self, email: str):
-        query = select(User).where(User.email == email)
-        result = await self.db.execute(query)
-        user = result.scalars().first()
+        user = await self.repo.get_user_by_email(email)
 
         # Sécurité : on retourne toujours 200 même si l'email n'existe pas
         # pour éviter de révéler si un email est enregistré (énumération d'utilisateurs)
@@ -128,8 +120,7 @@ class AuthService:
 
         # Sauvegarder le token
         new_token = PasswordResetToken(user_id=user.id, token=reset_token, expires_at=expires_at)
-        self.db.add(new_token)
-        await self.db.flush()
+        await self.repo.add_reset_token(new_token)
 
         # Générer l'e-mail contenant le lien de réinitialisation
         # Utilise FRONTEND_URL (string) et non BACKEND_CORS_ORIGINS (liste)
@@ -159,9 +150,7 @@ class AuthService:
         token = data_dict["token"]
         new_password = data_dict["new_password"]
 
-        query = select(PasswordResetToken).where(PasswordResetToken.token == token, PasswordResetToken.used.is_(False))
-        result = await self.db.execute(query)
-        reset_entry = result.scalars().first()
+        reset_entry = await self.repo.get_valid_reset_token(token)
 
         if not reset_entry:
             raise AuthenticationException(detail="Token invalide")
@@ -174,12 +163,12 @@ class AuthService:
         hashed_password = get_password_hash(new_password)
 
         # Mettre à jour le mot de passe de l'utilisateur
-        user = await self.db.get(User, reset_entry.user_id)
+        user = await self.repo.get_user_by_id(reset_entry.user_id)
         if user:
             user.password_hash = hashed_password
 
         # Marquer le token comme utilisé pour garder une trace d'audit
         reset_entry.used = True
-        await self.db.flush()
+        await self.repo.flush()
 
         return {"detail": "Mot de passe réinitialisé avec succès"}

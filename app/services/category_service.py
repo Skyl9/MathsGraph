@@ -1,23 +1,21 @@
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException
 from app.schemas import CreateData
 from app.schemas.categorie import CategorieBase, CategoryUpdate
 from app.db.models import Category
+from app.repositories.category_repository import CategoryRepository
 
 logger = logging.getLogger(__name__)
 
 
 class CategoryService:
     def __init__(self, db: AsyncSession):
-        self.db = db
+        self.repo = CategoryRepository(db)
 
     async def get_all_categories(self) -> list[CategorieBase]:
-        query = select(Category)
-        result = await self.db.execute(query)
-        categories = result.scalars().all()
+        categories = await self.repo.get_all()
 
         return [
             CategorieBase(
@@ -30,7 +28,7 @@ class CategoryService:
         ]
 
     async def get_one_category(self, id_category: int) -> CategorieBase:
-        category = await self.db.get(Category, id_category)
+        category = await self.repo.get_by_id(id_category)
         if not category:
             raise NotFoundException(detail=f"Category {id_category} not found")
 
@@ -48,30 +46,26 @@ class CategoryService:
         if field not in allowed_fields:
             raise ForbiddenException(f"Le champ '{field}' n'est pas autorisé pour une mise à jour.")
 
-        category = await self.db.get(Category, id_category)
+        category = await self.repo.get_by_id(id_category)
         if not category:
             raise NotFoundException(detail=f"Category {id_category} not found")
 
         setattr(category, field, data_dict["value"])
-        await self.db.flush()
+        await self.repo.flush()
 
     async def add_category(self, data: CreateData) -> None:
         payload = data.model_dump() if isinstance(data, CreateData) else data
         nom = payload["value"]
 
-        query = select(Category).where(Category.nom == nom)
-        result = await self.db.execute(query)
-        if result.scalars().first() is not None:
+        existing_category = await self.repo.get_by_name(nom)
+        if existing_category is not None:
             raise ConflictException(detail=f"Category {nom} already exists")
 
         new_category = Category(nom=nom)
-        self.db.add(new_category)
-        await self.db.flush()
+        await self.repo.add(new_category)
 
     async def get_category_id_by_name(self, name: str):
-        query = select(Category).where(Category.nom == name)
-        result = await self.db.execute(query)
-        category = result.scalars().first()
+        category = await self.repo.get_by_name(name)
 
         if category is None:
             return None

@@ -1,9 +1,9 @@
 import logging
-from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.utils.db_utils import get_id_by_field
 from app.db.models import ConceptView
+from app.repositories.statistics_repository import StatisticsRepository
 
 logger = logging.getLogger(__name__)
 
@@ -11,16 +11,13 @@ logger = logging.getLogger(__name__)
 class StatisticsService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.repo = StatisticsRepository(db)
 
     async def get_concept_views(self, concept_id: int):
         # Vérifier que le concept existe
         await get_id_by_field(self.db, "concepts", "id", concept_id, "Concept not found")
 
-        query = select(
-            func.count().label("view_count"), func.count(ConceptView.user_id.distinct()).label("unique_viewers")
-        ).where(ConceptView.concept_id == concept_id)
-        result = await self.db.execute(query)
-        row = result.one()
+        row = await self.repo.get_views_for_concept(concept_id)
 
         if row.view_count > 0:
             return {"total_views": row.view_count, "unique_viewers": row.unique_viewers}
@@ -32,6 +29,5 @@ class StatisticsService:
         await get_id_by_field(self.db, "concepts", "id", concept_id, "Concept not found")
 
         view = ConceptView(concept_id=concept_id, user_id=user_id, ip_address=ip_address)
-        self.db.add(view)
-        await self.db.commit()
+        await self.repo.add_view(view)
         return {"message": "Vue enregistrée"}

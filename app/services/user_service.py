@@ -1,10 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundException, BadRequestException, InternalServerError, ForbiddenException
 from app.schemas.user import UserId, UpdateUser, Favorite
-from app.db.models import User, UserFavorite, Concept, Mathematicien, Category, Type, ConceptVersion
+from app.db.models import UserFavorite
+from app.repositories.user_repository import UserRepository
 
 import logging
 
@@ -13,12 +12,10 @@ logger = logging.getLogger(__name__)
 
 class UserService:
     def __init__(self, db: AsyncSession):
-        self.db = db
+        self.repo = UserRepository(db)
 
     async def get_user_by_id(self, id_user: int):
-        query = select(User).where(User.id == id_user)
-        result = await self.db.execute(query)
-        user = result.scalars().first()
+        user = await self.repo.get_user_by_id(id_user)
 
         if user is None:
             raise NotFoundException(detail="User not found")
@@ -36,9 +33,7 @@ class UserService:
         }
 
     async def get_id_by_username(self, username: str) -> UserId:
-        query = select(User.id).where(User.username == username)
-        result = await self.db.execute(query)
-        user_id = result.scalars().first()
+        user_id = await self.repo.get_id_by_username(username)
         if user_id is None:
             raise NotFoundException(detail="User not found")
         return UserId(id=user_id)
@@ -66,36 +61,21 @@ class UserService:
         if field not in allowed_fields and field not in admin_only_fields:
             raise BadRequestException(detail="Mauvais champ donné")
 
-        query = select(User).where(User.id == id)
-        result = await self.db.execute(query)
-        user = result.scalars().first()
+        user = await self.repo.get_user_by_id(id)
 
         if not user:
             raise NotFoundException(detail="User not found")
 
         setattr(user, field, data_dict["value"])
-        await self.db.commit()
+        await self.repo.commit()
 
     async def get_favorite_user(self, user_id: int):
-        query = select(User).where(User.id == user_id)
-        result = await self.db.execute(query)
-        user = result.scalars().first()
+        exists = await self.repo.check_user_exists(user_id)
 
-        if not user:
+        if not exists:
             raise NotFoundException(detail="User not found")
 
-        query_fav = (
-            select(UserFavorite)
-            .where(UserFavorite.user_id == user_id)
-            .options(
-                selectinload(UserFavorite.concept),
-                selectinload(UserFavorite.mathematicien),
-                selectinload(UserFavorite.category),
-                selectinload(UserFavorite.type),
-            )
-        )
-        result_fav = await self.db.execute(query_fav)
-        favorites = result_fav.scalars().all()
+        favorites = await self.repo.get_favorite_user(user_id)
 
         dictList = []
         for fav in favorites:
@@ -120,43 +100,19 @@ class UserService:
 
         entity_type = data_dict["type"]
 
-        query_user = select(User.id).where(User.id == user_id)
-        res_user = await self.db.execute(query_user)
-        if not res_user.scalars().first():
+        exists = await self.repo.check_user_exists(user_id)
+        if not exists:
             raise NotFoundException(detail="User not found")
 
         # Vérifier l'existence de l'entité correcte selon son type
-        if entity_type == "concept":
-            res = await self.db.execute(select(Concept.id).where(Concept.id == general_id))
-            if not res.scalars().first():
-                raise NotFoundException(detail="Concept not found")
-        elif entity_type == "mathematicien":
-            res = await self.db.execute(select(Mathematicien.id).where(Mathematicien.id == general_id))
-            if not res.scalars().first():
-                raise NotFoundException(detail="Mathématicien not found")
-        elif entity_type == "category":
-            res = await self.db.execute(select(Category.id).where(Category.id == general_id))
-            if not res.scalars().first():
-                raise NotFoundException(detail="Catégorie not found")
-        elif entity_type == "type":
-            res = await self.db.execute(select(Type.id).where(Type.id == general_id))
-            if not res.scalars().first():
-                raise NotFoundException(detail="Type not found")
-        else:
-            raise BadRequestException(detail=f"Type de favori inconnu : {entity_type}")
+        entity_exists = await self.repo.check_entity_exists(entity_type, general_id)
+        if not entity_exists:
+            if entity_type in ["concept", "mathematicien", "category", "type"]:
+                raise NotFoundException(detail=f"{entity_type.capitalize()} not found")
+            else:
+                raise BadRequestException(detail=f"Type de favori inconnu : {entity_type}")
 
-        stmt = delete(UserFavorite).where(UserFavorite.user_id == user_id)
-        if entity_type == "concept":
-            stmt = stmt.where(UserFavorite.concept_id == general_id)
-        elif entity_type == "mathematicien":
-            stmt = stmt.where(UserFavorite.mathematicien_id == general_id)
-        elif entity_type == "category":
-            stmt = stmt.where(UserFavorite.category_id == general_id)
-        elif entity_type == "type":
-            stmt = stmt.where(UserFavorite.type_id == general_id)
-
-        await self.db.execute(stmt)
-        await self.db.commit()
+        await self.repo.delete_favorite_user(user_id, entity_type, general_id)
 
     async def add_favorite_user(self, general_id: int, data: Favorite, current_user: dict) -> None:
         data_dict = data.model_dump() if isinstance(data, Favorite) else data
@@ -169,30 +125,17 @@ class UserService:
 
         entity_type = data_dict["type"]
 
-        query_user = select(User.id).where(User.id == user_id)
-        res_user = await self.db.execute(query_user)
-        if not res_user.scalars().first():
+        exists = await self.repo.check_user_exists(user_id)
+        if not exists:
             raise NotFoundException(detail="User not found")
 
         # Vérifier l'existence de l'entité correcte selon son type
-        if entity_type == "concept":
-            res = await self.db.execute(select(Concept.id).where(Concept.id == general_id))
-            if not res.scalars().first():
-                raise NotFoundException(detail="Concept not found")
-        elif entity_type == "mathematicien":
-            res = await self.db.execute(select(Mathematicien.id).where(Mathematicien.id == general_id))
-            if not res.scalars().first():
-                raise NotFoundException(detail="Mathématicien not found")
-        elif entity_type == "category":
-            res = await self.db.execute(select(Category.id).where(Category.id == general_id))
-            if not res.scalars().first():
-                raise NotFoundException(detail="Catégorie not found")
-        elif entity_type == "type":
-            res = await self.db.execute(select(Type.id).where(Type.id == general_id))
-            if not res.scalars().first():
-                raise NotFoundException(detail="Type not found")
-        else:
-            raise BadRequestException(detail=f"Type de favori inconnu : {entity_type}")
+        entity_exists = await self.repo.check_entity_exists(entity_type, general_id)
+        if not entity_exists:
+            if entity_type in ["concept", "mathematicien", "category", "type"]:
+                raise NotFoundException(detail=f"{entity_type.capitalize()} not found")
+            else:
+                raise BadRequestException(detail=f"Type de favori inconnu : {entity_type}")
 
         new_fav = UserFavorite(user_id=user_id)
         if entity_type == "concept":
@@ -204,26 +147,15 @@ class UserService:
         elif entity_type == "type":
             new_fav.type_id = general_id
 
-        self.db.add(new_fav)
-        await self.db.commit()
+        await self.repo.add_favorite_user(new_fav)
 
     async def get_history_user(self, user_id: int, limit: int = 20) -> list[dict]:
-        query_user = select(User.id).where(User.id == user_id)
-        res_user = await self.db.execute(query_user)
-        if not res_user.scalars().first():
+        exists = await self.repo.check_user_exists(user_id)
+        if not exists:
             raise NotFoundException(detail="User not found")
 
-        query = (
-            select(ConceptVersion)
-            .where(ConceptVersion.modified_by == user_id)
-            .options(selectinload(ConceptVersion.concept), selectinload(ConceptVersion.modifier))
-            .order_by(ConceptVersion.modified_at.desc())
-            .limit(limit)
-        )
-
         try:
-            result = await self.db.execute(query)
-            versions = result.scalars().all()
+            versions = await self.repo.get_history_user(user_id, limit)
 
             contributions = []
             for v in versions:

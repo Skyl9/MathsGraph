@@ -1,11 +1,11 @@
 import logging
-from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictException, BadRequestException
 from app.schemas import CreateSource
 from app.utils.db_utils import get_id_by_field
-from app.db.models import Source, concepts_sources
+from app.db.models import Source
+from app.repositories.source_repository import SourceRepository
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class SourceService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.repo = SourceRepository(db)
 
     async def create_source(self, data: CreateSource):
         data_dict = data.model_dump() if isinstance(data, CreateSource) else data
@@ -26,19 +27,15 @@ class SourceService:
         await get_id_by_field(self.db, "concepts", "id", val["id"], "Concept not found")
 
         # Vérifier si la source existe déjà
-        query_src = select(Source.id).where(Source.titre == val["source"])
-        res_src = await self.db.execute(query_src)
-        if res_src.scalar_one_or_none() is not None:
+        src_id = await self.repo.get_source_id_by_title(val["source"])
+        if src_id is not None:
             raise ConflictException(detail="Source already exists")
 
         # Créer la source
         new_source = Source(
             titre=val["source"], auteur=val["auteur"], annee=val["annee"], url=val["url"], type=val["type"]
         )
-        self.db.add(new_source)
-        await self.db.flush()
+        await self.repo.add(new_source)
 
         # Lier la source au concept
-        stmt = insert(concepts_sources).values(concept_id=val["id"], source_id=new_source.id)
-        await self.db.execute(stmt)
-        await self.db.flush()
+        await self.repo.link_concept_source(val["id"], new_source.id)

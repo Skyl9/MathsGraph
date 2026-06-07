@@ -1,27 +1,20 @@
 import logging
-from sqlalchemy import select, desc, func
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundException, ForbiddenException
-from app.db.models import Comment, User, Concept
+from app.db.models import Comment
+from app.repositories.comments_repository import CommentsRepository
 
 logger = logging.getLogger(__name__)
 
 
 class CommentsService:
     def __init__(self, db: AsyncSession):
-        self.db = db
+        self.repo = CommentsRepository(db)
 
     async def get_comments(self, concept_id: int) -> list[dict]:
-        query = (
-            select(Comment)
-            .where(Comment.concept_id == concept_id, Comment.is_deleted.is_(False))
-            .options(selectinload(Comment.user))
-            .order_by(Comment.created_at.asc())
-        )
-        result = await self.db.execute(query)
-        comments = result.scalars().all()
+        comments = await self.repo.get_comments_by_concept(concept_id)
 
         return [
             {
@@ -47,15 +40,16 @@ class CommentsService:
         content: str,
         parent_id: int | None = None,
     ) -> dict:
+        if username is None:
+            raise NotFoundException(detail="Utilisateur introuvable")
+
         # Récupérer l'ID utilisateur
-        query_user = select(User.id).where(User.username == username)
-        result_user = await self.db.execute(query_user)
-        user_id = result_user.scalar_one_or_none()
+        user_id = await self.repo.get_user_id_by_username(username)
         if user_id is None:
             raise NotFoundException(detail="Utilisateur introuvable")
 
         # Vérifier si le concept existe
-        concept = await self.db.get(Concept, concept_id)
+        concept = await self.repo.get_concept_by_id(concept_id)
         if not concept:
             raise NotFoundException(detail="Concept introuvable")
 
@@ -64,8 +58,7 @@ class CommentsService:
         new_comment = Comment(
             concept_id=concept_id, user_id=user_id, content=content, parent_id=actual_parent_id, field=field
         )
-        self.db.add(new_comment)
-        await self.db.flush()
+        await self.repo.add_comment(new_comment)
 
         return {
             "id": new_comment.id,
@@ -80,7 +73,7 @@ class CommentsService:
         }
 
     async def update_comment(self, comment_id: int, content: str, current_user: dict) -> dict:
-        comment = await self.db.get(Comment, comment_id)
+        comment = await self.repo.get_comment_by_id(comment_id)
 
         if not comment or comment.is_deleted:
             raise NotFoundException(detail="Commentaire introuvable ou supprimé")
@@ -102,8 +95,8 @@ class CommentsService:
         # Il manque onupdate sur updated_at dans models.py, mais gardons la logique du service original:
         comment.updated_at = func.now()
 
-        await self.db.flush()
-        await self.db.refresh(comment)
+        await self.repo.flush()
+        await self.repo.refresh(comment)
 
         return {
             "id": comment.id,
@@ -118,7 +111,7 @@ class CommentsService:
         }
 
     async def delete_comment(self, comment_id: int, current_user: dict) -> None:
-        comment = await self.db.get(Comment, comment_id)
+        comment = await self.repo.get_comment_by_id(comment_id)
 
         if not comment:
             raise NotFoundException("Commentaire introuvable")
@@ -135,18 +128,10 @@ class CommentsService:
             raise ForbiddenException("Vous n'êtes pas autorisé à supprimer ce commentaire.")
 
         comment.is_deleted = True
-        await self.db.flush()
+        await self.repo.flush()
 
     async def get_recent_comments(self, limit: int = 20) -> list[dict]:
-        query = (
-            select(Comment)
-            .where(Comment.is_deleted.is_(False))
-            .options(selectinload(Comment.user), selectinload(Comment.concept))
-            .order_by(desc(Comment.created_at))
-            .limit(limit)
-        )
-        result = await self.db.execute(query)
-        comments = result.scalars().all()
+        comments = await self.repo.get_recent_comments(limit)
 
         return [
             {

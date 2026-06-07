@@ -3,27 +3,15 @@ import json
 import logging
 from typing import List, Any, Sequence
 
-from sqlalchemy import select, func, desc, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
 
 from app.core.exceptions import NotFoundException, ConflictException
+from app.db.models import Concept, Relation, Alias, ForeignName, ConceptVersion
 from app.schemas import UpdateConceptDict
 from app.schemas.concept import ConceptName, RollbackConcept, ConceptCreate
 from app.schemas.history import History
 from app.services.tags_service import TagsService
-from app.db.models import (
-    Concept,
-    ConceptVersion,
-    User,
-    Type,
-    Category,
-    Mathematicien,
-    Alias,
-    Source,
-    ForeignName,
-    Relation,
-)
+from app.repositories.concept_repository import ConceptRepository
 
 logger = logging.getLogger(__name__)
 
@@ -81,25 +69,10 @@ def format_foreign_name(foreign_name):
 class ConceptService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.repo = ConceptRepository(db)
 
     async def get_concept_info(self, concept_id: int) -> dict[str | Any, None | dict[str, Any] | list[Any] | Any]:
-        query = (
-            select(Concept)
-            .where(Concept.id == concept_id)
-            .options(
-                joinedload(Concept.type),
-                joinedload(Concept.mathematicien),
-                joinedload(Concept.category),
-                selectinload(Concept.aliases),
-                selectinload(Concept.sources),
-                selectinload(Concept.tags),
-                selectinload(Concept.foreign_names),
-                selectinload(Concept.outgoing_relations).joinedload(Relation.target_concept),
-                selectinload(Concept.incoming_relations).joinedload(Relation.source_concept),
-            )
-        )
-        result = await self.db.execute(query)
-        concept_obj = result.scalars().first()
+        concept_obj = await self.repo.get_concept_info(concept_id)
 
         if not concept_obj:
             raise NotFoundException(detail="Concept non trouvé")
@@ -174,13 +147,9 @@ class ConceptService:
     async def rollback_history(self, concept_id: int, data: RollbackConcept) -> None:
         data_dict = data.model_dump() if isinstance(data, RollbackConcept) else data
 
-        query = select(ConceptVersion).where(
-            ConceptVersion.concept_id == concept_id,
-            ConceptVersion.version_number == data_dict["version_number"],
-            ConceptVersion.field_modified == data_dict["field_modified"],
+        version = await self.repo.get_version_for_rollback(
+            concept_id, data_dict["version_number"], data_dict["field_modified"]
         )
-        result = await self.db.execute(query)
-        version = result.scalars().first()
 
         if not version:
             raise NotFoundException(detail="Version non trouvée")
@@ -204,13 +173,13 @@ class ConceptService:
             return id_val
 
         if field_type == "mathematicien":
-            math = await self.db.get(Mathematicien, int(id_val))
+            math = await self.repo.get_mathematicien_by_id(int(id_val))
             return math.nom if math else id_val
         if field_type == "categorie":
-            cat = await self.db.get(Category, int(id_val))
+            cat = await self.repo.get_category_by_id(int(id_val))
             return cat.nom if cat else id_val
         if field_type == "type":
-            t = await self.db.get(Type, int(id_val))
+            t = await self.repo.get_type_by_id(int(id_val))
             return t.type if t else id_val
 
         if field_type in ["sources", "aliases", "noms_etrangers", "relations"]:
@@ -257,23 +226,19 @@ class ConceptService:
         # Prefetching
         math_dict = {}
         if math_ids:
-            res_math = await self.db.execute(select(Mathematicien).where(Mathematicien.id.in_(math_ids)))
-            math_dict = {m.id: m.nom for m in res_math.scalars()}
+            math_dict = await self.repo.get_math_dict(math_ids)
 
         cat_dict = {}
         if cat_ids:
-            res_cat = await self.db.execute(select(Category).where(Category.id.in_(cat_ids)))
-            cat_dict = {c.id: c.nom for c in res_cat.scalars()}
+            cat_dict = await self.repo.get_cat_dict(cat_ids)
 
         type_dict = {}
         if type_ids:
-            res_type = await self.db.execute(select(Type).where(Type.id.in_(type_ids)))
-            type_dict = {t.id: t.type for t in res_type.scalars()}
+            type_dict = await self.repo.get_type_dict(type_ids)
 
         concept_dict = {}
         if concept_ids:
-            res_concept = await self.db.execute(select(Concept.id, Concept.nom).where(Concept.id.in_(concept_ids)))
-            concept_dict = {row.id: row.nom for row in res_concept.all()}
+            concept_dict = await self.repo.get_concept_dict(concept_ids)
 
         res_versions = []
         for v in versions:
@@ -365,13 +330,7 @@ class ConceptService:
         return res_versions
 
     async def get_concept_versions(self, concept_id: int) -> List[History]:
-        query = (
-            select(ConceptVersion)
-            .where(ConceptVersion.concept_id == concept_id)
-            .order_by(desc(ConceptVersion.version_number))
-        )
-        result = await self.db.execute(query)
-        versions = result.scalars().all()
+        versions = await self.repo.get_concept_versions(concept_id)
 
         res_versions_dict = await self._resolve_version_values(versions)
 
@@ -407,23 +366,15 @@ class ConceptService:
             return
 
         # Obtenir l'ID utilisateur
-        query_user = select(User.id).where(User.username == username)
-        res_user = await self.db.execute(query_user)
-        user_id = res_user.scalar_one_or_none()
+        user_id = await self.repo.get_user_id_by_username(username)
         if not user_id:
             raise NotFoundException(detail=f"Utilisateur {username} introuvable")
 
         # Calculer le numéro de version
-        query_v = select(func.coalesce(func.max(ConceptVersion.version_number), 0) + 1).where(
-            ConceptVersion.concept_id == concept_id, ConceptVersion.field_modified == field_modified
-        )
-        version_number = await self.db.scalar(query_v)
+        version_number = await self.repo.get_next_version_number(concept_id, field_modified)
 
         # Calculer le numéro de version globale
-        query_gv = select(func.coalesce(func.max(ConceptVersion.global_version), 0) + 1).where(
-            ConceptVersion.concept_id == concept_id
-        )
-        global_version = await self.db.scalar(query_gv)
+        global_version = await self.repo.get_next_global_version(concept_id)
 
         new_v = ConceptVersion(
             modified_by=user_id,
@@ -436,18 +387,17 @@ class ConceptService:
             version_number=version_number,
             is_rollback=rollback,
         )
-        self.db.add(new_v)
-        await self.db.flush()
+        await self.repo.add(new_v)
+        await self.repo.flush()
 
     async def get_all_concepts_name(self) -> list[ConceptName]:
-        query = select(Concept.id, Concept.nom)
-        result = await self.db.execute(query)
-        return [ConceptName(id=row[0], nom=row[1]) for row in result.all()]
+        rows = await self.repo.get_all_concepts_name()
+        return [ConceptName(id=row.id, nom=row.nom) for row in rows]
 
     async def updateConcept(self, concept_id: int, data: UpdateConceptDict, rollback: bool = False) -> None:
         data_dict = data.model_dump() if isinstance(data, UpdateConceptDict) else data
 
-        concept = await self.db.get(Concept, concept_id)
+        concept = await self.repo.get_concept_by_id(concept_id)
         if not concept:
             raise NotFoundException(detail="Concept non trouvé")
 
@@ -486,34 +436,29 @@ class ConceptService:
             rollback=rollback,
             note=data_dict.get("note"),
         )
-        await self.db.commit()
+        await self.repo.commit()
 
     async def _update_type(self, concept: Concept, new_value_raw: str):
         old_value = concept.type_id
-        query = select(Type.id).where(Type.type == new_value_raw)
-        new_id: int | None = await self.db.scalar(query)
+        new_id = await self.repo.get_type_id_by_name(new_value_raw)
         if new_id is not None:
             concept.type_id = new_id
         return old_value, new_id
 
     async def _update_category(self, concept: Concept, new_value_raw: str):
         old_value = concept.categorie_id
-        query = select(Category.id).where(Category.nom == new_value_raw)
-        new_id = await self.db.scalar(query)
+        new_id = await self.repo.get_category_id_by_name(new_value_raw)
         concept.categorie_id = new_id
         return old_value, new_id
 
     async def _update_mathematicien(self, concept: Concept, new_value_raw: str):
         old_value = concept.mathematicien_id
-        query = select(Mathematicien.id).where(Mathematicien.nom == new_value_raw)
-        new_id = await self.db.scalar(query)
+        new_id = await self.repo.get_mathematicien_id_by_name(new_value_raw)
         concept.mathematicien_id = new_id
         return old_value, new_id
 
     async def _update_relations(self, concept_id: int, new_value_raw: list):
-        query = select(Relation).where(or_(Relation.concept_source == concept_id, Relation.concept_cible == concept_id))
-        res = await self.db.execute(query)
-        current_rels = res.scalars().all()
+        current_rels = await self.repo.get_concept_relations(concept_id)
 
         old_value_list = [
             {
@@ -526,9 +471,7 @@ class ConceptService:
             for r in current_rels
         ]
 
-        await self.db.execute(
-            delete(Relation).where(or_(Relation.concept_source == concept_id, Relation.concept_cible == concept_id))
-        )
+        await self.repo.delete_concept_relations(concept_id)
 
         new_value_list = copy.deepcopy(new_value_raw)
         for r_data in new_value_list:
@@ -547,14 +490,12 @@ class ConceptService:
                 type_relation=r_data["type_relation"],
                 description=r_data.get("description"),
             )
-            self.db.add(new_rel)
+            await self.repo.add(new_rel)
 
         return json.dumps(old_value_list), json.dumps(new_value_list)
 
     async def _update_sources(self, concept_id: int, new_value_raw: list):
-        query = select(Source).join(Concept.sources).where(Concept.id == concept_id)
-        res = await self.db.execute(query)
-        current_sources = res.scalars().all()
+        current_sources = await self.repo.get_concept_sources(concept_id)
 
         old_value_list = [
             {"id": s.id, "titre": s.titre, "auteur": s.auteur, "annee": s.annee, "url": s.url, "type": s.type}
@@ -562,7 +503,7 @@ class ConceptService:
         ]
 
         for s_data in new_value_raw:
-            source = await self.db.get(Source, s_data["id"])
+            source = await self.repo.get_source_by_id(s_data["id"])
             if source:
                 source.titre = s_data["titre"]
                 source.auteur = s_data["auteur"]
@@ -584,21 +525,17 @@ class ConceptService:
         return json.dumps(old_value_list), json.dumps(new_value_list)
 
     async def _update_aliases(self, concept_id: int, new_value_raw: list):
-        query = select(Alias).where(Alias.concept_id == concept_id)
-        res = await self.db.execute(query)
-        current_aliases = res.scalars().all()
+        current_aliases = await self.repo.get_concept_aliases(concept_id)
         old_value = json.dumps([a.alias for a in current_aliases])
 
-        await self.db.execute(delete(Alias).where(Alias.concept_id == concept_id))
+        await self.repo.delete_concept_aliases(concept_id)
         for alias_val in new_value_raw:
-            self.db.add(Alias(concept_id=concept_id, alias=alias_val))
+            await self.repo.add(Alias(concept_id=concept_id, alias=alias_val))
 
         return old_value, json.dumps(new_value_raw)
 
     async def _update_foreign_names(self, concept_id: int, new_value_raw: list):
-        query = select(ForeignName).where(ForeignName.concept_id == concept_id)
-        res = await self.db.execute(query)
-        current_fn = res.scalars().all()
+        current_fn = await self.repo.get_concept_foreign_names(concept_id)
         old_value = json.dumps(
             [
                 {"id": n.id, "concept_id": n.concept_id, "Nom_étranger": n.nom_etranger, "langue": n.langue}
@@ -607,9 +544,9 @@ class ConceptService:
         )
 
         # Supprimer les anciens noms étrangers et insérer les nouveaux
-        await self.db.execute(delete(ForeignName).where(ForeignName.concept_id == concept_id))
+        await self.repo.delete_concept_foreign_names(concept_id)
         for fn_data in new_value_raw:
-            self.db.add(
+            await self.repo.add(
                 ForeignName(
                     concept_id=concept_id,
                     nom_etranger=fn_data.get("nom_etranger") or fn_data.get("Nom_étranger", ""),
@@ -621,21 +558,10 @@ class ConceptService:
         return old_value, new_value
 
     async def get_editable_fields_options(self):
-        types = (await self.db.execute(select(Type.type).distinct())).scalars().all()
-        categories = (await self.db.execute(select(Category.nom).distinct())).scalars().all()
-        mathematiciens = (await self.db.execute(select(Mathematicien.nom).distinct())).scalars().all()
-
-        return {"mathematicien": list(mathematiciens), "categorie": list(categories), "type": list(types)}
+        return await self.repo.get_editable_fields_options()
 
     async def get_recent_history(self, limit: int = 50) -> list[dict]:
-        query = (
-            select(ConceptVersion)
-            .options(joinedload(ConceptVersion.modifier), joinedload(ConceptVersion.concept))
-            .order_by(desc(ConceptVersion.modified_at))
-            .limit(limit)
-        )
-        result = await self.db.execute(query)
-        versions = result.scalars().all()
+        versions = await self.repo.get_recent_history(limit)
 
         res_versions_dict = await self._resolve_version_values(versions)
 
@@ -658,15 +584,15 @@ class ConceptService:
         data_dict = data.model_dump()
 
         # Vérifier que le nom n'existe pas déjà
-        query = select(Concept.id).where(Concept.nom == data_dict["nom"])
-        result = await self.db.execute(query)
-        if result.scalars().first():
+        concept_id = await self.repo.get_concept_id_by_name(data_dict["nom"])
+        if concept_id:
             raise ConflictException("Un concept avec ce nom existe déjà.")
 
         # Résolution des types par défaut si non fournis
-        type_id = await self.db.scalar(select(Type.id).where(Type.type == data_dict.get("type")))
+        type_val = data_dict.get("type")
+        type_id = await self.repo.get_type_id_by_name(str(type_val)) if type_val else None
         if not type_id:
-            type_id = await self.db.scalar(select(Type.id).where(Type.type == "théorème"))
+            type_id = await self.repo.get_type_id_by_name("théorème")
 
         new_concept = Concept(
             nom=data_dict["nom"],
@@ -678,8 +604,8 @@ class ConceptService:
             verification=False,
         )
 
-        self.db.add(new_concept)
-        await self.db.flush()  # Pour récupérer l'ID généré
+        await self.repo.add(new_concept)
+        await self.repo.flush()  # Pour récupérer l'ID généré
 
         # Historisation de la création
         await self.add_concept_version(
@@ -690,6 +616,6 @@ class ConceptService:
             new_version=data_dict["nom"],
             note="Création initiale",
         )
-        await self.db.commit()
+        await self.repo.commit()
 
         return {"id": new_concept.id, "nom": new_concept.nom}

@@ -3,39 +3,30 @@ from app.schemas.enums import VueLayout
 import math
 import logging
 import networkx as nx
-from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
 from app.core.exceptions import InternalServerError
 from app.core.redis_client import redis_db
-from app.db.models import Concept, Relation, Position
+from app.db.models import Position
+from app.repositories.layout_repository import LayoutRepository
 
 logger = logging.getLogger(__name__)
 
 
 class LayoutService:
     def __init__(self, db: AsyncSession):
-        self.db = db
+        self.repo = LayoutRepository(db)
 
     async def recalculate_positions(self):
         logger.info("Début du calcul des layouts (physique, grille, arbre, et timeline)...")
 
         try:
             # 1. Récupération des concepts avec leur mathématicien associé (pour les dates)
-            query_concepts = (
-                select(Concept)
-                .options(joinedload(Concept.mathematicien))
-                .order_by(Concept.id)
-            )
-            result_concepts = await self.db.execute(query_concepts)
-            concepts = list(result_concepts.scalars().all())
+            concepts = await self.repo.get_all_concepts_with_mathematicien()
             concept_ids = [c.id for c in concepts]
 
             # 2. Récupération des relations pour la structure des graphes
-            query_edges = select(Relation.concept_source, Relation.concept_cible)
-            result_edges = await self.db.execute(query_edges)
-            edges = result_edges.all()
+            edges = await self.repo.get_all_edges()
 
             if not concepts:
                 logger.warning("Aucun concept trouvé, calcul annulé.")
@@ -59,7 +50,7 @@ class LayoutService:
                         vue=VueLayout.physique,
                         x=float(coords[0]),
                         y=float(coords[1]),
-                        z=float(coords[2])
+                        z=float(coords[2]),
                     )
                 )
 
@@ -81,7 +72,7 @@ class LayoutService:
                         vue=VueLayout.grille,
                         x=float((x_idx - side / 2) * spacing),
                         y=float((y_idx - side / 2) * spacing),
-                        z=float((z_idx - side / 2) * spacing)
+                        z=float((z_idx - side / 2) * spacing),
                     )
                 )
 
@@ -90,7 +81,7 @@ class LayoutService:
             # ==========================================
             # DAG : Axiomes (niveau 0) en bas, lemmes/théorèmes en haut (Y croissant)
             levels = {c.id: 0 for c in concepts}
-            
+
             # Algorithme de relaxation simple pour assigner les niveaux hiérarchiques (robuste aux cycles)
             for _ in range(50):
                 changed = False
@@ -106,17 +97,15 @@ class LayoutService:
 
             # Calculer un layout 2D pour organiser les branches spatialement sans qu'elles se croisent trop
             pos_2d = nx.spring_layout(G, dim=2, scale=40.0, iterations=100)
-            
+
             spacing_y = 15.0  # Espacement vertical
             for node_id, coords in pos_2d.items():
                 lvl = levels.get(node_id, 0)
                 y = float(lvl * spacing_y)
                 x = float(coords[0])
                 z = float(coords[1])
-                
-                new_positions.append(
-                    Position(concept_id=node_id, vue=VueLayout.arbre, x=x, y=y, z=z)
-                )
+
+                new_positions.append(Position(concept_id=node_id, vue=VueLayout.arbre, x=x, y=y, z=z))
 
             # ==========================================
             # 6. CALCUL DU LAYOUT CHRONOLOGIQUE (Timeline)
@@ -126,7 +115,7 @@ class LayoutService:
             for c in concepts:
                 if c.mathematicien and c.mathematicien.date_naissance:
                     years_with_data.append(c.mathematicien.date_naissance.year)
-            
+
             min_year = min(years_with_data) if years_with_data else 1500
             max_year = max(years_with_data) if years_with_data else 2000
             default_year = int(sum(years_with_data) / len(years_with_data)) if years_with_data else 1800
@@ -134,7 +123,11 @@ class LayoutService:
             # Grouper par décennie pour tasser les concepts proches sur le même Z
             time_groups = {}
             for c in concepts:
-                year = c.mathematicien.date_naissance.year if (c.mathematicien and c.mathematicien.date_naissance) else default_year
+                year = (
+                    c.mathematicien.date_naissance.year
+                    if (c.mathematicien and c.mathematicien.date_naissance)
+                    else default_year
+                )
                 decade = (year // 10) * 10
                 time_groups.setdefault(decade, []).append(c.id)
 
@@ -146,9 +139,7 @@ class LayoutService:
                 n = len(node_list)
 
                 if n == 1:
-                    new_positions.append(
-                        Position(concept_id=node_list[0], vue=VueLayout.timeline, x=0.0, y=0.0, z=z)
-                    )
+                    new_positions.append(Position(concept_id=node_list[0], vue=VueLayout.timeline, x=0.0, y=0.0, z=z))
                 else:
                     # Distribution circulaire sur le plan X-Y pour éviter les superpositions à la même date
                     radius = max(3.0, math.sqrt(n) * 2.5)
@@ -163,15 +154,17 @@ class LayoutService:
             # ==========================================
             # 7. SAUVEGARDE EN BASE DE DONNÉES
             # ==========================================
-            await self.db.execute(
-                delete(Position).where(Position.vue.in_([VueLayout.physique, VueLayout.grille, VueLayout.arbre, VueLayout.timeline]))
+            await self.repo.delete_positions_by_views(
+                [VueLayout.physique, VueLayout.grille, VueLayout.arbre, VueLayout.timeline]
             )
 
-            self.db.add_all(new_positions)
-            await self.db.flush()
+            self.repo.add_all_positions(new_positions)
+            await self.repo.flush()
             await redis_db.delete("mathgraph:data")
 
-            logger.info("Layouts VueLayout.PHYSIQUE, VueLayout.GRILLE, VueLayout.ARBRE, et VueLayout.TIMELINE recalculés et sauvegardés avec succès !")
+            logger.info(
+                "Layouts VueLayout.PHYSIQUE, VueLayout.GRILLE, VueLayout.ARBRE, et VueLayout.TIMELINE recalculés et sauvegardés avec succès !"
+            )
 
         except Exception as e:
             logger.error(f"Erreur lors de la sauvegarde des positions : {e}")
