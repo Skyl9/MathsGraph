@@ -6,10 +6,11 @@ from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security import OAuth2PasswordBearer, OAuth2
 from fastapi.security.utils import get_authorization_scheme_param
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AuthenticationException, ForbiddenException
 from app.core.security import decode_token
-from app.db.database import AsyncSessionLocal
+from app.db.database import get_db
 from app.db.models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -42,7 +43,7 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
 oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearerWithCookie(tokenUrl="token")  # type: ignore
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), session=Depends(AsyncSessionLocal)):
+async def get_current_user(token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_db)):
     """Récupère l'utilisateur actuel à partir du token. Lève une erreur si le token est invalide."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -66,7 +67,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session=Depends(
     return user
 
 
-async def get_optional_current_user(request: Request, session=Depends(AsyncSessionLocal)):
+async def get_optional_current_user(request: Request, session: AsyncSession = Depends(get_db)):
     """Récupère l'utilisateur s'il est authentifié, sinon retourne None, sans lever d'erreur."""
     token = request.cookies.get("access_token")
     if not token:
