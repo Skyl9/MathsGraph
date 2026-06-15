@@ -1,17 +1,16 @@
 import datetime
 import logging
-import os
 from logging.config import dictConfig
 
 import pytest
 import pytest_asyncio
-from dotenv import load_dotenv
 from fastapi import Response
 from fastapi.security import OAuth2PasswordRequestForm
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
+from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.database import get_db
 from app.db.models import Base
@@ -20,14 +19,13 @@ from app.services import AuthService
 from app.services.comments_service import CommentsService
 from tests.constants import TEST_PASSWORD, TEST_USER_NAME, TEST_USER_EMAIL, ADMIN_USER_NAME, ADMIN_EMAIL, ADMIN_PASSWORD
 
-load_dotenv()
 
 TEST_DB_CONFIG = {
-    "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", ""),  # Uses CI password, falls back to "" locally
+    "user": settings.DB_USER,
+    "password": settings.DB_PASSWORD,
     "database": "test_fastapi_db",  # FORCE TEST DB TO PREVENT ACCIDENTAL TRUNCATE
-    "host": os.getenv("DB_HOST", "localhost"),
-    "port": os.getenv("DB_PORT", "5432"),
+    "host": settings.DB_HOST,
+    "port": settings.DB_PORT,
 }
 TEST_SQLALCHEMY_URL = (
     f"postgresql+psycopg://{TEST_DB_CONFIG['user']}:{TEST_DB_CONFIG['password']}"

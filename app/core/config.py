@@ -66,7 +66,7 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    settings = Settings()  # type: ignore
+    settings = Settings()
 
     # Environment-specific overrides
     if settings.ENVIRONMENT == "testing":
