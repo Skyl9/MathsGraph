@@ -2,8 +2,8 @@ import logging
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status, Request
-from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
-from fastapi.security import OAuth2PasswordBearer, OAuth2
+from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel, OAuthFlowPassword
+from fastapi.security import OAuth2
 from fastapi.security.utils import get_authorization_scheme_param
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,14 +13,13 @@ from app.core.security import decode_token
 from app.db.database import get_db
 from app.db.models import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 logger = logging.getLogger(__name__)
 
 
 class OAuth2PasswordBearerWithCookie(OAuth2):
     def __init__(self, tokenUrl: str):
-        super().__init__(flows=OAuthFlowsModel(password={"tokenUrl": tokenUrl}))  # type: ignore
+        super().__init__(flows=OAuthFlowsModel(password=OAuthFlowPassword(tokenUrl=tokenUrl)))
 
     async def __call__(self, request: Request) -> Optional[str]:
         # 1. On cherche d'abord le token dans les cookies HttpOnly
@@ -28,7 +27,7 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
 
         # 2. Plan B : On regarde dans les headers (indispensable pour Swagger UI)
         if not token:
-            header_authorization: str = request.headers.get("Authorization")  # type: ignore
+            header_authorization = request.headers.get("Authorization", "")
             scheme, token = get_authorization_scheme_param(header_authorization)
             if scheme.lower() != "bearer":
                 token = None
@@ -40,7 +39,7 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
 
 
 # On remplace l'ancienne stratégie par la nôtre
-oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearerWithCookie(tokenUrl="token")  # type: ignore
+oauth2_scheme: OAuth2PasswordBearerWithCookie = OAuth2PasswordBearerWithCookie(tokenUrl="token")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_db)):
@@ -71,7 +70,7 @@ async def get_optional_current_user(request: Request, session: AsyncSession = De
     """Récupère l'utilisateur s'il est authentifié, sinon retourne None, sans lever d'erreur."""
     token = request.cookies.get("access_token")
     if not token:
-        header_authorization: str = request.headers.get("Authorization")  # type: ignore
+        header_authorization = request.headers.get("Authorization", "")
         scheme, token_header = get_authorization_scheme_param(header_authorization)
         if scheme.lower() == "bearer":
             token = token_header
@@ -83,8 +82,8 @@ async def get_optional_current_user(request: Request, session: AsyncSession = De
         payload = decode_token(token)
         if not payload:
             return None
-        username: str = payload.get("sub")  # type: ignore
-        if username is None:
+        username = str(payload.get("sub", ""))
+        if not username:
             return None
     except Exception:
         return None
@@ -110,8 +109,8 @@ def get_current_admin_payload(token: str = Depends(oauth2_scheme)):
         # Utilisation de l'exception personnalisée
         raise AuthenticationException(detail="Could not validate credentials")
 
-    user_role: str = payload.get("role")  # type: ignore
-    if user_role is None or user_role.lower() != "admin":
+    user_role = str(payload.get("role", ""))
+    if not user_role or user_role.lower() != "admin":
         # Utilisation de l'exception personnalisée
         raise ForbiddenException(detail="The user does not have enough privileges")
     logger.info("admin payload verified")
@@ -127,8 +126,8 @@ def get_current_moderator_payload(token: str = Depends(oauth2_scheme)):
         # Utilisation de l'exception personnalisée
         raise AuthenticationException(detail="Could not validate credentials")
 
-    user_role: str = payload.get("role")  # type: ignore
-    if user_role is None or user_role.lower() not in ["admin", "moderator"]:
+    user_role = str(payload.get("role", ""))
+    if not user_role or user_role.lower() not in ["admin", "moderator"]:
         # Utilisation de l'exception personnalisée
         raise ForbiddenException(detail="The user does not have enough privileges")
     logger.info("Moderator or admin payload verified")

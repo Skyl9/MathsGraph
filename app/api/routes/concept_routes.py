@@ -17,7 +17,7 @@ router = APIRouter(prefix="", tags=["concepts"])
 
 @router.get("/concept/{concept_id}", response_model=Response[ConceptResponse])
 async def get_concept(concept_id: int, db: AsyncSession = Depends(get_db)):
-    concept: ConceptResponse = await ConceptService(db).get_concept_info(concept_id)  # type: ignore
+    concept = await ConceptService(db).get_concept_info(concept_id)
     logger.debug(f"Route GET /concept/{concept_id} a renvoyé correctement : {str(concept)}")
     return {"error": None, "data": concept, "success": True, "meta": None}
 
@@ -29,7 +29,7 @@ async def rollback_concept(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload),
 ):
-    data.username = current_user.get("sub")  # type: ignore
+    data.username = str(current_user.get("sub", ""))
     await ConceptService(db).rollback_history(concept_id, data)
     logger.debug(
         f"Route PATCH /concept/rollback/{concept_id} a correctement rollback le concept dont l'id est:{concept_id}"
@@ -41,7 +41,7 @@ async def rollback_concept(
 async def create_concept_route(
     data: ConceptCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
-    result = await ConceptService(db).create_concept(data, current_user.get("sub"))  # type: ignore
+    result = await ConceptService(db).create_concept(data, str(current_user.get("sub", "")))
     logger.debug(f"Route POST /concept a créé le concept: {result['nom']}")
     return {"error": None, "data": result, "success": True, "meta": None}
 
@@ -71,7 +71,7 @@ async def update_concept(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload),
 ):
-    data.username = current_user.get("sub")  # type: ignore
+    data.username = str(current_user.get("sub", ""))
     await ConceptService(db).updateConcept(concept_id, data)
     logger.debug(f"Route PATCH /update/{concept_id} a réussi la modification du concept dont l'id est:{concept_id}")
     return {"error": None, "data": None, "success": True, "meta": None}

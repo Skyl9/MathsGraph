@@ -34,7 +34,7 @@ async def update_type_E(
 
 @router.get("/", summary="Récupère tous les types", response_model=Response[List[TypeNom]])
 async def get_all_type(db: AsyncSession = Depends(get_db)):
-    all_types: List[TypeNom] = await TypeService(db).get_all_type_name()  # type: ignore
+    all_types = await TypeService(db).get_all_type_name()
     logger.debug(f"Route GET /{router.prefix}/ a renvoyé correctement : {all_types}")
     return {"error": None, "data": all_types, "success": True, "meta": None}
 
