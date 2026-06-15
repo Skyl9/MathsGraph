@@ -2,9 +2,21 @@ from datetime import datetime, date
 from typing import List, Optional
 
 from sqlalchemy import (
-    String, Integer, Boolean, DateTime, Date, ForeignKey, 
-    Text, Float, CheckConstraint, UniqueConstraint, Index, 
-    Table, Column, func, Enum
+    String,
+    Integer,
+    Boolean,
+    DateTime,
+    Date,
+    ForeignKey,
+    Text,
+    Float,
+    CheckConstraint,
+    UniqueConstraint,
+    Index,
+    Table,
+    Column,
+    func,
+    Enum,
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -35,6 +47,7 @@ concepts_sources = Table(
 
 
 # --- Modèles ---
+
 
 class Category(Base):
     __tablename__ = "categories"
@@ -69,9 +82,7 @@ class Mathematicien(Base):
     concepts: Mapped[List["Concept"]] = relationship("Concept", back_populates="mathematicien")
     user_favorites: Mapped[List["UserFavorite"]] = relationship("UserFavorite", back_populates="mathematicien")
 
-    __table_args__ = (
-        Index("idx_mathematiciens_domaine", "domaine"),
-    )
+    __table_args__ = (Index("idx_mathematiciens_domaine", "domaine"),)
 
 
 class Source(Base):
@@ -91,9 +102,7 @@ class Source(Base):
     abstract: Mapped[Optional[str]] = mapped_column(Text)
 
     # Relations
-    concepts: Mapped[List["Concept"]] = relationship(
-        "Concept", secondary=concepts_sources, back_populates="sources"
-    )
+    concepts: Mapped[List["Concept"]] = relationship("Concept", secondary=concepts_sources, back_populates="sources")
 
     __table_args__ = (
         CheckConstraint("type = ANY (ARRAY['livre', 'article', 'site_web', 'autre'])", name="sources_type_check"),
@@ -107,9 +116,7 @@ class Tag(Base):
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
     # Relations
-    concepts: Mapped[List["Concept"]] = relationship(
-        "Concept", secondary=concept_tags, back_populates="tags"
-    )
+    concepts: Mapped[List["Concept"]] = relationship("Concept", secondary=concept_tags, back_populates="tags")
 
 
 class Type(Base):
@@ -146,13 +153,17 @@ class Concept(Base):
     tags: Mapped[List["Tag"]] = relationship("Tag", secondary=concept_tags, back_populates="concepts")
     sources: Mapped[List["Source"]] = relationship("Source", secondary=concepts_sources, back_populates="concepts")
     foreign_names: Mapped[List["ForeignName"]] = relationship("ForeignName", back_populates="concept")
-    positions: Mapped[List["Position"]] = relationship("Position", back_populates="concept", cascade="all, delete-orphan")
+    positions: Mapped[List["Position"]] = relationship(
+        "Position", back_populates="concept", cascade="all, delete-orphan"
+    )
     comments: Mapped[List["Comment"]] = relationship("Comment", back_populates="concept", cascade="all, delete-orphan")
     views: Mapped[List["ConceptView"]] = relationship("ConceptView", back_populates="concept")
-    versions: Mapped[List["ConceptVersion"]] = relationship("ConceptVersion", back_populates="concept", cascade="all, delete-orphan")
+    versions: Mapped[List["ConceptVersion"]] = relationship(
+        "ConceptVersion", back_populates="concept", cascade="all, delete-orphan"
+    )
     contributions: Mapped[List["UserContribution"]] = relationship("UserContribution", back_populates="concept")
     user_favorites: Mapped[List["UserFavorite"]] = relationship("UserFavorite", back_populates="concept")
-    
+
     # Relations (Self-referencing through Relation table)
     outgoing_relations: Mapped[List["Relation"]] = relationship(
         "Relation", foreign_keys="[Relation.concept_source]", back_populates="source_concept"
@@ -165,6 +176,9 @@ class Concept(Base):
         Index("idx_concepts_date_modification", "date_modification"),
         Index("idx_concepts_nom", "nom"),
         Index("idx_concepts_verification", "verification"),
+        Index("idx_concepts_mathematicien_id", "mathematicien_id"),
+        Index("idx_concepts_categorie_id", "categorie_id"),
+        Index("idx_concepts_type_id", "type_id"),
     )
 
 
@@ -190,9 +204,7 @@ class ForeignName(Base):
     # Relations
     concept: Mapped["Concept"] = relationship("Concept", back_populates="foreign_names")
 
-    __table_args__ = (
-        Index("idx_foreign_name_langue", "langue"),
-    )
+    __table_args__ = (Index("idx_foreign_name_langue", "langue"),)
 
 
 class Position(Base):
@@ -208,9 +220,7 @@ class Position(Base):
     # Relations
     concept: Mapped["Concept"] = relationship("Concept", back_populates="positions")
 
-    __table_args__ = (
-        UniqueConstraint("concept_id", "vue"),
-    )
+    __table_args__ = (UniqueConstraint("concept_id", "vue"),)
 
 
 class Relation(Base):
@@ -234,7 +244,7 @@ class Relation(Base):
     __table_args__ = (
         CheckConstraint(
             "type_relation = ANY (ARRAY['utilise', 'implication', 'equivalence', 'reciproque'])",
-            name="relations_type_relation_check"
+            name="relations_type_relation_check",
         ),
         Index("idx_relations_cible", "concept_cible"),
         Index("idx_relations_source", "concept_source"),
@@ -265,9 +275,7 @@ class User(Base):
     reset_tokens: Mapped[List["PasswordResetToken"]] = relationship("PasswordResetToken", back_populates="user")
     modified_versions: Mapped[List["ConceptVersion"]] = relationship("ConceptVersion", back_populates="modifier")
 
-    __table_args__ = (
-        CheckConstraint("role = ANY (ARRAY['admin', 'user', 'moderator'])", name="users_role_check"),
-    )
+    __table_args__ = (CheckConstraint("role = ANY (ARRAY['admin', 'user', 'moderator'])", name="users_role_check"),)
 
 
 class Comment(Base):
@@ -278,7 +286,9 @@ class Comment(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
     parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("comments.id", onupdate="CASCADE", ondelete="CASCADE"))
     is_deleted: Mapped[bool] = mapped_column(Boolean, server_default="false")
     field: Mapped[str] = mapped_column(Text, nullable=False)
@@ -340,9 +350,7 @@ class UserContribution(Base):
     user: Mapped[Optional["User"]] = relationship("User", back_populates="contributions")
     concept: Mapped[Optional["Concept"]] = relationship("Concept", back_populates="contributions")
 
-    __table_args__ = (
-        Index("idx_user_contributions_created_at", "created_at"),
-    )
+    __table_args__ = (Index("idx_user_contributions_created_at", "created_at"),)
 
 
 class UserFavorite(Base):
@@ -369,7 +377,7 @@ class UserFavorite(Base):
             "CASE WHEN category_id IS NOT NULL THEN 1 ELSE 0 END + "
             "CASE WHEN mathematicien_id IS NOT NULL THEN 1 ELSE 0 END + "
             "CASE WHEN type_id IS NOT NULL THEN 1 ELSE 0 END) = 1",
-            name="chk_single_favorite_target"
+            name="chk_single_favorite_target",
         ),
     )
 
