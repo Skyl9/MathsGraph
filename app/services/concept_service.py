@@ -12,6 +12,7 @@ from app.schemas.concept import ConceptName, RollbackConcept, ConceptCreate
 from app.schemas.history import History
 from app.services.tags_service import TagsService
 from app.repositories.concept_repository import ConceptRepository
+from app.core.redis_client import redis_db
 
 logger = logging.getLogger(__name__)
 
@@ -438,6 +439,12 @@ class ConceptService:
         )
         await self.repo.commit()
 
+        # Invalidation du cache Redis global du graphe
+        try:
+            await redis_db.delete("mathgraph:data")
+        except Exception as e:
+            logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")
+
     async def _update_type(self, concept: Concept, new_value_raw: str):
         old_value = concept.type_id
         new_id = await self.repo.get_type_id_by_name(new_value_raw)
@@ -617,5 +624,11 @@ class ConceptService:
             note="Création initiale",
         )
         await self.repo.commit()
+
+        # Invalidation du cache Redis global du graphe
+        try:
+            await redis_db.delete("mathgraph:data")
+        except Exception as e:
+            logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")
 
         return {"id": new_concept.id, "nom": new_concept.nom}
