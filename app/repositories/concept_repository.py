@@ -162,12 +162,16 @@ class ConceptRepository:
         return result.scalar_one_or_none()
 
     async def get_next_version_number(self, concept_id: int, field_modified: str):
+        await self.db.execute(select(Concept.id).where(Concept.id == concept_id).with_for_update())
+
         query_v = select(func.coalesce(func.max(ConceptVersion.version_number), 0) + 1).where(
             ConceptVersion.concept_id == concept_id, ConceptVersion.field_modified == field_modified
         )
         return await self.db.scalar(query_v)
 
     async def get_next_global_version(self, concept_id: int):
+        await self.db.execute(select(Concept.id).where(Concept.id == concept_id).with_for_update())
+
         query_gv = select(func.coalesce(func.max(ConceptVersion.global_version), 0) + 1).where(
             ConceptVersion.concept_id == concept_id
         )
