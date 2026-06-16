@@ -70,6 +70,7 @@ def upgrade() -> None:
     op.alter_column(
         "concepts", "verification", existing_type=sa.BOOLEAN(), nullable=False, existing_server_default=sa.text("false")
     )
+    op.execute("UPDATE concepts SET date_modification = CURRENT_TIMESTAMP WHERE date_modification IS NULL")
     op.alter_column(
         "concepts",
         "date_modification",
@@ -77,7 +78,7 @@ def upgrade() -> None:
         nullable=False,
         existing_server_default=sa.text("CURRENT_TIMESTAMP"),
     )
-    op.drop_index("idx_concepts_fts", table_name="concepts", postgresql_using="gin")
+    op.execute("DROP INDEX IF EXISTS idx_concepts_fts;")
     op.alter_column(
         "password_reset_tokens",
         "created_at",

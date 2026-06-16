@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import get_db
+from app.core.deps import get_current_user_payload
 from app.core.limiter import limiter
-from app.schemas.response import Response as ApiResponse
+from app.db.database import get_db
 from app.schemas.auth import Token, UserCreate, User, PasswordResetRequestSchema, PasswordResetConfirmSchema
+from app.schemas.response import Response as ApiResponse
 from app.services import AuthService
 from app.services.auth_service import logger
 
@@ -58,3 +59,10 @@ async def reset_password(reset_data: PasswordResetConfirmSchema, db: AsyncSessio
 async def logout(response: Response):
     response.delete_cookie(key="access_token", path="/", secure=True, samesite="none")
     return {"success": True, "data": None, "error": None, "meta": None}
+
+
+@router.get(
+    "/me", summary="Récupère les informations de l'utilisateur connecté depuis le cookie", response_model=ApiResponse
+)
+async def get_me(current_user: dict = Depends(get_current_user_payload)):
+    return {"error": None, "success": True, "data": current_user, "meta": None}
