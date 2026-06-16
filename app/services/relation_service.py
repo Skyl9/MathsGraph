@@ -6,6 +6,8 @@ from app.schemas import CreateRelation
 from app.db.models import Relation
 from app.repositories.relation_repository import RelationRepository
 
+from app.core.redis_client import redis_db
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,3 +37,9 @@ class RelationService:
             concept_source=theo1, concept_cible=theo2, type_relation=val["relation"], description=val["desc"]
         )
         await self.repo.add(new_rel)
+
+        # Invalidation du cache Redis global du graphe
+        try:
+            await redis_db.delete("mathgraph:data")
+        except Exception as e:
+            logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")
