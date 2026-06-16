@@ -179,6 +179,11 @@ class Concept(Base):
         Index("idx_concepts_mathematicien_id", "mathematicien_id"),
         Index("idx_concepts_categorie_id", "categorie_id"),
         Index("idx_concepts_type_id", "type_id"),
+        Index(
+            "idx_concepts_fts",
+            func.to_tsvector("french", nom + " " + enonce),
+            postgresql_using="gin",
+        ),
     )
 
 
