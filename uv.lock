@@ -482,6 +482,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
+    { name = "pytest-dependency" },
     { name = "ruff" },
 ]
 
@@ -514,6 +515,7 @@ dev = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "pytest-dependency", specifier = ">=0.6.0" },
     { name = "ruff", specifier = ">=0.15.15" },
 ]
 
@@ -1232,6 +1234,16 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-dependency"
+version = "0.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+    { name = "setuptools" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c2/ea/84509533e0f6477960b8a9179d240d93c909c6543e4dd8209932026d7815/pytest_dependency-0.6.1.tar.gz", hash = "sha256:246c24d2a5fc743a942cec4408853640e56a05ba58d46e5b213a1d4b738a2464", size = 20837, upload-time = "2026-02-15T18:08:43.927Z" }
+
+[[package]]
 name = "python-discovery"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1464,6 +1476,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/52/4d/3c66e6045bd2071256b6b6fdcb0cc02b86ce54b2acc2ceac79af8e0efbb5/sentry_sdk-2.61.0.tar.gz", hash = "sha256:1ca9b4bb777eb5be67004edab7eb894f21c6301f1d05ed64966719ad5d1764ce", size = 458510, upload-time = "2026-05-28T09:40:28.917Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/21/5a/9794736d5802689c1a48862e6afe6b7f3e86cc37c15d4a84bc0143877dc1/sentry_sdk-2.61.0-py3-none-any.whl", hash = "sha256:ec4d30273909cb1d198e03208b16ee70e2bc5d90a16fd9f1fb2fc6a72e1f03dc", size = 483111, upload-time = "2026-05-28T09:40:27.027Z" },
+]
+
+[[package]]
+name = "setuptools"
+version = "82.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/db/cfac1baf10650ab4d1c111714410d2fbb77ac5a616db26775db562c8fab2/setuptools-82.0.1.tar.gz", hash = "sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9", size = 1152316, upload-time = "2026-03-09T12:47:17.221Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/76/f789f7a86709c6b087c5a2f52f911838cad707cc613162401badc665acfe/setuptools-82.0.1-py3-none-any.whl", hash = "sha256:a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb", size = 1006223, upload-time = "2026-03-09T12:47:15.026Z" },
 ]
 
 [[package]]
