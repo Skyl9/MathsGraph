@@ -46,18 +46,19 @@ jobs:
         echo "DB_NAME=test_fastapi_db" > .env
         echo "DB_USER=postgres" >> .env
         echo "DB_PASSWORD=password" >> .env
-        echo "DB_HOST=localhost" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
         echo "DB_PORT=5432" >> .env
         echo "SECRET_KEY=test_secret_key" >> .env
         echo "ALGORITHM=HS256" >> .env
         echo "ACCESS_TOKEN_EXPIRE_MINUTES=30" >> .env
         echo "ENVIRONMENT=test" >> .env
-        echo "DBTESTLINK=postgresql://postgres:password@localhost:5432/test_fastapi_db" >> .env
+        echo "DBTESTLINK=postgresql://postgres:password@127.0.0.1:5432/test_fastapi_db" >> .env
         echo "PASSWORD_SALT=test_salt" >> .env
         echo "SMTP_HOST=localhost" >> .env
         echo "SMTP_PORT=1025" >> .env
         echo "SMTP_USER=test_user" >> .env
         echo "SMTP_PASSWORD=test_password" >> .env
+        echo "REDIS_URL=redis://127.0.0.1:6379" >> .env
 
     - name: Run Ruff Linting
       run: uv run ruff check .
@@ -70,7 +71,7 @@ jobs:
         DB_USER: postgres
         DB_PASSWORD: password
         DB_NAME: test_fastapi_db
-        DB_HOST: localhost
+        DB_HOST: 127.0.0.1
         DB_PORT: 5432
       run: |
         uv run pytest tests/
