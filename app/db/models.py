@@ -17,6 +17,7 @@ from sqlalchemy import (
     Column,
     func,
     Enum,
+    text,
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -181,7 +182,7 @@ class Concept(Base):
         Index("idx_concepts_type_id", "type_id"),
         Index(
             "idx_concepts_fts",
-            func.to_tsvector("french", nom + " " + enonce),
+            func.to_tsvector(text("'french'"), nom + " " + enonce),
             postgresql_using="gin",
         ),
     )
