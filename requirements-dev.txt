@@ -67,7 +67,7 @@ python-discovery==1.4.0
     # via virtualenv
 pyyaml==6.0.3
     # via pre-commit
-ruff==0.15.15
+ruff==0.15.18
 setuptools==82.0.1
     # via pytest-dependency
 typing-extensions==4.15.0
