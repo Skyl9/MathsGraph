@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, cast, Numeric
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from datetime import date, timedelta
 from app.db.models import User, UserFavorite, Concept, Category, Mathematicien, ApiLog
 
@@ -76,7 +76,12 @@ class AdminRepository:
         return {"top_routes": top_routes, "daily_hits": daily_hits, "weekly_data": weekly_data}
 
     async def get_recent_activity_concepts(self, limit: int):
-        query_concepts = select(Concept).order_by(desc(Concept.date_modification)).limit(limit)
+        query_concepts = (
+            select(Concept)
+            .options(joinedload(Concept.type), joinedload(Concept.category), joinedload(Concept.mathematicien))
+            .order_by(desc(Concept.date_modification))
+            .limit(limit)
+        )
         return (await self.db.execute(query_concepts)).scalars().all()
 
     async def get_recent_activity_users(self, limit: int):
