@@ -9,11 +9,14 @@ from app.services.alias_service import AliasService, logger
 router = APIRouter(prefix="/alias", tags=["alias"])
 
 
-@router.post("", response_model=Response)
+@router.post(
+    "",
+    response_model=Response,
+    summary="Création d'un alias",
+    description="Permet de créer un nouvel alias associé à un utilisateur. L'utilisateur doit être authentifié.",
+)
 async def create_alias(
-    data: CreateAlias, 
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user_payload)
+    data: CreateAlias, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
     """Crée un alias à partir d'un nom d'utilisateur et d'un prénom."""
     await AliasService(db).add_alias(data)
