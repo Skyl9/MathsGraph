@@ -11,14 +11,24 @@ from app.services.statistics_service import StatisticsService, logger
 router = APIRouter(prefix="/statistics", tags=["statistics"])
 
 
-@router.get("/concepts/{concept_id}", summary="Récupère les statistiques de vues d'un concept", response_model=Response)
+@router.get(
+    "/concepts/{concept_id}",
+    summary="Récupère les statistiques de vues d'un concept",
+    description="Permet de récupérer le nombre total de vues pour un concept spécifique en fournissant son identifiant.",
+    response_model=Response,
+)
 async def get_concept_views(concept_id: int, db: AsyncSession = Depends(get_db)):
     views = await StatisticsService(db).get_concept_views(concept_id)
     logger.debug(f"Route GET {router.prefix}/concepts/{concept_id} a renvoyé correctement : {views}")
     return {"error": None, "data": views, "success": True, "meta": None}
 
 
-@router.post("/concepts/{concept_id}", summary="Enregistre une vue pour un concept", response_model=Response)
+@router.post(
+    "/concepts/{concept_id}",
+    summary="Enregistre une vue pour un concept",
+    description="Enregistre une nouvelle vue sur un concept. Cette route capture l'adresse IP du client et l'identifiant de l'utilisateur s'il est connecté, afin de suivre les statistiques de consultation.",
+    response_model=Response,
+)
 async def add_concept_view(
     concept_id: int,
     request: Request,

@@ -11,7 +11,12 @@ from app.services.graph_service import GraphService, logger
 router = APIRouter(prefix="/graph", tags=["graph"])
 
 
-@router.get("", response_model=Response[GraphData])
+@router.get(
+    "",
+    summary="Récupère les données du graphe",
+    description="Renvoie l'ensemble des données nécessaires pour afficher le graphe (nœuds et liens). Cette route tente d'abord de récupérer les données en cache via Redis pour optimiser les performances, sinon elle interroge la base de données PostgreSQL.",
+    response_model=Response[GraphData],
+)
 async def get_graph(db: AsyncSession = Depends(get_db)):
     cached_graph = None
 

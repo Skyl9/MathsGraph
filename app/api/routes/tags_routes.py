@@ -13,7 +13,10 @@ router = APIRouter(prefix="/tags", tags=["tags"])
 
 
 @router.get(
-    "/id/concept_id/{concept_id}", summary="Récupère les IDs des tags d'un concept", response_model=Response[List[int]]
+    "/id/concept_id/{concept_id}",
+    summary="Récupère les IDs des tags d'un concept",
+    description="Retourne la liste des identifiants (IDs) des tags qui sont associés à un concept spécifique.",
+    response_model=Response[List[int]],
 )
 async def get_tags_ids(concept_id: int, db: AsyncSession = Depends(get_db)):
     tags_ids = await TagsService(db).get_tags_id_by_concept_id(concept_id)
@@ -24,6 +27,7 @@ async def get_tags_ids(concept_id: int, db: AsyncSession = Depends(get_db)):
 @router.get(
     "/name/concept_id/{concept_id}",
     summary="Récupère les noms et IDs des tags d'un concept",
+    description="Retourne une liste contenant à la fois les identifiants et les noms des tags associés à un concept donné.",
     response_model=Response[List[Tag]],
 )
 async def get_tags_name_and_id(concept_id: int, db: AsyncSession = Depends(get_db)):
@@ -32,14 +36,24 @@ async def get_tags_name_and_id(concept_id: int, db: AsyncSession = Depends(get_d
     return {"error": None, "data": tags_data, "success": True, "meta": None}
 
 
-@router.get("/all", summary="Récupère tous les tags", response_model=Response[List[Tag]])
+@router.get(
+    "/all",
+    summary="Récupère tous les tags",
+    description="Retourne la liste exhaustive de tous les tags existants dans le système.",
+    response_model=Response[List[Tag]],
+)
 async def get_all_tag(db: AsyncSession = Depends(get_db)):
     all_tags = await TagsService(db).get_all_tags()
     logger.debug(f"Route GET /tags/all a renvoyé correctement : {all_tags}")
     return {"error": None, "data": all_tags, "success": True, "meta": None}
 
 
-@router.post("/concept", summary="Ajoute un tag à un concept", response_model=Response)
+@router.post(
+    "/concept",
+    summary="Ajoute un tag à un concept",
+    description="Associe un tag existant à un concept spécifique en utilisant les données fournies. Nécessite une authentification.",
+    response_model=Response,
+)
 async def add_tag_concept(
     data: TagsUpdate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
@@ -51,7 +65,12 @@ async def add_tag_concept(
     return {"error": None, "data": None, "success": True, "meta": None}
 
 
-@router.delete("/concept/{concept_id}/tag/{tag_id}", summary="Supprime un tag d'un concept", response_model=Response)
+@router.delete(
+    "/concept/{concept_id}/tag/{tag_id}",
+    summary="Supprime un tag d'un concept",
+    description="Retire l'association entre un tag et un concept sans supprimer le tag lui-même. Action réservée aux utilisateurs autorisés.",
+    response_model=Response,
+)
 async def remove_tag_concept(
     concept_id: int,
     tag_id: int,
@@ -66,7 +85,12 @@ async def remove_tag_concept(
     return {"error": None, "data": None, "success": True, "meta": None}
 
 
-@router.post("", summary="Crée un nouveau tag", response_model=Response)
+@router.post(
+    "",
+    summary="Crée un nouveau tag",
+    description="Ajoute un tout nouveau tag dans la base de données globale. Nécessite d'être connecté.",
+    response_model=Response,
+)
 async def add_new_tag(
     data: TagsCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):

@@ -9,7 +9,12 @@ from app.services.relation_service import RelationService, logger
 router = APIRouter(prefix="/relation", tags=["relation"])
 
 
-@router.post("", summary="Crée une nouvelle relation", response_model=Response)
+@router.post(
+    "",
+    summary="Crée une nouvelle relation",
+    description="Permet de créer une nouvelle relation entre deux entités (concepts). L'utilisateur doit être authentifié pour effectuer cette action.",
+    response_model=Response,
+)
 async def create_relation(
     data: CreateRelation, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):

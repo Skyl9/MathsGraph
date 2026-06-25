@@ -15,14 +15,24 @@ from app.services.layout_service import LayoutService
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-@router.get("/stats", response_model=Response[Stat])
+@router.get(
+    "/stats",
+    summary="Obtenir les statistiques",
+    description="Renvoie les statistiques globales de l'application (nombre d'utilisateurs, de concepts, etc.). L'utilisateur doit avoir le rôle administrateur.",
+    response_model=Response[Stat],
+)
 async def get_stats(db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
     data: Stat = await AdminService(db).get_stats()
     logger.debug(f"Route GET {router.prefix}/stats a renvoyé : ,{str(data)}")
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
-@router.get("/users", response_model=Response[List[User]])
+@router.get(
+    "/users",
+    summary="Lister les utilisateurs",
+    description="Récupère la liste de tous les utilisateurs enregistrés avec pagination. L'utilisateur doit avoir le rôle administrateur.",
+    response_model=Response[List[User]],
+)
 async def get_users(
     skip: int = 0,
     limit: int = 50,
@@ -34,7 +44,12 @@ async def get_users(
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
-@router.get("/contents", response_model=Response[List[ConceptForAdmin]])
+@router.get(
+    "/contents",
+    summary="Lister les concepts (Admin)",
+    description="Récupère la liste des concepts pour l'interface d'administration avec pagination. L'utilisateur doit avoir le rôle administrateur.",
+    response_model=Response[List[ConceptForAdmin]],
+)
 async def get_contents(
     skip: int = 0,
     limit: int = 50,
@@ -46,7 +61,12 @@ async def get_contents(
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
-@router.post("/recalculate-graph", summary="Recalcule la physique 3D du graphe", response_model=Response)
+@router.post(
+    "/recalculate-graph",
+    summary="Recalcule la physique 3D du graphe",
+    description="Déclenche le recalcul des positions physiques 3D de tous les noeuds du graphe et purge le cache Redis. L'utilisateur doit avoir le rôle administrateur.",
+    response_model=Response,
+)
 async def recalculate_graph_layout(
     db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)
 ):
@@ -57,14 +77,24 @@ async def recalculate_graph_layout(
     return {"error": None, "data": "Graphe recalculé avec succès", "success": True, "meta": None}
 
 
-@router.get("/analytics", summary="Données d'utilisation de l'API")
+@router.get(
+    "/analytics",
+    summary="Données d'utilisation de l'API",
+    description="Récupère les données d'analyse d'utilisation de l'API (requêtes, erreurs, latence). L'utilisateur doit avoir le rôle administrateur.",
+    response_model=Response,
+)
 async def get_analytics(db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
     data = await AdminService(db).get_api_analytics()
     logger.debug(f"Route GET /{router.prefix}/analytics exécutée avec succès")
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
-@router.get("/recent-activity", response_model=Response[List[RecentActivityItem]])
+@router.get(
+    "/recent-activity",
+    summary="Obtenir l'activité récente",
+    description="Renvoie la liste des dernières modifications effectuées sur la base de données. L'utilisateur doit avoir le rôle administrateur.",
+    response_model=Response[List[RecentActivityItem]],
+)
 async def get_recent_activity(
     limit: int = 10,
     db: AsyncSession = Depends(get_db),

@@ -15,14 +15,24 @@ from app.services.concept_service import ConceptService, logger
 router = APIRouter(prefix="", tags=["concepts"])
 
 
-@router.get("/concept/{concept_id}", response_model=Response[ConceptResponse])
+@router.get(
+    "/concept/{concept_id}",
+    summary="Récupère les informations d'un concept",
+    description="Retourne toutes les données associées à un concept spécifique via son identifiant.",
+    response_model=Response[ConceptResponse],
+)
 async def get_concept(concept_id: int, db: AsyncSession = Depends(get_db)):
     concept = await ConceptService(db).get_concept_info(concept_id)
     logger.debug(f"Route GET /concept/{concept_id} a renvoyé correctement : {str(concept)}")
     return {"error": None, "data": concept, "success": True, "meta": None}
 
 
-@router.patch("/concept/rollback/{concept_id}", response_model=Response)
+@router.patch(
+    "/concept/rollback/{concept_id}",
+    summary="Annule une modification sur un concept",
+    description="Restaure une version antérieure d'un concept en fonction de l'historique des modifications. Enregistre une nouvelle version pour la restauration.",
+    response_model=Response,
+)
 async def rollback_concept(
     concept_id: int,
     data: RollbackConcept,
@@ -37,7 +47,12 @@ async def rollback_concept(
     return {"error": None, "data": None, "success": True, "meta": None}
 
 
-@router.post("/concept", response_model=Response, summary="Crée un nouveau concept")
+@router.post(
+    "/concept",
+    summary="Crée un nouveau concept",
+    description="Ajoute un nouveau concept mathématique dans la base de données avec ses propriétés initiales.",
+    response_model=Response,
+)
 async def create_concept_route(
     data: ConceptCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
@@ -46,7 +61,12 @@ async def create_concept_route(
     return {"error": None, "data": result, "success": True, "meta": None}
 
 
-@router.get("/getEditableFieldsOptions", response_model=Response[EditableField])
+@router.get(
+    "/getEditableFieldsOptions",
+    summary="Récupère les options des champs éditables",
+    description="Fournit la configuration et les options disponibles pour l'édition des champs d'un concept sur le frontend.",
+    response_model=Response[EditableField],
+)
 async def get_editable_fields_options(db: AsyncSession = Depends(get_db)):
     editable_field: EditableField = await ConceptService(db).get_editable_fields_options()
     logger.debug(
@@ -55,7 +75,12 @@ async def get_editable_fields_options(db: AsyncSession = Depends(get_db)):
     return {"error": None, "data": editable_field, "success": True, "meta": None}
 
 
-@router.get("/concept/history/{concept_id}", response_model=Response[List[History]])
+@router.get(
+    "/concept/history/{concept_id}",
+    summary="Historique des modifications d'un concept",
+    description="Renvoie la liste chronologique de toutes les modifications effectuées sur un concept spécifique.",
+    response_model=Response[List[History]],
+)
 async def get_history(concept_id: int, db: AsyncSession = Depends(get_db)):
     history_list: List[History] = await ConceptService(db).get_concept_versions(concept_id)
     logger.debug(
@@ -64,7 +89,12 @@ async def get_history(concept_id: int, db: AsyncSession = Depends(get_db)):
     return {"error": None, "data": history_list, "success": True, "meta": None}
 
 
-@router.patch("/concept/{concept_id}", response_model=Response)
+@router.patch(
+    "/concept/{concept_id}",
+    summary="Met à jour un concept",
+    description="Modifie partiellement les champs d'un concept existant et enregistre la nouvelle version dans l'historique.",
+    response_model=Response,
+)
 async def update_concept(
     concept_id: int,
     data: UpdateConceptDict,
@@ -77,14 +107,24 @@ async def update_concept(
     return {"error": None, "data": None, "success": True, "meta": None}
 
 
-@router.get("/getAllConceptName", response_model=Response[List[ConceptName]])
+@router.get(
+    "/getAllConceptName",
+    summary="Liste le nom de tous les concepts",
+    description="Retourne une liste allégée contenant uniquement les identifiants et noms de tous les concepts disponibles.",
+    response_model=Response[List[ConceptName]],
+)
 async def get_all_concept_name_r(db: AsyncSession = Depends(get_db)):
     concept_name_list: List[ConceptName] = await ConceptService(db).get_all_concepts_name()
     logger.debug(f"Route /getAllConceptName a renvoyé correctement la liste : {str(concept_name_list)}")
     return {"error": None, "data": concept_name_list, "success": True, "meta": None}
 
 
-@router.get("/recent-history", summary="Récupère le fil d'actualité global", response_model=Response)
+@router.get(
+    "/recent-history",
+    summary="Récupère le fil d'actualité global",
+    description="Renvoie les dernières modifications effectuées sur l'ensemble des concepts, utile pour un fil d'actualité.",
+    response_model=Response,
+)
 async def get_recent_history_route(limit: int = 20, db: AsyncSession = Depends(get_db)):
     history = await ConceptService(db).get_recent_history(limit)
     logger.debug(f"Route /recent-history a renvoyé correctement la liste : {str(history)}")

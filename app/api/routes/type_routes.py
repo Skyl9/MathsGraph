@@ -12,14 +12,24 @@ from app.services.type_service import TypeService, logger
 router = APIRouter(prefix="/type", tags=["type"])
 
 
-@router.get("/{id_type}", summary="Récupère un type par son ID", response_model=Response[TypeResponse])
+@router.get(
+    "/{id_type}",
+    summary="Récupère un type par son ID",
+    description="Renvoie les informations détaillées d'un type spécifique à partir de son identifiant unique.",
+    response_model=Response[TypeResponse],
+)
 async def get_one_type_E(id_type: int, db: AsyncSession = Depends(get_db)):
     type_data: TypeResponse = await TypeService(db).get_one_type(id_type)
     logger.debug(f"Route GET /{router.prefix}/{id_type} a renvoyé correctement : {type_data}")
     return {"error": None, "data": type_data, "success": True, "meta": None}
 
 
-@router.patch("/{id_type}", summary="Met à jour un type", response_model=Response)
+@router.patch(
+    "/{id_type}",
+    summary="Met à jour un type",
+    description="Permet de modifier les informations d'un type existant. Cette action requiert que l'utilisateur soit authentifié.",
+    response_model=Response,
+)
 async def update_type_E(
     id_type: int,
     data: TypeUpdate,
@@ -32,14 +42,24 @@ async def update_type_E(
     return {"error": None, "data": None, "success": True, "meta": None}
 
 
-@router.get("/", summary="Récupère tous les types", response_model=Response[List[TypeNom]])
+@router.get(
+    "/",
+    summary="Récupère tous les types",
+    description="Renvoie la liste complète de tous les types disponibles, avec leurs informations simplifiées.",
+    response_model=Response[List[TypeNom]],
+)
 async def get_all_type(db: AsyncSession = Depends(get_db)):
     all_types = await TypeService(db).get_all_type_name()
     logger.debug(f"Route GET /{router.prefix}/ a renvoyé correctement : {all_types}")
     return {"error": None, "data": all_types, "success": True, "meta": None}
 
 
-@router.post("", summary="Crée un nouveau type", response_model=Response)
+@router.post(
+    "",
+    summary="Crée un nouveau type",
+    description="Permet de créer un nouveau type dans le système. L'utilisateur doit être authentifié pour effectuer cette action.",
+    response_model=Response,
+)
 async def create_type(
     data: CreateData, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
@@ -49,7 +69,12 @@ async def create_type(
     return {"error": None, "data": result, "success": True, "meta": None}
 
 
-@router.get("/name/{name}", summary="Récupère un type par son nom", response_model=Response[TypeResponse])
+@router.get(
+    "/name/{name}",
+    summary="Récupère un type par son nom",
+    description="Renvoie les informations détaillées d'un type spécifique en effectuant une recherche par son nom exact.",
+    response_model=Response[TypeResponse],
+)
 async def get_type_by_name(name: str, db: AsyncSession = Depends(get_db)):
     type_data: TypeResponse = await TypeService(db).get_type_by_name(name)
     logger.debug(f"Route GET /{router.prefix}/name/{name} a renvoyé correctement : {type_data}")
