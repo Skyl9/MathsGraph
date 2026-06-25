@@ -1,18 +1,18 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    access_token: str = Field(description="Jeton d'accès JWT", examples=["eyJhbGci..."])
+    token_type: str = Field(description="Type de jeton", examples=["bearer"])
 
 
 class UserCreate(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
+    username: str = Field(description="Nom d'utilisateur", examples=["johndoe"])
+    email: EmailStr = Field(description="Adresse email de l'utilisateur", examples=["john.doe@example.com"])
+    password: str = Field(description="Mot de passe en clair (sera hashé)", examples=["MonMotDePasseSecret123!"])
 
     @field_validator("password")
     @classmethod
@@ -33,21 +33,23 @@ class UserCreate(BaseModel):
 
 
 class User(BaseModel):
-    id: int
-    username: str
-    email: str
-    is_active: bool
-    role: Optional[str]
-    created_at: Optional[datetime]
+    id: int = Field(description="Identifiant unique de l'utilisateur", examples=[1])
+    username: str = Field(description="Nom d'utilisateur", examples=["johndoe"])
+    email: str = Field(description="Adresse email", examples=["john.doe@example.com"])
+    is_active: bool = Field(description="Indique si le compte est actif", examples=[True])
+    role: Optional[str] = Field(default=None, description="Rôle de l'utilisateur", examples=["admin"])
+    created_at: Optional[datetime] = Field(
+        default=None, description="Date de création du compte", examples=["2023-10-25T14:30:00Z"]
+    )
 
 
 class PasswordResetRequestSchema(BaseModel):
-    email: EmailStr
+    email: EmailStr = Field(description="Adresse email pour la réinitialisation", examples=["john.doe@example.com"])
 
 
 class PasswordResetConfirmSchema(BaseModel):
-    new_password: str
-    token: str
+    new_password: str = Field(description="Nouveau mot de passe", examples=["NouveauMotDePasse123!"])
+    token: str = Field(description="Jeton de réinitialisation", examples=["abc123token"])
 
     @field_validator("new_password")
     @classmethod

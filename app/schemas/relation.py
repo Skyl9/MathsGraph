@@ -1,22 +1,30 @@
 from typing import Optional, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RelationType(BaseModel):
-    id: int
-    description: Optional[str] = None
-    date_relation: Optional[str] = None
+    id: int = Field(..., description="L'identifiant unique de la relation", examples=[1, 2])
+    description: Optional[str] = Field(
+        None, description="Description détaillée de la relation", examples=["Cette relation implique que..."]
+    )
+    date_relation: Optional[str] = Field(
+        None, description="Date ou époque de la relation", examples=["19ème siècle", "2024-01-01"]
+    )
 
 
 class RelationCreate(RelationType):
     pass
 
-class ConceptRelation(BaseModel):
-    id: int
-    nom: str
-class RelationResponse(RelationType):
-    concept_source: ConceptRelation
-    concept_cible: ConceptRelation
-    type_relation: Literal["reciproque", "equivalence", "implication", "utilise"]
 
+class ConceptRelation(BaseModel):
+    id: int = Field(..., description="L'identifiant du concept impliqué dans la relation", examples=[42])
+    nom: str = Field(..., description="Le nom du concept", examples=["Théorème de Pythagore"])
+
+
+class RelationResponse(RelationType):
+    concept_source: ConceptRelation = Field(..., description="Le concept source de la relation")
+    concept_cible: ConceptRelation = Field(..., description="Le concept cible de la relation")
+    type_relation: Literal["reciproque", "equivalence", "implication", "utilise"] = Field(
+        ..., description="Le type de la relation", examples=["implication"]
+    )
