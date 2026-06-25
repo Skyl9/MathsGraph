@@ -61,7 +61,9 @@ jobs:
         echo "REDIS_URL=redis://127.0.0.1:6379" >> .env
 
     - name: Run Ruff Linting
-      run: uv run ruff check .
+      run: |
+        uv run ruff check .
+        uv run ruff format --check .
 
     - name: Run Mypy
       run: uv run mypy app/
