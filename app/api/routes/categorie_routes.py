@@ -25,7 +25,7 @@ async def update_category_E(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload),
 ):
-    await CategoryService(db).update_category(id_category, data)
+    await CategoryService(db).update_category(id_category, data, current_user)
     await db.commit()
     logger.debug(f"Route PATCH /{router.prefix}/update/{id_category} a modifié correctement la catégorie {id_category}")
     return {"error": None, "success": True, "data": None, "meta": None}
@@ -42,7 +42,7 @@ async def all_category(db: AsyncSession = Depends(get_db)):
 async def create_category(
     data: CreateData, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
-    await CategoryService(db).add_category(data)
+    await CategoryService(db).add_category(data, current_user)
     await db.commit()
     logger.debug(f"Route POST /{router.prefix}/create a créer correctement la catégorie : ,{str(data)}")
     return {"error": None, "success": True, "data": None, "meta": None}

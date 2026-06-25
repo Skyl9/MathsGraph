@@ -27,7 +27,7 @@ async def updateOneCategoryMathematicien_E(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload),
 ):
-    await MathematicienService(db).update_mathematicien(id_mathematicien, data)
+    await MathematicienService(db).update_mathematicien(id_mathematicien, data, current_user)
     await db.commit()
     logger.debug(f"Route PATCH {router.prefix}/update/{id_mathematicien} a été effectué avec succès")
     return {"success": True, "data": None, "error": None, "meta": None}
@@ -44,7 +44,7 @@ async def mathematicienName(db: AsyncSession = Depends(get_db)):
 async def add_mathematicien(
     data: CreateData, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
-    await MathematicienService(db).add_mathematicien(data)
+    await MathematicienService(db).add_mathematicien(data, current_user)
     await db.commit()
     logger.debug(f"Route Post {router.prefix}/create a créer avec succès un mathématicien")
     return {"success": True, "data": None, "error": None, "meta": None}

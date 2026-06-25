@@ -26,7 +26,7 @@ async def update_type_E(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user_payload),
 ):
-    await TypeService(db).update_type(id_type, data)
+    await TypeService(db).update_type(id_type, data, current_user)
     await db.commit()
     logger.debug(f"Route PATCH /{router.prefix}/update/{id_type} a correctement mis à jour le type d'id : {id_type}")
     return {"error": None, "data": None, "success": True, "meta": None}
@@ -43,7 +43,7 @@ async def get_all_type(db: AsyncSession = Depends(get_db)):
 async def create_type(
     data: CreateData, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
 ):
-    result = await TypeService(db).add_type(data)
+    result = await TypeService(db).add_type(data, current_user)
     await db.commit()
     logger.debug(f"Route POST /{router.prefix}/create a correctement créé un type")
     return {"error": None, "data": result, "success": True, "meta": None}

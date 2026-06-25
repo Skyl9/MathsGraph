@@ -66,6 +66,7 @@ class ConceptRepository:
     async def get_concept_versions(self, concept_id: int):
         query = (
             select(ConceptVersion)
+            .options(joinedload(ConceptVersion.modifier))
             .where(ConceptVersion.concept_id == concept_id)
             .order_by(desc(ConceptVersion.version_number))
         )

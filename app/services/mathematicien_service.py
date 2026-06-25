@@ -36,7 +36,13 @@ class MathematicienService:
             "epoque": math.epoque,
         }
 
-    async def update_mathematicien(self, mathematicien_id: int, payload: MathematicienUpdate) -> None:
+    async def update_mathematicien(
+        self, mathematicien_id: int, payload: MathematicienUpdate, current_user: dict
+    ) -> None:
+        role = current_user.get("role", "").lower() if current_user else ""
+        if role not in ["admin", "moderator"]:
+            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+
         payload_dict = payload.model_dump() if isinstance(payload, MathematicienUpdate) else payload
 
         allowed_fields = {
@@ -64,7 +70,11 @@ class MathematicienService:
     async def get_all_mathematicien_info(self):
         return await self.repo.get_all_info()
 
-    async def add_mathematicien(self, data: CreateData):
+    async def add_mathematicien(self, data: CreateData, current_user: dict):
+        role = current_user.get("role", "").lower() if current_user else ""
+        if role not in ["admin", "moderator"]:
+            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+
         payload = data.model_dump() if isinstance(data, CreateData) else data
         nom = payload["value"]
 

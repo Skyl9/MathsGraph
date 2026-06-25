@@ -39,7 +39,11 @@ class CategoryService:
             parent_id=category.parent_id,
         )
 
-    async def update_category(self, id_category: int, data: CategoryUpdate) -> None:
+    async def update_category(self, id_category: int, data: CategoryUpdate, current_user: dict) -> None:
+        role = current_user.get("role", "").lower() if current_user else ""
+        if role not in ["admin", "moderator"]:
+            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+
         allowed_fields = {"nom", "description", "parent_id"}
         data_dict = data.model_dump() if isinstance(data, CategoryUpdate) else data
         field = data_dict["field"]
@@ -53,7 +57,11 @@ class CategoryService:
         setattr(category, field, data_dict["value"])
         await self.repo.flush()
 
-    async def add_category(self, data: CreateData) -> None:
+    async def add_category(self, data: CreateData, current_user: dict) -> None:
+        role = current_user.get("role", "").lower() if current_user else ""
+        if role not in ["admin", "moderator"]:
+            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+
         payload = data.model_dump() if isinstance(data, CreateData) else data
         nom = payload["value"]
 

@@ -30,7 +30,11 @@ class TypeService:
             type=type_fetched.type,
         )
 
-    async def update_type(self, id_type: int, data: TypeUpdate):
+    async def update_type(self, id_type: int, data: TypeUpdate, current_user: dict):
+        role = current_user.get("role", "").lower() if current_user else ""
+        if role not in ["admin", "moderator"]:
+            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+
         data_dict = data.model_dump() if isinstance(data, TypeUpdate) else data
         allowed_fields = {"type"}
         field: str = data_dict["field"]
@@ -46,7 +50,11 @@ class TypeService:
 
         await self.repo.flush()
 
-    async def add_type(self, data: CreateData):
+    async def add_type(self, data: CreateData, current_user: dict):
+        role = current_user.get("role", "").lower() if current_user else ""
+        if role not in ["admin", "moderator"]:
+            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+
         data_dict = data.model_dump() if isinstance(data, CreateData) else data
         nom_type = data_dict["value"]
 
