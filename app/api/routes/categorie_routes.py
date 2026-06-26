@@ -64,7 +64,7 @@ async def create_category(
 ):
     await CategoryService(db).add_category(data, current_user)
     await db.commit()
-    logger.debug(f"Route POST /{router.prefix}/create a créer correctement la catégorie : ,{str(data)}")
+    logger.debug(f"Route POST /{router.prefix}/create a créé correctement la catégorie")
     return {"error": None, "success": True, "data": None, "meta": None}
 
 

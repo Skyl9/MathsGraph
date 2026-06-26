@@ -21,5 +21,5 @@ async def create_alias(
     """Crée un alias à partir d'un nom d'utilisateur et d'un prénom."""
     await AliasService(db).add_alias(data)
     await db.commit()
-    logger.debug(f"Route POST /{router.prefix}/alias : {str(data)} ")
+    logger.debug(f"Route POST /{router.prefix}/alias a été appelée avec succès")
     return {"success": True, "data": None, "meta": None, "error": None}

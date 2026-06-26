@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from asgi_correlation_id import CorrelationIdMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
@@ -158,37 +159,45 @@ app.add_middleware(
     allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
+
+app.add_middleware(CorrelationIdMiddleware)
 
 
 @app.exception_handler(BadRequestException)
 async def concept_exception_handler(request: Request, exc: BadRequestException):
+    logger.warning(f"BadRequestException on {request.method} {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(NotFoundException)
 async def not_found_exception_handler(request: Request, exc: NotFoundException):
+    logger.warning(f"NotFoundException on {request.method} {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(AuthenticationException)
 async def authentication_exception_handler(request: Request, exc: AuthenticationException):
+    logger.warning(f"AuthenticationException on {request.method} {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(ForbiddenException)
 async def forbidden_exception_handler(request: Request, exc: ForbiddenException):
+    logger.warning(f"ForbiddenException on {request.method} {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(InternalServerError)
 async def internal_server_error_handler(request: Request, exc: InternalServerError):
+    logger.error(f"InternalServerError on {request.method} {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 
 @app.exception_handler(ConflictException)
 async def conflict_exception_handler(request: Request, exc: ConflictException):
+    logger.warning(f"ConflictException on {request.method} {request.url.path}: {exc.detail}")
     return JSONResponse(status_code=exc.status_code, content=error_response(exc.status_code, exc.detail))
 
 

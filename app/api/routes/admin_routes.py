@@ -23,7 +23,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 )
 async def get_stats(db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)):
     data: Stat = await AdminService(db).get_stats()
-    logger.debug(f"Route GET {router.prefix}/stats a renvoyé : ,{str(data)}")
+    logger.debug(f"Route GET {router.prefix}/stats a été appelée avec succès")
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
@@ -40,7 +40,7 @@ async def get_users(
     _payload: dict = Depends(get_current_admin_payload),
 ):
     data: List[User] = await AdminService(db).get_users(skip=skip, limit=limit)
-    logger.debug(f"Route GET /{router.prefix}/users a renvoyé : {str(data)}")
+    logger.debug(f"Route GET /{router.prefix}/users a été appelée avec succès, {len(data)} utilisateurs trouvés")
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
@@ -57,7 +57,7 @@ async def get_contents(
     _payload: dict = Depends(get_current_admin_payload),
 ):
     data: List[ConceptForAdmin] = await AdminService(db).get_concepts_admin(skip=skip, limit=limit)
-    logger.debug(f"Route GET /{router.prefix}/contents a renvoyé : {str(data)} ")
+    logger.debug(f"Route GET /{router.prefix}/contents a été appelée avec succès, {len(data)} concepts trouvés")
     return {"error": None, "data": data, "success": True, "meta": None}
 
 
@@ -101,5 +101,7 @@ async def get_recent_activity(
     _payload: dict = Depends(get_current_admin_payload),
 ):
     data = await AdminService(db).get_recent_activity(limit=limit)
-    logger.debug(f"Route GET /{router.prefix}/recent-activity a renvoyé : {str(data)}")
+    logger.debug(
+        f"Route GET /{router.prefix}/recent-activity a été appelée avec succès, {len(data)} activités trouvées"
+    )
     return {"error": None, "data": data, "success": True, "meta": None}

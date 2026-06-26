@@ -23,7 +23,7 @@ router = APIRouter(tags=["authentication"])
 async def register_user(request: Request, user: UserCreate, db: AsyncSession = Depends(get_db)):
     user_created: User = await AuthService(db).register_user(user)
     await db.commit()
-    logger.debug(f"Route POST /register user {str(user_created)} registered successfully")
+    logger.debug("Route POST /register user registered successfully")
     return {"error": None, "success": True, "data": user_created, "meta": None}
 
 
