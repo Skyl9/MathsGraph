@@ -40,7 +40,7 @@ class TagsService:
         return [{"id": tag.id, "tag": tag.name} for tag in tags]
 
     async def get_all_tags(self) -> List[dict] | None:
-        tags = await self.repo.get_all_tags()
+        tags = await self.repo.get_all()
         return [{"id": tag.id, "tag": tag.name} for tag in tags]
 
     async def create_new_tag(self, tag_name: str, current_user: dict) -> None:
@@ -53,7 +53,7 @@ class TagsService:
             raise ConflictException(detail="Tag already exists")
 
         new_tag = Tag(name=tag_name)
-        await self.repo.add_tag(new_tag)
+        await self.repo.add(new_tag)
 
     async def add_tag_to_concept(self, concept_id: int, tag_id: int, current_user: dict) -> None:
         role = current_user.get("role", "").lower() if current_user else ""

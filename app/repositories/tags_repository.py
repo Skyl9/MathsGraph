@@ -1,11 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, insert
 from app.db.models import Tag, concept_tags
+from .base_repository import BaseRepository
 
 
-class TagsRepository:
+class TagsRepository(BaseRepository[Tag]):
     def __init__(self, db: AsyncSession):
-        self.db = db
+        super().__init__(Tag, db)
 
     async def get_tags_id_by_concept_id(self, concept_id: int):
         query = select(concept_tags.c.tag_id).where(concept_tags.c.concept_id == concept_id)
@@ -21,19 +22,10 @@ class TagsRepository:
         result = await self.db.execute(query)
         return result.all()
 
-    async def get_all_tags(self):
-        query = select(Tag.id, Tag.name)
-        result = await self.db.execute(query)
-        return result.all()
-
     async def get_tag_by_name(self, tag_name: str):
         query = select(Tag).where(Tag.name == tag_name)
         result = await self.db.execute(query)
         return result.scalars().first()
-
-    async def add_tag(self, tag: Tag):
-        self.db.add(tag)
-        await self.db.flush()
 
     async def check_concept_tag_relation(self, concept_id: int, tag_id: int):
         query = select(concept_tags.c.concept_id).where(

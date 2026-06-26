@@ -15,7 +15,7 @@ class TypeService:
         self.repo = TypeRepository(db)
 
     async def get_all_type_name(self) -> list[TypeNom]:
-        types_fetched = await self.repo.get_all_types()
+        types_fetched = await self.repo.get_all()
 
         return [TypeNom(id=t.id, nom=t.type) for t in types_fetched]
 

@@ -68,7 +68,7 @@ class MathematicienService:
         await self.repo.flush()
 
     async def get_all_mathematicien_info(self):
-        return await self.repo.get_all_info()
+        return await self.repo.get_all()
 
     async def add_mathematicien(self, data: CreateData, current_user: dict):
         role = current_user.get("role", "").lower() if current_user else ""
