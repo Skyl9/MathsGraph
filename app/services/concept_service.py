@@ -441,7 +441,7 @@ class ConceptService:
 
         # Invalidation du cache Redis global du graphe
         try:
-            await redis_db.delete("mathgraph:data")
+            await redis_db.delete("mathgraph:data", f"mathgraph:concept:{concept_id}")
         except Exception as e:
             logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")
 

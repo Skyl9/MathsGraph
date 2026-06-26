@@ -11,6 +11,9 @@ from app.schemas.concept import ConceptResponse, ConceptName, RollbackConcept, C
 from app.schemas.history import History
 from app.schemas.patchClass import UpdateConceptDict
 from app.services.concept_service import ConceptService, logger
+from app.core.redis_client import redis_db
+from fastapi.encoders import jsonable_encoder
+import json
 
 router = APIRouter(prefix="", tags=["concepts"])
 
@@ -22,9 +25,26 @@ router = APIRouter(prefix="", tags=["concepts"])
     response_model=Response[ConceptResponse],
 )
 async def get_concept(concept_id: int, db: AsyncSession = Depends(get_db)):
+    cached_concept = None
+    try:
+        cached_concept = await redis_db.get(f"mathgraph:concept:{concept_id}")
+    except Exception as e:
+        logger.warning(f"⚠️ Impossible de se connecter à Redis. Le cache est ignoré. Erreur: {e}")
+
+    if cached_concept:
+        logger.debug(f"Concept {concept_id} servi depuis le cache Redis ⚡")
+        return {"error": None, "data": json.loads(cached_concept), "success": True, "meta": {"source": "cache"}}
+
     concept = await ConceptService(db).get_concept_info(concept_id)
-    logger.debug(f"Route GET /concept/{concept_id} a renvoyé correctement : {str(concept)}")
-    return {"error": None, "data": concept, "success": True, "meta": None}
+
+    try:
+        json_concept = jsonable_encoder(concept)
+        await redis_db.set(f"mathgraph:concept:{concept_id}", json.dumps(json_concept), ex=3600)  # cache court 1h
+    except Exception as e:
+        logger.warning(f"⚠️ Erreur lors de l'écriture dans Redis: {e}")
+
+    logger.debug(f"Route GET /concept/{concept_id} a renvoyé correctement depuis la DB")
+    return {"error": None, "data": concept, "success": True, "meta": {"source": "db"}}
 
 
 @router.patch(

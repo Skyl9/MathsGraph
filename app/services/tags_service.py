@@ -7,6 +7,7 @@ from app.core.exceptions import NotFoundException, ConflictException, BadRequest
 from app.db.models import Tag
 from app.repositories.tags_repository import TagsRepository
 from app.core.security import verify_admin_moderator
+from app.core.redis_client import redis_db
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,11 @@ class TagsService:
         new_tag = Tag(name=tag_name)
         await self.repo.add(new_tag)
 
+        try:
+            await redis_db.delete("mathgraph:data")
+        except Exception as e:
+            logger.warning(f"Erreur d'invalidation cache Redis: {e}")
+
     async def add_tag_to_concept(self, concept_id: int, tag_id: int, current_user: dict) -> None:
         verify_admin_moderator(current_user)
 
@@ -66,6 +72,11 @@ class TagsService:
 
         await self.repo.add_tag_to_concept(concept_id, tag_id)
 
+        try:
+            await redis_db.delete("mathgraph:data", f"mathgraph:concept:{concept_id}")
+        except Exception as e:
+            logger.warning(f"Erreur d'invalidation cache Redis: {e}")
+
     async def remove_tag_from_concept(self, concept_id: int, tag_id: int, current_user: dict) -> None:
         verify_admin_moderator(current_user)
 
@@ -77,3 +88,8 @@ class TagsService:
             raise BadRequestException(detail="Relation does not exist for this concept and tag")
 
         await self.repo.remove_tag_from_concept(concept_id, tag_id)
+
+        try:
+            await redis_db.delete("mathgraph:data", f"mathgraph:concept:{concept_id}")
+        except Exception as e:
+            logger.warning(f"Erreur d'invalidation cache Redis: {e}")

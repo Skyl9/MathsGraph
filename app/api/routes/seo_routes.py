@@ -8,8 +8,61 @@ from app.repositories.concept_repository import ConceptRepository
 from app.repositories.mathematicien_repository import MathematicienRepository
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.type_repository import TypeRepository
+from app.core.config import settings
 
 router = APIRouter(prefix="/seo", tags=["seo"])
+
+
+@router.get("/sitemap.xml", summary="Generate dynamic sitemap")
+async def generate_sitemap(db: AsyncSession = Depends(get_db)):
+    base_url = settings.NEW_FRONTEND_URL.rstrip("/")
+
+    concept_repo = ConceptRepository(db)
+    concepts = await concept_repo.get_all_concepts_name()
+
+    math_repo = MathematicienRepository(db)
+    maths = await math_repo.get_all()
+
+    cat_repo = CategoryRepository(db)
+    cats = await cat_repo.get_all()
+
+    type_repo = TypeRepository(db)
+    types = await type_repo.get_all()
+
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+
+    # Home Page
+    xml.append(f"  <url><loc>{base_url}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>")
+    xml.append(f"  <url><loc>{base_url}/about</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>")
+    xml.append(f"  <url><loc>{base_url}/search</loc><changefreq>daily</changefreq><priority>0.8</priority></url>")
+    xml.append(
+        f"  <url><loc>{base_url}/mathematiciens</loc><changefreq>daily</changefreq><priority>0.8</priority></url>"
+    )
+
+    for c in concepts:
+        xml.append(
+            f"  <url><loc>{base_url}/concept/{c.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>"
+        )
+
+    for m in maths:
+        xml.append(
+            f"  <url><loc>{base_url}/mathematicien/{m.id}</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>"
+        )
+
+    for c in cats:
+        xml.append(
+            f"  <url><loc>{base_url}/category/{c.id}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>"
+        )
+
+    for t in types:
+        xml.append(
+            f"  <url><loc>{base_url}/type/{t.id}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>"
+        )
+
+    xml.append("</urlset>")
+
+    return Response(content="\\n".join(xml), media_type="application/xml")
 
 
 @router.get("/share-image/concept/{concept_id}", summary="Generate OG Image for Concept")

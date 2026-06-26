@@ -7,6 +7,7 @@ from app.schemas.categorie import CategorieBase, CategoryUpdate
 from app.db.models import Category
 from app.repositories.category_repository import CategoryRepository
 from app.core.security import verify_admin_moderator
+from app.core.redis_client import redis_db
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,11 @@ class CategoryService:
         setattr(category, field, data_dict["value"])
         await self.repo.flush()
 
+        try:
+            await redis_db.delete("mathgraph:data")
+        except Exception as e:
+            logger.warning(f"Erreur d'invalidation cache Redis: {e}")
+
     async def add_category(self, data: CreateData, current_user: dict) -> None:
         verify_admin_moderator(current_user)
 
@@ -68,6 +74,11 @@ class CategoryService:
 
         new_category = Category(nom=nom)
         await self.repo.add(new_category)
+
+        try:
+            await redis_db.delete("mathgraph:data")
+        except Exception as e:
+            logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 
     async def get_category_id_by_name(self, name: str):
         category = await self.repo.get_by_name(name)

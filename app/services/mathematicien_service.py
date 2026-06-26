@@ -7,6 +7,7 @@ from app.schemas.mathematicien import MathematicienUpdate
 from app.db.models import Mathematicien
 from app.repositories.mathematicien_repository import MathematicienRepository
 from app.core.security import verify_admin_moderator
+from app.core.redis_client import redis_db
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,11 @@ class MathematicienService:
         setattr(math, field, payload_dict["value"])
         await self.repo.flush()
 
+        try:
+            await redis_db.delete("mathgraph:data")
+        except Exception as e:
+            logger.warning(f"Erreur d'invalidation cache Redis: {e}")
+
     async def get_all_mathematicien_info(self):
         return await self.repo.get_all()
 
@@ -81,6 +87,11 @@ class MathematicienService:
 
         new_math = Mathematicien(nom=nom)
         await self.repo.add(new_math)
+
+        try:
+            await redis_db.delete("mathgraph:data")
+        except Exception as e:
+            logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 
     async def get_mathematicien_id(self, nom: str):
         math_id = await self.repo.get_id_by_name(nom)

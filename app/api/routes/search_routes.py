@@ -4,6 +4,9 @@ from app.schemas.search import AdvancedSearchPayload
 from app.db.database import get_db
 from app.services.search_service import SearchService
 from app.schemas import Response
+from app.core.redis_client import redis_db
+from fastapi.encoders import jsonable_encoder
+import json
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -18,8 +21,23 @@ async def quick_search(q: str, db: AsyncSession = Depends(get_db)):
     if len(q) < 2:
         return {"success": True, "data": [], "error": None, "meta": None}
 
+    cache_key = f"mathgraph:search:quick:{q.lower()}"
+    try:
+        cached = await redis_db.get(cache_key)
+        if cached:
+            return {"success": True, "data": json.loads(cached), "error": None, "meta": {"source": "cache"}}
+    except Exception:
+        pass
+
     results = await SearchService(db).global_quick_search(q)
-    return {"success": True, "data": results, "error": None, "meta": None}
+
+    try:
+        json_results = jsonable_encoder(results)
+        await redis_db.set(cache_key, json.dumps(json_results), ex=3600)
+    except Exception:
+        pass
+
+    return {"success": True, "data": results, "error": None, "meta": {"source": "db"}}
 
 
 @router.post(
@@ -32,5 +50,20 @@ async def advanced_search(payload: AdvancedSearchPayload, db: AsyncSession = Dep
     if len(payload.q) < 2:
         return {"success": True, "data": [], "error": None, "meta": None}
 
+    cache_key = f"mathgraph:search:advanced:{payload.model_dump_json()}"
+    try:
+        cached = await redis_db.get(cache_key)
+        if cached:
+            return {"success": True, "data": json.loads(cached), "error": None, "meta": {"source": "cache"}}
+    except Exception:
+        pass
+
     results = await SearchService(db).advanced_search(payload.q, payload.filters)
-    return {"success": True, "data": results, "error": None, "meta": None}
+
+    try:
+        json_results = jsonable_encoder(results)
+        await redis_db.set(cache_key, json.dumps(json_results), ex=3600)
+    except Exception:
+        pass
+
+    return {"success": True, "data": results, "error": None, "meta": {"source": "db"}}
