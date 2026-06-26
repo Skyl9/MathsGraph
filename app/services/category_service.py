@@ -6,6 +6,7 @@ from app.schemas import CreateData
 from app.schemas.categorie import CategorieBase, CategoryUpdate
 from app.db.models import Category
 from app.repositories.category_repository import CategoryRepository
+from app.core.security import verify_admin_moderator
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +41,7 @@ class CategoryService:
         )
 
     async def update_category(self, id_category: int, data: CategoryUpdate, current_user: dict) -> None:
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         allowed_fields = {"nom", "description", "parent_id"}
         data_dict = data.model_dump() if isinstance(data, CategoryUpdate) else data
@@ -58,9 +57,7 @@ class CategoryService:
         await self.repo.flush()
 
     async def add_category(self, data: CreateData, current_user: dict) -> None:
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         payload = data.model_dump() if isinstance(data, CreateData) else data
         nom = payload["value"]

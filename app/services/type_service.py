@@ -6,6 +6,7 @@ from app.core.exceptions import NotFoundException, ForbiddenException, ConflictE
 from app.schemas import CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
 from app.repositories.type_repository import TypeRepository
+from app.core.security import verify_admin_moderator
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,7 @@ class TypeService:
         )
 
     async def update_type(self, id_type: int, data: TypeUpdate, current_user: dict):
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         data_dict = data.model_dump() if isinstance(data, TypeUpdate) else data
         allowed_fields = {"type"}
@@ -51,9 +50,7 @@ class TypeService:
         await self.repo.flush()
 
     async def add_type(self, data: CreateData, current_user: dict):
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         data_dict = data.model_dump() if isinstance(data, CreateData) else data
         nom_type = data_dict["value"]

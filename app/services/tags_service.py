@@ -3,9 +3,10 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.utils.db_utils import get_id_by_field
-from app.core.exceptions import NotFoundException, ConflictException, BadRequestException, ForbiddenException
+from app.core.exceptions import NotFoundException, ConflictException, BadRequestException
 from app.db.models import Tag
 from app.repositories.tags_repository import TagsRepository
+from app.core.security import verify_admin_moderator
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +45,7 @@ class TagsService:
         return [{"id": tag.id, "tag": tag.name} for tag in tags]
 
     async def create_new_tag(self, tag_name: str, current_user: dict) -> None:
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         existing = await self.repo.get_tag_by_name(tag_name)
         if existing:
@@ -56,9 +55,7 @@ class TagsService:
         await self.repo.add(new_tag)
 
     async def add_tag_to_concept(self, concept_id: int, tag_id: int, current_user: dict) -> None:
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         await get_id_by_field(self.db, "concepts", "id", concept_id, "Concept introuvable")
         await get_id_by_field(self.db, "tags", "id", tag_id, "Tag introuvable")
@@ -70,9 +67,7 @@ class TagsService:
         await self.repo.add_tag_to_concept(concept_id, tag_id)
 
     async def remove_tag_from_concept(self, concept_id: int, tag_id: int, current_user: dict) -> None:
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         await get_id_by_field(self.db, "concepts", "id", concept_id, "Concept introuvable")
         await get_id_by_field(self.db, "tags", "id", tag_id, "Tag introuvable")

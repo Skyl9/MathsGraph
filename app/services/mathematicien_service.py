@@ -6,6 +6,7 @@ from app.core.exceptions import ForbiddenException, ConflictException, NotFoundE
 from app.schemas.mathematicien import MathematicienUpdate
 from app.db.models import Mathematicien
 from app.repositories.mathematicien_repository import MathematicienRepository
+from app.core.security import verify_admin_moderator
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,7 @@ class MathematicienService:
     async def update_mathematicien(
         self, mathematicien_id: int, payload: MathematicienUpdate, current_user: dict
     ) -> None:
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         payload_dict = payload.model_dump() if isinstance(payload, MathematicienUpdate) else payload
 
@@ -71,9 +70,7 @@ class MathematicienService:
         return await self.repo.get_all()
 
     async def add_mathematicien(self, data: CreateData, current_user: dict):
-        role = current_user.get("role", "").lower() if current_user else ""
-        if role not in ["admin", "moderator"]:
-            raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
+        verify_admin_moderator(current_user)
 
         payload = data.model_dump() if isinstance(data, CreateData) else data
         nom = payload["value"]

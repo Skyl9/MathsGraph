@@ -6,6 +6,13 @@ import bcrypt
 
 from app.core.config import settings
 from app.schemas.TokenType import TokenPayload
+from app.core.exceptions import ForbiddenException
+
+
+def verify_admin_moderator(current_user: dict):
+    role = current_user.get("role", "").lower() if current_user else ""
+    if role not in ["admin", "moderator"]:
+        raise ForbiddenException(detail="Vous n'avez pas les droits pour modifier cette ressource.")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
