@@ -14,6 +14,7 @@ from .tags_routes import router as tags_router
 from .comments_routes import router as comments_router
 from .admin_routes import router as admin_router
 from .search_routes import router as search_router
+from .seo_routes import router as seo_router
 
 api_router = APIRouter()
 
@@ -34,3 +35,4 @@ api_router.include_router(tags_router, prefix="/tags", tags=["tags"])
 api_router.include_router(comments_router, prefix="/comments", tags=["comments"])
 api_router.include_router(admin_router, prefix="/admin", tags=["admin"])
 api_router.include_router(search_router, prefix="/search", tags=["search"])
+api_router.include_router(seo_router, prefix="/seo", tags=["seo"])
