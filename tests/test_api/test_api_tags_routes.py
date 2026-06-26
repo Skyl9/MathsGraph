@@ -114,7 +114,7 @@ async def test_delete_tag(
     headers = create_headers_token(setup_user_token_admin)
     payload = {"tag_id": setup_tag_concept["id"], "concept_id": setup_test_concept["id"]}
     response = await async_client.delete(
-        url=f"/tags/concept/{payload["concept_id"]}/tag/{payload["tag_id"]}", headers=headers
+        url=f"/tags/concept/{payload['concept_id']}/tag/{payload['tag_id']}", headers=headers
     )
     assert response.status_code == 200
 
@@ -130,7 +130,7 @@ async def test_delete_tag_no_relation(async_client, setup_test_concept, setup_ta
     headers = create_headers_token(setup_user_token_admin)
     payload = {"tag_id": setup_tag["id"], "concept_id": setup_test_concept["id"]}
     response = await async_client.delete(
-        url=f"/tags/concept/{payload["concept_id"]}/tag/{payload["tag_id"]}", headers=headers
+        url=f"/tags/concept/{payload['concept_id']}/tag/{payload['tag_id']}", headers=headers
     )
     assert response.status_code == 400
     data = response.json()
@@ -143,7 +143,7 @@ async def test_delete_tag_no_concept(async_client, setup_test_concept, setup_tag
     headers = create_headers_token(setup_user_token_admin)
     payload = {"tag_id": setup_tag["id"], "concept_id": setup_test_concept["id"] + 1}
     response = await async_client.delete(
-        url=f"/tags/concept/{payload["concept_id"]}/tag/{payload["tag_id"]}", headers=headers
+        url=f"/tags/concept/{payload['concept_id']}/tag/{payload['tag_id']}", headers=headers
     )
     assert response.status_code == 404
     data = response.json()
@@ -156,7 +156,7 @@ async def test_delete_tag_no_tag(async_client, setup_test_concept, setup_tag, se
     headers = create_headers_token(setup_user_token_admin)
     payload = {"tag_id": setup_tag["id"] + 999, "concept_id": setup_test_concept["id"]}
     response = await async_client.delete(
-        url=f"/tags/concept/{payload["concept_id"]}/tag/{payload["tag_id"]}", headers=headers
+        url=f"/tags/concept/{payload['concept_id']}/tag/{payload['tag_id']}", headers=headers
     )
     assert response.status_code == 404
     data = response.json()

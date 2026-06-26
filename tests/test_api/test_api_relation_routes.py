@@ -8,7 +8,9 @@ from tests.utils import create_headers_token
 
 
 @pytest.mark.asyncio
-async def test_create_relation_success(async_client: AsyncClient, setup_two_concepts: dict, db_session: AsyncSession, setup_user_token_admin):
+async def test_create_relation_success(
+    async_client: AsyncClient, setup_two_concepts: dict, db_session: AsyncSession, setup_user_token_admin
+):
     """
     Teste la création réussie d'une relation.
     """
@@ -19,12 +21,7 @@ async def test_create_relation_success(async_client: AsyncClient, setup_two_conc
     description = "Ce test vérifie l'implication entre les concepts."
 
     payload = {
-        "value": {
-            "théo1": concept1_name,
-            "théo2": concept2_name,
-            "relation": relation_type,
-            "desc": description
-        }
+        "value": {"théo1": concept1_name, "théo2": concept2_name, "relation": relation_type, "desc": description}
     }
 
     response = await async_client.post("/relation", json=payload, headers=headers)
@@ -36,11 +33,7 @@ async def test_create_relation_success(async_client: AsyncClient, setup_two_conc
     assert res_data["error"] is None
 
     # Vérifier que la relation a bien été ajoutée à la base de données
-    query = (
-        select(Relation)
-        .join(Concept, Relation.concept_source == Concept.id)
-        .where(Concept.nom == concept1_name)
-    )
+    query = select(Relation).join(Concept, Relation.concept_source == Concept.id).where(Concept.nom == concept1_name)
     result = await db_session.execute(query)
     db_relation = result.scalars().first()
 
@@ -50,7 +43,9 @@ async def test_create_relation_success(async_client: AsyncClient, setup_two_conc
 
 
 @pytest.mark.asyncio
-async def test_create_relation_concept_not_found(async_client: AsyncClient, setup_two_concepts: dict, setup_user_token_admin):
+async def test_create_relation_concept_not_found(
+    async_client: AsyncClient, setup_two_concepts: dict, setup_user_token_admin
+):
     """
     Teste la création d'une relation lorsque un ou les deux concepts n'existent pas.
     """
@@ -65,7 +60,7 @@ async def test_create_relation_concept_not_found(async_client: AsyncClient, setu
             "théo1": concept_non_existant_name,
             "théo2": concept_existant_name,
             "relation": relation_type,
-            "desc": "Test avec source inexistante"
+            "desc": "Test avec source inexistante",
         }
     }
     response1 = await async_client.post("/relation", json=payload1, headers=headers)
@@ -78,7 +73,7 @@ async def test_create_relation_concept_not_found(async_client: AsyncClient, setu
             "théo1": concept_existant_name,
             "théo2": concept_non_existant_name,
             "relation": relation_type,
-            "desc": "Test avec cible inexistante"
+            "desc": "Test avec cible inexistante",
         }
     }
     response2 = await async_client.post("/relation", json=payload2, headers=headers)
@@ -98,12 +93,7 @@ async def test_create_relation_conflict(async_client: AsyncClient, setup_two_con
     description = "Description pour relation existante"
 
     payload = {
-        "value": {
-            "théo1": concept1_name,
-            "théo2": concept2_name,
-            "relation": relation_type,
-            "desc": description
-        }
+        "value": {"théo1": concept1_name, "théo2": concept2_name, "relation": relation_type, "desc": description}
     }
 
     # Créer la relation une première fois avec succès

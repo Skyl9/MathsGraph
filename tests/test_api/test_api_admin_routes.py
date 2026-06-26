@@ -14,7 +14,7 @@ async def test_get_stats(
     setup_test_concept,
     setup_test_categorie,
     setup_test_mathematicien,
-    setup_user_token_admin
+    setup_user_token_admin,
 ):
     """
     Test la route /admin/stats pour s'assurer qu'elle retourne les statistiques correctes.
@@ -70,7 +70,9 @@ async def test_get_users_admin_route(async_client: AsyncClient, setup_test_user,
 
 
 @pytest.mark.asyncio
-async def test_get_concepts_admin_route(db_session: AsyncSession, async_client: AsyncClient, setup_test_concept, setup_user_token_admin):
+async def test_get_concepts_admin_route(
+    db_session: AsyncSession, async_client: AsyncClient, setup_test_concept, setup_user_token_admin
+):
     """
     Test la route /admin/contents pour s'assurer qu'elle retourne une liste de concepts avec des détails d'administration.
     """
@@ -104,10 +106,7 @@ async def test_get_concepts_admin_route(db_session: AsyncSession, async_client: 
 
 @pytest.mark.asyncio
 async def test_recalculate_graph_layout(
-    db_session: AsyncSession,
-    async_client: AsyncClient,
-    setup_test_concept,
-    setup_user_token_admin
+    db_session: AsyncSession, async_client: AsyncClient, setup_test_concept, setup_user_token_admin
 ):
     """
     Test la route POST /admin/recalculate-graph pour s'assurer qu'elle calcule
@@ -116,17 +115,18 @@ async def test_recalculate_graph_layout(
     headers = create_headers_token(setup_user_token_admin)
     response = await async_client.post("/admin/recalculate-graph", headers=headers)
     assert response.status_code == 200
-    
+
     data = response.json()
     assert data["success"] is True
     assert data["data"] == "Graphe recalculé avec succès"
-    
+
     # On vérifie en base que les positions ont bien été générées pour le concept
     from app.db.models import Position
+
     stmt = select(Position).where(Position.concept_id == setup_test_concept["id"])
     result = await db_session.execute(stmt)
     positions = result.scalars().all()
-    
+
     # Il doit y avoir les 4 vues calculées : grille, physique, arbre, timeline
     vues = [pos.vue for pos in positions]
     assert "grille" in vues
@@ -143,7 +143,7 @@ async def test_get_analytics_success(async_client: AsyncClient, setup_user_token
     headers = create_headers_token(setup_user_token_admin)
     response = await async_client.get("/admin/analytics", headers=headers)
     assert response.status_code == 200
-    
+
     data = response.json()
     assert data["success"] is True
     assert "daily_hits" in data["data"]

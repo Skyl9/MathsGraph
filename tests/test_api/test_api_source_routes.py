@@ -8,8 +8,9 @@ from tests.utils import create_headers_token
 
 
 @pytest.mark.asyncio
-async def test_create_source_success(async_client: AsyncClient, setup_test_concept: dict, db_session: AsyncSession,
-                                     setup_user_token_admin):
+async def test_create_source_success(
+    async_client: AsyncClient, setup_test_concept: dict, db_session: AsyncSession, setup_user_token_admin
+):
     """
     Teste la création réussie d'une nouvelle source et sa liaison à un concept.
     """
@@ -22,7 +23,7 @@ async def test_create_source_success(async_client: AsyncClient, setup_test_conce
             "annee": 2023,
             "url": "http://example.com/test-source",
             "type": "livre",
-            "id": concept_id  # ID du concept à lier
+            "id": concept_id,  # ID du concept à lier
         }
     }
 
@@ -48,8 +49,7 @@ async def test_create_source_success(async_client: AsyncClient, setup_test_conce
     assert db_source.type == source_data["value"]["type"]
 
     query_link = select(concepts_sources).where(
-        concepts_sources.c.concept_id == concept_id,
-        concepts_sources.c.source_id == source_id
+        concepts_sources.c.concept_id == concept_id, concepts_sources.c.source_id == source_id
     )
     result_link = await db_session.execute(query_link)
     db_concept_source_link = result_link.first()
@@ -71,7 +71,7 @@ async def test_create_source_conflict(async_client: AsyncClient, setup_test_conc
             "annee": 2020,
             "url": "http://example.com/duplicate",
             "type": "article",
-            "id": concept_id
+            "id": concept_id,
         }
     }
 
@@ -105,7 +105,7 @@ async def test_create_source_invalid_concept_id(async_client: AsyncClient, setup
             "annee": 2024,
             "url": "http://example.com/invalid",
             "type": "livre",
-            "id": non_existent_concept_id  # ID de concept non valide
+            "id": non_existent_concept_id,  # ID de concept non valide
         }
     }
 
@@ -131,7 +131,7 @@ async def test_create_source_wrong_type(async_client: AsyncClient, setup_test_co
             "annee": 2020,
             "url": "http://example.com",
             "type": "mauvais type",
-            "id": concept_id
+            "id": concept_id,
         }
     }
 

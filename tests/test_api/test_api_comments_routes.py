@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User
 from tests.utils import create_headers_token
 
+
 @pytest.mark.asyncio
 async def test_get_comments_empty(async_client: AsyncClient, setup_test_concept):
     """
@@ -18,8 +19,11 @@ async def test_get_comments_empty(async_client: AsyncClient, setup_test_concept)
     assert data["success"] is True
     assert data["data"] == []
 
+
 @pytest.mark.asyncio
-async def test_get_comments_with_data(async_client: AsyncClient, db_session: AsyncSession, setup_test_comment, setup_test_concept):
+async def test_get_comments_with_data(
+    async_client: AsyncClient, db_session: AsyncSession, setup_test_comment, setup_test_concept
+):
     """
     Teste la récupération des commentaires pour un concept avec des données.
     """
@@ -30,7 +34,7 @@ async def test_get_comments_with_data(async_client: AsyncClient, db_session: Asy
     assert data["success"] is True
     assert len(data["data"]) >= 1
     assert data["data"][0]["content"] == setup_test_comment["content"]
-    
+
     query = select(User.username).where(User.id == setup_test_comment["user_id"])
     result = await db_session.execute(query)
     username = result.scalar_one_or_none()
@@ -50,7 +54,7 @@ async def test_post_comment_success(async_client: AsyncClient, setup_test_concep
         "content": "This is a new comment via API.",
         "username": "admin",
         "parent_id": None,
-        "field": "api_test"
+        "field": "api_test",
     }
     response = await async_client.post(f"/comments/{concept_id}", json=comment_data, headers=headers)
     assert response.status_code == 200
@@ -74,7 +78,7 @@ async def test_post_comment_invalid_concept_id(async_client: AsyncClient, setup_
         "content": "Comment for non-existent concept.",
         "username": "admin",
         "parent_id": None,
-        "field": "invalid_test"
+        "field": "invalid_test",
     }
     response = await async_client.post(f"/comments/{invalid_concept_id}", json=comment_data, headers=headers)
     assert response.status_code == 404
@@ -93,7 +97,7 @@ async def test_post_comment_unauthorized(async_client: AsyncClient, setup_test_c
         "content": "Unauthorized comment.",
         "username": "someuser",
         "parent_id": None,
-        "field": "unauth_test"
+        "field": "unauth_test",
     }
     response = await async_client.post(f"/comments/{concept_id}", json=comment_data)
     assert response.status_code == 401
@@ -120,6 +124,7 @@ async def test_patch_comment_success(async_client: AsyncClient, setup_test_comme
     get_data = get_response.json()
     assert any(c["id"] == comment_id and c["content"] == updated_content for c in get_data["data"])
 
+
 @pytest.mark.asyncio
 async def test_patch_comment_unauthorized(async_client: AsyncClient, setup_test_comment):
     """
@@ -128,6 +133,7 @@ async def test_patch_comment_unauthorized(async_client: AsyncClient, setup_test_
     comment_id = setup_test_comment["id"]
     response = await async_client.patch(f"/comments/{comment_id}", json={"content": "Unauthorized update"})
     assert response.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_patch_comment_not_found(async_client: AsyncClient, setup_user_token_admin):
@@ -163,6 +169,7 @@ async def test_delete_comment_success(async_client: AsyncClient, setup_test_comm
     get_data = get_response.json()
     assert not any(c["id"] == comment_id for c in get_data["data"])
 
+
 @pytest.mark.asyncio
 async def test_delete_comment_unauthorized(async_client: AsyncClient, setup_test_comment):
     """
@@ -171,6 +178,7 @@ async def test_delete_comment_unauthorized(async_client: AsyncClient, setup_test
     comment_id = setup_test_comment["id"]
     response = await async_client.delete(f"/comments/{comment_id}")
     assert response.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_delete_comment_not_found(async_client: AsyncClient, setup_user_token_admin):
@@ -201,6 +209,7 @@ async def test_delete_comment_already_deleted(async_client: AsyncClient, setup_t
     data = second_delete_response.json()
     assert data["success"] is False
     assert "Commentaire déjà supprimé" in data["error"]
+
 
 @pytest.mark.asyncio
 async def test_get_recent_comments_route_success(async_client: AsyncClient, setup_test_comment):

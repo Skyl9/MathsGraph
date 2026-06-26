@@ -1,10 +1,11 @@
 """init_database
 
 Revision ID: 7323d2c13e11
-Revises: 
+Revises:
 Create Date: 2026-05-14 15:50:58.704966
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op

@@ -9,11 +9,7 @@ from tests.constants import TEST_USER_EMAIL, TEST_PASSWORD, TEST_USER_NAME
 
 @pytest.mark.asyncio
 async def test_register(async_client: pytest.fixture, db_session: AsyncSession):
-    user_data = {
-        "email": TEST_USER_EMAIL,
-        "password": TEST_PASSWORD,
-        "username": TEST_USER_NAME
-    }
+    user_data = {"email": TEST_USER_EMAIL, "password": TEST_PASSWORD, "username": TEST_USER_NAME}
     response = await async_client.post("/register", json=user_data)
     assert response.status_code == 200
     response_data = response.json()
@@ -33,10 +29,7 @@ async def test_register(async_client: pytest.fixture, db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_login(async_client, setup_test_user):
-    login_data = {
-        "username": TEST_USER_NAME,
-        "password": TEST_PASSWORD
-    }
+    login_data = {"username": TEST_USER_NAME, "password": TEST_PASSWORD}
     response = await async_client.post("/token", data=login_data)
 
     assert response.status_code == 200, "Connexion réussie"
@@ -47,10 +40,7 @@ async def test_login(async_client, setup_test_user):
 
 @pytest.mark.asyncio
 async def test_reset_password(async_client, db_session: AsyncSession, setup_reset_token, setup_test_user):
-    login_data = {
-        "token": setup_reset_token["token"],
-        "new_password": "newpassword123"
-    }
+    login_data = {"token": setup_reset_token["token"], "new_password": "newpassword123"}
     response = await async_client.post("/password-reset/confirm", json=login_data)
     assert response.status_code == 200
     response_data = response.json()
@@ -91,6 +81,7 @@ async def test_request_password_token(mock_send, async_client, db_session: Async
 
     # Vérifier que aiosmtplib.send a été appelé une fois
     assert mock_send.called
+
 
 @pytest.mark.asyncio
 async def test_logout(async_client):
