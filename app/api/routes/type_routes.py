@@ -1,6 +1,7 @@
+from app.core.limiter import limiter
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -60,8 +61,12 @@ async def get_all_type(db: AsyncSession = Depends(get_db)):
     description="Permet de créer un nouveau type dans le système. L'utilisateur doit être authentifié pour effectuer cette action.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def create_type(
-    data: CreateData, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: CreateData,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     result = await TypeService(db).add_type(data, current_user)
     await db.commit()

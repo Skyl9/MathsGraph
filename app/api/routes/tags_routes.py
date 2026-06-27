@@ -1,6 +1,7 @@
+from app.core.limiter import limiter
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -54,8 +55,12 @@ async def get_all_tag(db: AsyncSession = Depends(get_db)):
     description="Associe un tag existant à un concept spécifique en utilisant les données fournies. Nécessite une authentification.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def add_tag_concept(
-    data: TagsUpdate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: TagsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     await TagsService(db).add_tag_to_concept(data.concept_id, data.tag_id, current_user)
     await db.commit()
@@ -91,8 +96,12 @@ async def remove_tag_concept(
     description="Ajoute un tout nouveau tag dans la base de données globale. Nécessite d'être connecté.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def add_new_tag(
-    data: TagsCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: TagsCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     await TagsService(db).create_new_tag(data.tag_name, current_user)
     await db.commit()

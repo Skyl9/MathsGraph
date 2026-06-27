@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from app.core.limiter import limiter
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -15,8 +16,12 @@ router = APIRouter(prefix="/alias", tags=["alias"])
     summary="Création d'un alias",
     description="Permet de créer un nouvel alias associé à un utilisateur. L'utilisateur doit être authentifié.",
 )
+@limiter.limit("20/minute")
 async def create_alias(
-    data: CreateAlias, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: CreateAlias,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     """Crée un alias à partir d'un nom d'utilisateur et d'un prénom."""
     await AliasService(db).add_alias(data)

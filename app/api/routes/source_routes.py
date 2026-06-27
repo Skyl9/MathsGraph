@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from app.core.limiter import limiter
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -15,8 +16,12 @@ router = APIRouter(prefix="/source", tags=["source"])
     description="Permet de créer une nouvelle source bibliographique ou documentaire dans la base de données. L'utilisateur doit être authentifié.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def create_source(
-    data: CreateSource, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: CreateSource,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     await SourceService(db).create_source(data)
     await db.commit()

@@ -1,9 +1,10 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
+from app.core.limiter import limiter
 from app.db.database import get_db
 from app.schemas import Response
 from app.schemas.comments import CommentIn, CommentUpdate, CommentResponse
@@ -41,7 +42,9 @@ async def get_comments(concept_id: int, db: AsyncSession = Depends(get_db)):
     description="Crée un nouveau commentaire et l'associe à un concept précis. Nécessite d'être authentifié.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def post_comment(
+    request: Request,
     concept_id: int,
     data: CommentIn,
     db: AsyncSession = Depends(get_db),

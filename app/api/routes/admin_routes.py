@@ -1,6 +1,7 @@
+from app.core.limiter import limiter
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_admin_payload
@@ -67,8 +68,9 @@ async def get_contents(
     description="Déclenche le recalcul des positions physiques 3D de tous les noeuds du graphe et purge le cache Redis. L'utilisateur doit avoir le rôle administrateur.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def recalculate_graph_layout(
-    db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)
+    request: Request, db: AsyncSession = Depends(get_db), _payload: dict = Depends(get_current_admin_payload)
 ):
     await LayoutService(db).recalculate_positions()
     await db.commit()

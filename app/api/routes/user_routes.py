@@ -1,7 +1,8 @@
+from app.core.limiter import limiter
 from typing import List
 from uuid import UUID as PyUUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -101,7 +102,9 @@ async def delete_favorite_user(
     description="Ajoute un concept à la liste des favoris de l'utilisateur connecté.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def add_favorite_user(
+    request: Request,
     general_id: int,
     data: Favorite,
     db: AsyncSession = Depends(get_db),

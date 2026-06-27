@@ -1,3 +1,4 @@
+from app.core.limiter import limiter
 from fastapi import APIRouter, Depends, Request
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +30,7 @@ async def get_concept_views(concept_id: int, db: AsyncSession = Depends(get_db))
     description="Enregistre une nouvelle vue sur un concept. Cette route capture l'adresse IP du client et l'identifiant de l'utilisateur s'il est connecté, afin de suivre les statistiques de consultation.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def add_concept_view(
     concept_id: int,
     request: Request,

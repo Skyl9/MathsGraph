@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from app.core.limiter import limiter
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -15,8 +16,12 @@ router = APIRouter(prefix="/relation", tags=["relation"])
     description="Permet de créer une nouvelle relation entre deux entités (concepts). L'utilisateur doit être authentifié pour effectuer cette action.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def create_relation(
-    data: CreateRelation, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: CreateRelation,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     await RelationService(db).add_relation(data)
     await db.commit()

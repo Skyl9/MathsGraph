@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from app.core.limiter import limiter
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -59,8 +60,12 @@ async def all_category(db: AsyncSession = Depends(get_db)):
     description="Ajoute une nouvelle catégorie dans la base de données. L'utilisateur authentifié est pris en compte pour la création.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def create_category(
-    data: CreateData, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: CreateData,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     await CategoryService(db).add_category(data, current_user)
     await db.commit()

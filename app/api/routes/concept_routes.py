@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -11,6 +11,7 @@ from app.schemas.concept import ConceptResponse, ConceptName, RollbackConcept, C
 from app.schemas.history import History
 from app.schemas.patchClass import UpdateConceptDict
 from app.services.concept_service import ConceptService, logger
+from app.core.limiter import limiter
 from app.core.redis_client import redis_db
 from fastapi.encoders import jsonable_encoder
 import json
@@ -73,8 +74,12 @@ async def rollback_concept(
     description="Ajoute un nouveau concept mathématique dans la base de données avec ses propriétés initiales.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def create_concept_route(
-    data: ConceptCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: ConceptCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     result = await ConceptService(db).create_concept(data, str(current_user.get("sub", "")))
     logger.debug(f"Route POST /concept a créé le concept: {result['nom']}")

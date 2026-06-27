@@ -1,6 +1,7 @@
+from app.core.limiter import limiter
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user_payload
@@ -61,8 +62,12 @@ async def mathematicienName(db: AsyncSession = Depends(get_db)):
     description="Crée un nouveau mathématicien dans la base de données avec les informations fournies. L'utilisateur doit être authentifié.",
     response_model=Response,
 )
+@limiter.limit("20/minute")
 async def add_mathematicien(
-    data: CreateData, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
+    request: Request,
+    data: CreateData,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user_payload),
 ):
     await MathematicienService(db).add_mathematicien(data, current_user)
     await db.commit()
