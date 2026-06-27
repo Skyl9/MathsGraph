@@ -51,6 +51,7 @@ async def get_all_tag(db: AsyncSession = Depends(get_db)):
 
 @router.post(
     "/concept",
+    status_code=201,
     summary="Ajoute un tag à un concept",
     description="Associe un tag existant à un concept spécifique en utilisant les données fournies. Nécessite une authentification.",
     response_model=Response,
@@ -72,9 +73,9 @@ async def add_tag_concept(
 
 @router.delete(
     "/concept/{concept_id}/tag/{tag_id}",
+    status_code=204,
     summary="Supprime un tag d'un concept",
     description="Retire l'association entre un tag et un concept sans supprimer le tag lui-même. Action réservée aux utilisateurs autorisés.",
-    response_model=Response,
 )
 async def remove_tag_concept(
     concept_id: int,
@@ -87,11 +88,12 @@ async def remove_tag_concept(
     logger.debug(
         f"Route DELETE /tags/concept/{concept_id}/tag/{tag_id} a correctement supprimé le tag {tag_id} du concept {concept_id}"
     )
-    return {"error": None, "data": None, "success": True, "meta": None}
+    return None
 
 
 @router.post(
     "",
+    status_code=201,
     summary="Crée un nouveau tag",
     description="Ajoute un tout nouveau tag dans la base de données globale. Nécessite d'être connecté.",
     response_model=Response,

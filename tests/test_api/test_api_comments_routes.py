@@ -57,7 +57,7 @@ async def test_post_comment_success(async_client: AsyncClient, setup_test_concep
         "field": "api_test",
     }
     response = await async_client.post(f"/comments/{concept_id}", json=comment_data, headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["success"] is True
 
@@ -159,11 +159,7 @@ async def test_delete_comment_success(async_client: AsyncClient, setup_test_comm
     concept_id = setup_test_comment["concept_id"]
 
     response = await async_client.delete(f"/comments/{comment_id}", headers=headers)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["data"] is None
-
+    assert response.status_code == 204
     # Vérifier que le commentaire est maintenant marqué comme supprimé (et donc non visible via get)
     get_response = await async_client.get(f"/comments/{concept_id}")
     get_data = get_response.json()

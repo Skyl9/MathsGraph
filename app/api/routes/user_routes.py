@@ -11,7 +11,7 @@ from app.schemas import Response, UserResponse
 from app.schemas.user import UserId, UpdateUser, Favorite, FavoriteResponse
 from app.services.user_service import UserService, logger
 
-router = APIRouter(prefix="/user", tags=["user"])
+router = APIRouter(prefix="/users", tags=["user"])
 
 
 @router.get(
@@ -82,9 +82,9 @@ async def get_favorite_user(user_id: PyUUID, db: AsyncSession = Depends(get_db))
 
 @router.delete(
     "/favorite/{general_id}",
+    status_code=204,
     summary="Supprime un favori d'un utilisateur",
     description="Retire un concept de la liste des favoris de l'utilisateur connecté.",
-    response_model=Response,
 )
 async def delete_favorite_user(
     general_id: int,
@@ -93,11 +93,12 @@ async def delete_favorite_user(
     current_user: dict = Depends(get_current_user_payload),
 ):
     await UserService(db).delete_favorite_user(general_id, data, current_user)
-    return {"error": None, "data": None, "success": True, "meta": None}
+    return None
 
 
 @router.post(
     "/favorite/{general_id}",
+    status_code=201,
     summary="Ajoute un favori à un utilisateur",
     description="Ajoute un concept à la liste des favoris de l'utilisateur connecté.",
     response_model=Response,

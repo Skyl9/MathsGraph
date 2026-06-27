@@ -10,7 +10,7 @@ from app.schemas import Response, CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
 from app.services.type_service import TypeService, logger
 
-router = APIRouter(prefix="/type", tags=["type"])
+router = APIRouter(prefix="/types", tags=["type"])
 
 
 @router.get(
@@ -57,6 +57,7 @@ async def get_all_type(db: AsyncSession = Depends(get_db)):
 
 @router.post(
     "",
+    status_code=201,
     summary="Crée un nouveau type",
     description="Permet de créer un nouveau type dans le système. L'utilisateur doit être authentifié pour effectuer cette action.",
     response_model=Response,

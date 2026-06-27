@@ -64,6 +64,7 @@ async def get_contents(
 
 @router.post(
     "/recalculate-graph",
+    status_code=201,
     summary="Recalcule la physique 3D du graphe",
     description="Déclenche le recalcul des positions physiques 3D de tous les noeuds du graphe et purge le cache Redis. L'utilisateur doit avoir le rôle administrateur.",
     response_model=Response,

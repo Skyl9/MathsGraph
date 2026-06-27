@@ -9,7 +9,7 @@ from app.schemas.categorie import CategorieBase, CategoryUpdate
 from app.services import CategoryService
 from app.services.category_service import logger
 
-router = APIRouter(prefix="/category", tags=["category"])
+router = APIRouter(prefix="/categories", tags=["category"])
 
 
 @router.get(
@@ -56,6 +56,7 @@ async def all_category(db: AsyncSession = Depends(get_db)):
 
 @router.post(
     "",
+    status_code=201,
     summary="Crée une nouvelle catégorie",
     description="Ajoute une nouvelle catégorie dans la base de données. L'utilisateur authentifié est pris en compte pour la création.",
     response_model=Response,

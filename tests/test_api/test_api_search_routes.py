@@ -29,7 +29,7 @@ async def test_advanced_search_success(async_client: AsyncClient, setup_test_con
 
     response = await async_client.post("/search/advanced", json=payload)
     print(response.json())
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
 
     assert data["success"] is True
@@ -56,7 +56,7 @@ async def test_advanced_search_with_filters(async_client: AsyncClient, setup_tes
     }
 
     response = await async_client.post("/search/advanced", json=payload)
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
 
     assert data["success"] is True
@@ -72,7 +72,7 @@ async def test_advanced_search_with_wrong_filters(async_client: AsyncClient, set
     payload = {"q": setup_test_concept["nom"][:4], "filters": {"concept": True, "categorie_id": 999999}}
 
     response = await async_client.post("/search/advanced", json=payload)
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
 
     assert data["success"] is True

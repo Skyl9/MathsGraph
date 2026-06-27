@@ -7,11 +7,12 @@ from app.db.database import get_db
 from app.schemas import CreateAlias, Response
 from app.services.alias_service import AliasService, logger
 
-router = APIRouter(prefix="/alias", tags=["alias"])
+router = APIRouter(prefix="/aliases", tags=["alias"])
 
 
 @router.post(
     "",
+    status_code=201,
     response_model=Response,
     summary="Création d'un alias",
     description="Permet de créer un nouvel alias associé à un utilisateur. L'utilisateur doit être authentifié.",

@@ -114,7 +114,7 @@ async def test_recalculate_graph_layout(
     """
     headers = create_headers_token(setup_user_token_admin)
     response = await async_client.post("/admin/recalculate-graph", headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 201
 
     data = response.json()
     assert data["success"] is True

@@ -38,6 +38,7 @@ async def get_comments(concept_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post(
     "/{concept_id}",
+    status_code=201,
     summary="Ajoute un commentaire à un concept",
     description="Crée un nouveau commentaire et l'associe à un concept précis. Nécessite d'être authentifié.",
     response_model=Response,
@@ -82,9 +83,9 @@ async def update_comment(
 
 @router.delete(
     "/{comment_id}",
+    status_code=204,
     summary="Supprime un commentaire",
     description="Supprime un commentaire spécifique en utilisant son identifiant. Seul l'auteur ou un administrateur peut effectuer cette action.",
-    response_model=Response,
 )
 async def delete_comment(
     comment_id: int, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user_payload)
@@ -94,4 +95,4 @@ async def delete_comment(
     logger.debug(
         f"Route DELETE /comments/delete/{comment_id} a correctement supprimé le commentaire d'id : {comment_id}"
     )
-    return {"error": None, "data": None, "success": True, "meta": None}
+    return None

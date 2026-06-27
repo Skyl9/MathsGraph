@@ -27,9 +27,9 @@ async def test_create_source_success(
         }
     }
 
-    response = await async_client.post("/source", json=source_data, headers=headers)
+    response = await async_client.post("/sources", json=source_data, headers=headers)
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     res_data = response.json()
     assert res_data["success"] is True
     assert res_data["data"] is None
@@ -76,12 +76,12 @@ async def test_create_source_conflict(async_client: AsyncClient, setup_test_conc
     }
 
     # Créer la source une première fois (doit réussir)
-    first_response = await async_client.post("/source", json=source_data, headers=headers)
-    assert first_response.status_code == 200
+    first_response = await async_client.post("/sources", json=source_data, headers=headers)
+    assert first_response.status_code == 201
     assert first_response.json()["success"] is True
 
     # Tenter de créer la même source une seconde fois (doit échouer avec un conflit)
-    second_response = await async_client.post("/source", json=source_data, headers=headers)
+    second_response = await async_client.post("/sources", json=source_data, headers=headers)
 
     assert second_response.status_code == 409  # Code HTTP pour ConflictException
     res_data = second_response.json()
@@ -109,7 +109,7 @@ async def test_create_source_invalid_concept_id(async_client: AsyncClient, setup
         }
     }
 
-    response = await async_client.post("/source", json=source_data, headers=headers)
+    response = await async_client.post("/sources", json=source_data, headers=headers)
 
     assert response.status_code == 404
     res_data = response.json()
@@ -135,7 +135,7 @@ async def test_create_source_wrong_type(async_client: AsyncClient, setup_test_co
         }
     }
 
-    response = await async_client.post("/source", json=source_data, headers=headers)
+    response = await async_client.post("/sources", json=source_data, headers=headers)
     assert response.status_code == 400
     res_json = response.json()
     assert res_json["success"] is False

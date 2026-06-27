@@ -22,9 +22,9 @@ async def test_create_alias_success(async_client: AsyncClient, setup_test_concep
         "value": "new_unique_alias",
     }
 
-    response = await async_client.post("/alias", json=alias_data, headers=header)
+    response = await async_client.post("/aliases", json=alias_data, headers=header)
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["success"] is True
     assert data["error"] is None
@@ -44,12 +44,12 @@ async def test_create_alias_duplicate(async_client: AsyncClient, setup_test_conc
     alias_data = {"id": concept_id, "value": "duplicate_alias_test"}
 
     # Créer l'alias une première fois
-    response = await async_client.post("/alias", json=alias_data, headers=header)
-    assert response.status_code == 200
+    response = await async_client.post("/aliases", json=alias_data, headers=header)
+    assert response.status_code == 201
     assert response.json()["success"] is True
 
     # Tenter de créer le même alias une deuxième fois
-    response = await async_client.post("/alias", json=alias_data, headers=header)
+    response = await async_client.post("/aliases", json=alias_data, headers=header)
 
     assert response.status_code == 409  # ConflictException a bien lever l'exception
     data = response.json()

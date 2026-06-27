@@ -14,9 +14,9 @@ async def test_add_mathematicien_success(async_client: AsyncClient, db_session: 
     """
     headers = create_headers_token(setup_user_token_admin)
     test_name = "Ada Lovelace"
-    response = await async_client.post("/mathematicien", json={"value": test_name}, headers=headers)
+    response = await async_client.post("/mathematiciens", json={"value": test_name}, headers=headers)
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     res_data = response.json()
     assert res_data["success"] is True
     assert res_data["data"] is None
@@ -38,7 +38,7 @@ async def test_get_one_mathematicien_success(async_client: AsyncClient, setup_te
     mathematicien_id = setup_test_mathematicien["id"]
     expected_name = setup_test_mathematicien["nom"]
 
-    response = await async_client.get(f"/mathematicien/{mathematicien_id}")
+    response = await async_client.get(f"/mathematiciens/{mathematicien_id}")
 
     assert response.status_code == 200
     res_data = response.json()
@@ -58,7 +58,7 @@ async def test_get_one_mathematicien_not_found(async_client: AsyncClient):
     """
     non_existent_id = 999999  # Un ID qui n'existe probablement pas
 
-    response = await async_client.get(f"/mathematicien/{non_existent_id}")
+    response = await async_client.get(f"/mathematiciens/{non_existent_id}")
 
     assert response.status_code == 404
     res_data = response.json()
@@ -78,7 +78,7 @@ async def test_get_mathematiciens_timeline(async_client: AsyncClient, db_session
     db_session.add(new_math)
     await db_session.commit()
 
-    response = await async_client.get("/mathematicien/timeline/all")
+    response = await async_client.get("/mathematiciens/timeline/all")
     assert response.status_code == 200
     res_data = response.json()
     assert res_data["success"] is True
@@ -98,7 +98,7 @@ async def test_update_mathematicien_success(
     mathematicien_id = setup_test_mathematicien["id"]
     payload = {"field": "nom", "value": "Alan Turing Modifié"}
 
-    response = await async_client.patch(f"/mathematicien/{mathematicien_id}", json=payload, headers=headers)
+    response = await async_client.patch(f"/mathematiciens/{mathematicien_id}", json=payload, headers=headers)
     assert response.status_code == 200
     res_data = response.json()
     assert res_data["success"] is True
@@ -109,7 +109,7 @@ async def test_get_all_mathematiciens_name(async_client: AsyncClient, setup_test
     """
     Teste la récupération de tous les noms de mathématiciens.
     """
-    response = await async_client.get("/mathematicien/")
+    response = await async_client.get("/mathematiciens/")
     assert response.status_code == 200
     res_data = response.json()
     assert res_data["success"] is True
@@ -123,7 +123,7 @@ async def test_get_mathematicien_by_name(async_client: AsyncClient, setup_test_m
     Teste la récupération d'un mathématicien par nom.
     """
     name = setup_test_mathematicien["nom"]
-    response = await async_client.get(f"/mathematicien/name/{name}")
+    response = await async_client.get(f"/mathematiciens/name/{name}")
     assert response.status_code == 200
     res_data = response.json()
     assert res_data["success"] is True

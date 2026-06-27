@@ -10,7 +10,7 @@ async def test_get_one_category(async_client: AsyncClient, setup_test_categorie)
     Teste la route GET /category/{id_category} pour s'assurer qu'elle retourne la catégorie correcte.
     """
     category_id = setup_test_categorie["id"]
-    response = await async_client.get(f"/category/{category_id}")
+    response = await async_client.get(f"/categories/{category_id}")
     assert response.status_code == 200
     data = response.json()
 
@@ -30,14 +30,14 @@ async def test_update_category(async_client: AsyncClient, setup_test_categorie, 
     updated_name = "Updated Test Category"
     update_data = {"field": "nom", "value": updated_name, "username": "admin_test"}
 
-    response = await async_client.patch(f"/category/{category_id}", json=update_data, headers=headers)
+    response = await async_client.patch(f"/categories/{category_id}", json=update_data, headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
     assert data["data"] is None  # Assumant que la route ne retourne pas de données sur succès
 
     # Vérifier que la catégorie a bien été mise à jour
-    response = await async_client.get(f"/category/{category_id}")
+    response = await async_client.get(f"/categories/{category_id}")
     assert response.status_code == 200
     data = response.json()
     assert data["data"]["nom"] == updated_name
@@ -48,7 +48,7 @@ async def test_get_all_categories(async_client: AsyncClient, setup_test_categori
     """
     Teste la route GET /category/ pour s'assurer qu'elle retourne une liste de catégories.
     """
-    response = await async_client.get("/category/")
+    response = await async_client.get("/categories/")
     assert response.status_code == 200
     data = response.json()
 
@@ -73,14 +73,14 @@ async def test_create_category(async_client: AsyncClient, setup_user_token_admin
     """
     headers = create_headers_token(setup_user_token_admin)
     new_category_data = {"value": "New Created Category", "description": "Description of a newly created category"}
-    response = await async_client.post("/category", json=new_category_data, headers=headers)
-    assert response.status_code == 200
+    response = await async_client.post("/categories", json=new_category_data, headers=headers)
+    assert response.status_code == 201
     data = response.json()
     assert data["success"] is True
     assert data["data"] is None  # Assumant que la route ne retourne pas de données sur succès
 
     # Optionnel: Vérifier la création en la récupérant par nom
-    response = await async_client.get(f"/category/name/{new_category_data['value']}")
+    response = await async_client.get(f"/categories/name/{new_category_data['value']}")
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -93,7 +93,7 @@ async def test_get_category_by_name(async_client: AsyncClient, setup_test_catego
     Teste la route GET /category/name/{name} pour s'assurer qu'elle retourne la catégorie correcte.
     """
     category_name = setup_test_categorie["nom"]
-    response = await async_client.get(f"/category/name/{category_name}")
+    response = await async_client.get(f"/categories/name/{category_name}")
     assert response.status_code == 200
     data = response.json()
 

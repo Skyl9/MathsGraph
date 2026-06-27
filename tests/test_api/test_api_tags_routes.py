@@ -13,7 +13,7 @@ async def test_create_tags(async_client: AsyncClient, setup_user_token_admin):
     headers = create_headers_token(setup_user_token_admin)
     payload = {"tag_name": "tag1"}
     response = await async_client.post("/tags", json=payload, headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["success"] is True
     # Vérification que le tag a été ajouté
@@ -34,7 +34,7 @@ async def test_create_tags_conflict(async_client: AsyncClient, setup_user_token_
     headers = create_headers_token(setup_user_token_admin)
     payload = {"tag_name": "tag1"}
     response1 = await async_client.post("/tags", json=payload, headers=headers)
-    assert response1.status_code == 200
+    assert response1.status_code == 201
     data = response1.json()
     assert data["success"] is True
     response2 = await async_client.post("/tags", json=payload, headers=headers)
@@ -116,7 +116,7 @@ async def test_delete_tag(
     response = await async_client.delete(
         url=f"/tags/concept/{payload['concept_id']}/tag/{payload['tag_id']}", headers=headers
     )
-    assert response.status_code == 200
+    assert response.status_code == 204
 
     query = select(concept_tags).where(
         concept_tags.c.concept_id == setup_test_concept["id"], concept_tags.c.tag_id == setup_tag_concept["id"]

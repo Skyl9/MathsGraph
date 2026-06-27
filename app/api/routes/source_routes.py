@@ -7,11 +7,12 @@ from app.db.database import get_db
 from app.schemas import Response, CreateSource
 from app.services.source_service import SourceService, logger
 
-router = APIRouter(prefix="/source", tags=["source"])
+router = APIRouter(prefix="/sources", tags=["source"])
 
 
 @router.post(
     "",
+    status_code=201,
     summary="Crée une nouvelle source",
     description="Permet de créer une nouvelle source bibliographique ou documentaire dans la base de données. L'utilisateur doit être authentifié.",
     response_model=Response,

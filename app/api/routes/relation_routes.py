@@ -7,11 +7,12 @@ from app.db.database import get_db
 from app.schemas import Response, CreateRelation
 from app.services.relation_service import RelationService, logger
 
-router = APIRouter(prefix="/relation", tags=["relation"])
+router = APIRouter(prefix="/relations", tags=["relation"])
 
 
 @router.post(
     "",
+    status_code=201,
     summary="Crée une nouvelle relation",
     description="Permet de créer une nouvelle relation entre deux entités (concepts). L'utilisateur doit être authentifié pour effectuer cette action.",
     response_model=Response,

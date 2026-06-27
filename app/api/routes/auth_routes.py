@@ -15,6 +15,7 @@ router = APIRouter(tags=["authentication"])
 
 @router.post(
     "/register",
+    status_code=201,
     summary="Inscrit un nouvel utilisateur",
     description="Crée un nouveau compte utilisateur avec les informations fournies. Soumis à une limitation de requêtes.",
     response_model=ApiResponse[User],
@@ -29,6 +30,7 @@ async def register_user(request: Request, user: UserCreate, db: AsyncSession = D
 
 @router.post(
     "/token",
+    status_code=201,
     summary="Authentifie un utilisateur (Login)",
     description="Vérifie les identifiants et génère un jeton d'accès (JWT) retourné dans la réponse et placé dans un cookie de session.",
     response_model=Token,
@@ -48,6 +50,7 @@ async def login_for_access_token(
 
 @router.post(
     "/password-reset/request",
+    status_code=201,
     summary="Demande de réinitialisation de mot de passe",
     description="Génère un lien ou code de réinitialisation envoyé par email si l'adresse est associée à un compte.",
     response_model=ApiResponse,
@@ -64,6 +67,7 @@ async def request_password_reset(
 
 @router.post(
     "/password-reset/confirm",
+    status_code=201,
     summary="Confirme la réinitialisation de mot de passe",
     description="Permet de définir un nouveau mot de passe en utilisant le jeton de réinitialisation valide.",
     response_model=ApiResponse,
@@ -77,6 +81,7 @@ async def reset_password(reset_data: PasswordResetConfirmSchema, db: AsyncSessio
 
 @router.post(
     "/logout",
+    status_code=201,
     summary="Déconnecte l'utilisateur",
     description="Supprime le cookie de session contenant le jeton d'accès pour déconnecter l'utilisateur.",
     response_model=ApiResponse,

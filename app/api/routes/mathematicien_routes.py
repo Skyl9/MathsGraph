@@ -11,7 +11,7 @@ from app.schemas.mathematicien import MathematicienResponse, MathematicienName, 
 from app.services import MathematicienService
 from app.services.mathematicien_service import logger
 
-router = APIRouter(prefix="/mathematicien", tags=["mathematicien"])
+router = APIRouter(prefix="/mathematiciens", tags=["mathematicien"])
 
 
 @router.get(
@@ -58,6 +58,7 @@ async def mathematicienName(db: AsyncSession = Depends(get_db)):
 
 @router.post(
     "",
+    status_code=201,
     summary="Ajoute un mathématicien",
     description="Crée un nouveau mathématicien dans la base de données avec les informations fournies. L'utilisateur doit être authentifié.",
     response_model=Response,

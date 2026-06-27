@@ -44,6 +44,7 @@ async def quick_search(request: Request, q: str, db: AsyncSession = Depends(get_
 
 @router.post(
     "/advanced",
+    status_code=201,
     summary="Recherche avancée",
     description="Effectue une recherche textuelle avancée en appliquant des filtres spécifiques de catégories. Nécessite au moins 2 caractères.",
     response_model=Response,

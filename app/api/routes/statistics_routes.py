@@ -26,6 +26,7 @@ async def get_concept_views(concept_id: int, db: AsyncSession = Depends(get_db))
 
 @router.post(
     "/concepts/{concept_id}",
+    status_code=201,
     summary="Enregistre une vue pour un concept",
     description="Enregistre une nouvelle vue sur un concept. Cette route capture l'adresse IP du client et l'identifiant de l'utilisateur s'il est connecté, afin de suivre les statistiques de consultation.",
     response_model=Response,
