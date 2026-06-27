@@ -89,9 +89,7 @@ async def create_concept_route(
 )
 async def get_editable_fields_options(db: AsyncSession = Depends(get_db)):
     editable_field: EditableField = await ConceptService(db).get_editable_fields_options()
-    logger.debug(
-        f"Route GET /getEditableFieldsOptions a renvoyé correctement la liste des options : {str(editable_field)}"
-    )
+    logger.debug("Route GET /getEditableFieldsOptions a renvoyé correctement la liste des options : <data_omitted>")
     return {"error": None, "data": editable_field, "success": True, "meta": None}
 
 
@@ -103,9 +101,7 @@ async def get_editable_fields_options(db: AsyncSession = Depends(get_db)):
 )
 async def get_history(concept_id: int, db: AsyncSession = Depends(get_db)):
     history_list: List[History] = await ConceptService(db).get_concept_versions(concept_id)
-    logger.debug(
-        f"Route /concept/history/{concept_id} a renvoyé correctement la list des versions: {str(history_list)}"
-    )
+    logger.debug(f"Route /concept/history/{concept_id} a renvoyé correctement la list des versions: <data_omitted>")
     return {"error": None, "data": history_list, "success": True, "meta": None}
 
 
@@ -135,7 +131,7 @@ async def update_concept(
 )
 async def get_all_concept_name_r(db: AsyncSession = Depends(get_db)):
     concept_name_list: List[ConceptName] = await ConceptService(db).get_all_concepts_name()
-    logger.debug(f"Route /getAllConceptName a renvoyé correctement la liste : {str(concept_name_list)}")
+    logger.debug("Route /getAllConceptName a renvoyé correctement la liste : <data_omitted>")
     return {"error": None, "data": concept_name_list, "success": True, "meta": None}
 
 
@@ -147,5 +143,5 @@ async def get_all_concept_name_r(db: AsyncSession = Depends(get_db)):
 )
 async def get_recent_history_route(limit: int = 20, db: AsyncSession = Depends(get_db)):
     history = await ConceptService(db).get_recent_history(limit)
-    logger.debug(f"Route /recent-history a renvoyé correctement la liste : {str(history)}")
+    logger.debug("Route /recent-history a renvoyé correctement la liste : <data_omitted>")
     return {"error": None, "data": history, "success": True, "meta": None}

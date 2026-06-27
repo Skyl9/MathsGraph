@@ -20,7 +20,7 @@ router = APIRouter(prefix="/tags", tags=["tags"])
 )
 async def get_tags_ids(concept_id: int, db: AsyncSession = Depends(get_db)):
     tags_ids = await TagsService(db).get_tags_id_by_concept_id(concept_id)
-    logger.debug(f"Route GET /tags/id/concept_id/{concept_id} a renvoyé correctement : {tags_ids}")
+    logger.debug(f"Route GET /tags/id/concept_id/{concept_id} a renvoyé correctement : <data_omitted>")
     return {"error": None, "data": tags_ids, "success": True, "meta": None}
 
 
@@ -32,7 +32,7 @@ async def get_tags_ids(concept_id: int, db: AsyncSession = Depends(get_db)):
 )
 async def get_tags_name_and_id(concept_id: int, db: AsyncSession = Depends(get_db)):
     tags_data = await TagsService(db).get_tags_name_and_id_by_concept_id(concept_id)
-    logger.debug(f"Route GET /tags/name/concept_id/{concept_id} a renvoyé correctement : {tags_data}")
+    logger.debug(f"Route GET /tags/name/concept_id/{concept_id} a renvoyé correctement : <data_omitted>")
     return {"error": None, "data": tags_data, "success": True, "meta": None}
 
 
@@ -44,7 +44,7 @@ async def get_tags_name_and_id(concept_id: int, db: AsyncSession = Depends(get_d
 )
 async def get_all_tag(db: AsyncSession = Depends(get_db)):
     all_tags = await TagsService(db).get_all_tags()
-    logger.debug(f"Route GET /tags/all a renvoyé correctement : {all_tags}")
+    logger.debug("Route GET /tags/all a renvoyé correctement : <data_omitted>")
     return {"error": None, "data": all_tags, "success": True, "meta": None}
 
 

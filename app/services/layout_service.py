@@ -1,3 +1,4 @@
+from app.core.redis_client import invalidate_graph_cache
 from app.schemas.enums import VueLayout
 
 import math
@@ -6,7 +7,6 @@ import networkx as nx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InternalServerError
-from app.core.redis_client import redis_db
 from app.db.models import Position
 from app.repositories.layout_repository import LayoutRepository
 
@@ -160,7 +160,7 @@ class LayoutService:
 
             self.repo.add_all_positions(new_positions)
             await self.repo.flush()
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
 
             logger.info(
                 "Layouts VueLayout.PHYSIQUE, VueLayout.GRILLE, VueLayout.ARBRE, et VueLayout.TIMELINE recalculés et sauvegardés avec succès !"

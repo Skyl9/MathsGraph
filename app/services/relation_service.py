@@ -1,3 +1,4 @@
+from app.core.redis_client import invalidate_graph_cache
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,7 +7,6 @@ from app.schemas import CreateRelation
 from app.db.models import Relation
 from app.repositories.relation_repository import RelationRepository
 
-from app.core.redis_client import redis_db
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,6 @@ class RelationService:
 
         # Invalidation du cache Redis global du graphe
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")

@@ -1,3 +1,4 @@
+from app.core.redis_client import invalidate_graph_cache
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,7 +8,6 @@ from app.schemas import CreateData
 from app.schemas.type import TypeResponse, TypeUpdate, TypeNom
 from app.repositories.type_repository import TypeRepository
 from app.core.security import verify_admin_moderator
-from app.core.redis_client import redis_db
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class TypeService:
         await self.repo.flush()
 
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 
@@ -72,7 +72,7 @@ class TypeService:
         await self.repo.add(new_type)
 
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 

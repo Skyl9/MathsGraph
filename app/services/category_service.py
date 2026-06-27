@@ -1,3 +1,4 @@
+from app.core.redis_client import invalidate_graph_cache
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,7 +8,6 @@ from app.schemas.categorie import CategorieBase, CategoryUpdate
 from app.db.models import Category
 from app.repositories.category_repository import CategoryRepository
 from app.core.security import verify_admin_moderator
-from app.core.redis_client import redis_db
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class CategoryService:
         await self.repo.flush()
 
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 
@@ -76,7 +76,7 @@ class CategoryService:
         await self.repo.add(new_category)
 
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 

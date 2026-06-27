@@ -19,7 +19,7 @@ router = APIRouter(prefix="/category", tags=["category"])
 )
 async def get_one_category_E(id_category: int, db: AsyncSession = Depends(get_db)):
     category: CategorieBase = await CategoryService(db).get_one_category(id_category)
-    logger.debug(f"Route GET /{router.prefix}/{id_category} a renvoyé correctement la catégorie : , {str(category)}")
+    logger.debug(f"Route GET /{router.prefix}/{id_category} a renvoyé correctement la catégorie : , <data_omitted>")
     return {"error": None, "success": True, "data": category, "meta": None}
 
 
@@ -49,7 +49,7 @@ async def update_category_E(
 )
 async def all_category(db: AsyncSession = Depends(get_db)):
     list_cat: list[CategorieBase] = await CategoryService(db).get_all_categories()
-    logger.debug(f"Route GET /{router.prefix}/ a renvoyé correctement la liste des catégories : , {str(list_cat)}")
+    logger.debug(f"Route GET /{router.prefix}/ a renvoyé correctement la liste des catégories : , <data_omitted>")
     return {"error": None, "success": True, "data": list_cat, "meta": None}
 
 
@@ -76,5 +76,5 @@ async def create_category(
 )
 async def get_category_by_name(name: str, db: AsyncSession = Depends(get_db)):
     cat: CategorieBase = await CategoryService(db).get_category_id_by_name(name)
-    logger.debug(f"Route GET /{router.prefix}/name/{name} a renvoyé correctement la catégorie : , {str(cat)}")
+    logger.debug(f"Route GET /{router.prefix}/name/{name} a renvoyé correctement la catégorie : , <data_omitted>")
     return {"error": None, "success": True, "data": cat, "meta": None}

@@ -100,47 +100,37 @@ async def get_current_active_user(current_user=Depends(get_current_user)):
     return current_user
 
 
-def get_current_admin_payload(token: str = Depends(oauth2_scheme)):
-    """Décode le token et vérifie si le rôle est 'admin'."""
-
+def _get_verified_payload(token: str, allowed_roles: Optional[list[str]] = None):
+    """Décode le token et valide les privilèges selon les rôles autorisés."""
     payload = decode_token(token)
     if not payload:
         logger.error("Token invalide")
-        # Utilisation de l'exception personnalisée
         raise AuthenticationException(detail="Could not validate credentials")
 
-    user_role = str(payload.get("role", ""))
-    if not user_role or user_role.lower() != "admin":
-        # Utilisation de l'exception personnalisée
-        raise ForbiddenException(detail="The user does not have enough privileges")
-    logger.info("admin payload verified")
+    if allowed_roles:
+        user_role = str(payload.get("role", "")).lower()
+        if not user_role or user_role not in allowed_roles:
+            raise ForbiddenException(detail="The user does not have enough privileges")
+
+    return payload
+
+
+def get_current_admin_payload(token: str = Depends(oauth2_scheme)):
+    """Décode le token et vérifie si le rôle est 'admin'."""
+    payload = _get_verified_payload(token, ["admin"])
+    logger.info("Admin payload verified")
     return payload
 
 
 def get_current_moderator_payload(token: str = Depends(oauth2_scheme)):
-    """Décode le token et vérifie si le rôle est 'admin'."""
-
-    payload = decode_token(token)
-    if not payload:
-        logger.error("Token invalide")
-        # Utilisation de l'exception personnalisée
-        raise AuthenticationException(detail="Could not validate credentials")
-
-    user_role = str(payload.get("role", ""))
-    if not user_role or user_role.lower() not in ["admin", "moderator"]:
-        # Utilisation de l'exception personnalisée
-        raise ForbiddenException(detail="The user does not have enough privileges")
+    """Décode le token et vérifie si le rôle est 'admin' ou 'moderator'."""
+    payload = _get_verified_payload(token, ["admin", "moderator"])
     logger.info("Moderator or admin payload verified")
     return payload
 
 
 def get_current_user_payload(token: str = Depends(oauth2_scheme)):
-    """Décode le token et vérifie si le rôle est 'admin'."""
-
-    payload = decode_token(token)
-    if not payload:
-        logger.error("Token invalide")
-        # Utilisation de l'exception personnalisée
-        raise AuthenticationException(detail="Could not validate credentials")
+    """Décode le token et valide l'authentification (tout rôle accepté)."""
+    payload = _get_verified_payload(token)
     logger.info("User payload verified")
     return payload

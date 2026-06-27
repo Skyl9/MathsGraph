@@ -21,7 +21,7 @@ router = APIRouter(prefix="/mathematicien", tags=["mathematicien"])
 )
 async def get_one_mathematicien_E(id_mathematicien: int, db: AsyncSession = Depends(get_db)):
     oneMathematicien = await MathematicienService(db).get_one_mathematicien(id_mathematicien)
-    logger.debug(f"Route GET {router.prefix}/{id_mathematicien} a renvoyé {oneMathematicien} mathematicien")
+    logger.debug(f"Route GET {router.prefix}/{id_mathematicien} a renvoyé <data_omitted> mathematicien")
     return {"success": True, "data": oneMathematicien, "error": None, "meta": None}
 
 

@@ -1,3 +1,4 @@
+from app.core.redis_client import invalidate_graph_cache
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,7 +8,6 @@ from app.schemas.mathematicien import MathematicienUpdate
 from app.db.models import Mathematicien
 from app.repositories.mathematicien_repository import MathematicienRepository
 from app.core.security import verify_admin_moderator
-from app.core.redis_client import redis_db
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class MathematicienService:
         await self.repo.flush()
 
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 
@@ -89,7 +89,7 @@ class MathematicienService:
         await self.repo.add(new_math)
 
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 

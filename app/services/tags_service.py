@@ -1,3 +1,4 @@
+from app.core.redis_client import invalidate_graph_cache
 import logging
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,7 +57,7 @@ class TagsService:
         await self.repo.add(new_tag)
 
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 
@@ -73,7 +74,8 @@ class TagsService:
         await self.repo.add_tag_to_concept(concept_id, tag_id)
 
         try:
-            await redis_db.delete("mathgraph:data", f"mathgraph:concept:{concept_id}")
+            await invalidate_graph_cache()
+            await redis_db.delete(f"mathgraph:concept:{concept_id}")
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")
 
@@ -90,6 +92,7 @@ class TagsService:
         await self.repo.remove_tag_from_concept(concept_id, tag_id)
 
         try:
-            await redis_db.delete("mathgraph:data", f"mathgraph:concept:{concept_id}")
+            await invalidate_graph_cache()
+            await redis_db.delete(f"mathgraph:concept:{concept_id}")
         except Exception as e:
             logger.warning(f"Erreur d'invalidation cache Redis: {e}")

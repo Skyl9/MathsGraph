@@ -20,7 +20,7 @@ router = APIRouter(prefix="/type", tags=["type"])
 )
 async def get_one_type_E(id_type: int, db: AsyncSession = Depends(get_db)):
     type_data: TypeResponse = await TypeService(db).get_one_type(id_type)
-    logger.debug(f"Route GET /{router.prefix}/{id_type} a renvoyé correctement : {type_data}")
+    logger.debug(f"Route GET /{router.prefix}/{id_type} a renvoyé correctement : <data_omitted>")
     return {"error": None, "data": type_data, "success": True, "meta": None}
 
 
@@ -77,5 +77,5 @@ async def create_type(
 )
 async def get_type_by_name(name: str, db: AsyncSession = Depends(get_db)):
     type_data: TypeResponse = await TypeService(db).get_type_by_name(name)
-    logger.debug(f"Route GET /{router.prefix}/name/{name} a renvoyé correctement : {type_data}")
+    logger.debug(f"Route GET /{router.prefix}/name/{name} a renvoyé correctement : <data_omitted>")
     return {"error": None, "data": type_data, "success": True, "meta": None}

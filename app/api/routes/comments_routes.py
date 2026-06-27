@@ -31,7 +31,7 @@ async def get_recent_comments_route(limit: int = 20, db: AsyncSession = Depends(
 )
 async def get_comments(concept_id: int, db: AsyncSession = Depends(get_db)):
     comments = await CommentsService(db).get_comments(concept_id)
-    logger.debug(f"Route GET /comments/{concept_id} a renvoyé correctement : {str(comments)}")
+    logger.debug(f"Route GET /comments/{concept_id} a renvoyé correctement : <data_omitted>")
     return {"error": None, "data": comments, "success": True, "meta": None}
 
 

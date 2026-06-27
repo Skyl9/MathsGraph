@@ -19,7 +19,7 @@ router = APIRouter(prefix="/statistics", tags=["statistics"])
 )
 async def get_concept_views(concept_id: int, db: AsyncSession = Depends(get_db)):
     views = await StatisticsService(db).get_concept_views(concept_id)
-    logger.debug(f"Route GET {router.prefix}/concepts/{concept_id} a renvoyé correctement : {views}")
+    logger.debug(f"Route GET {router.prefix}/concepts/{concept_id} a renvoyé correctement : <data_omitted>")
     return {"error": None, "data": views, "success": True, "meta": None}
 
 

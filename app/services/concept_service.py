@@ -1,3 +1,4 @@
+from app.core.redis_client import invalidate_graph_cache
 import copy
 import json
 import logging
@@ -441,7 +442,8 @@ class ConceptService:
 
         # Invalidation du cache Redis global du graphe
         try:
-            await redis_db.delete("mathgraph:data", f"mathgraph:concept:{concept_id}")
+            await invalidate_graph_cache()
+            await redis_db.delete(f"mathgraph:concept:{concept_id}")
         except Exception as e:
             logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")
 
@@ -627,7 +629,7 @@ class ConceptService:
 
         # Invalidation du cache Redis global du graphe
         try:
-            await redis_db.delete("mathgraph:data")
+            await invalidate_graph_cache()
         except Exception as e:
             logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")
 
