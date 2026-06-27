@@ -83,3 +83,26 @@ class ConceptResponse(ConceptBase):
         default=None, description="La date de la dernière modification.", examples=["2026-06-25T14:30:00Z"]
     )
     tags: Optional[List["Tag"]] = Field(default=[], description="Les tags associés au concept.")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": 42,
+                    "nom": "Théorème de Pythagore",
+                    "enonce": "Dans un triangle rectangle, le carré de l'hypoténuse est égal à la somme des carrés des deux autres côtés.",
+                    "demonstration": "Soit un triangle ABC rectangle en A...",
+                    "verification": True,
+                    "type": "Théorème",
+                    "mathematicien": {"id": 1, "mathematicien": "Pythagore de Samos"},
+                    "categorie": {"id": 5, "category": "Géométrie"},
+                    "sources": [],
+                    "aliases": ["Théorème de la corde"],
+                    "relations": [],
+                    "noms_etrangers": [],
+                    "date_modification": "2026-06-25T14:30:00Z",
+                    "tags": [],
+                }
+            ]
+        }
+    }

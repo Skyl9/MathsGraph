@@ -40,6 +40,21 @@ class ApiAnalytics(BaseModel):
     top_routes: List[ApiRouteMetric] = Field(description="Liste des routes les plus appelées")
     weekly_hits: List[DailyHit] = Field(description="Historique des appels sur la semaine")
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "daily_hits": 1200,
+                    "top_routes": [
+                        {"route": "/api/v1/concepts", "hits": 450, "avg_duration": 45.2},
+                        {"route": "/api/v1/search", "hits": 300, "avg_duration": 12.5},
+                    ],
+                    "weekly_hits": [{"date": "2023-10-25", "hits": 350}, {"date": "2023-10-24", "hits": 400}],
+                }
+            ]
+        }
+    }
+
 
 class RecentActivityItem(BaseModel):
     id: int = Field(description="Identifiant de l'élément modifié", examples=[1])
