@@ -5,6 +5,7 @@ import math
 import logging
 import networkx as nx
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.core.exceptions import InternalServerError
 from app.db.models import Position
@@ -41,7 +42,7 @@ class LayoutService:
             G.add_nodes_from(concept_ids)
             G.add_edges_from([(e.concept_source, e.concept_cible) for e in edges])
 
-            pos_physique = nx.spring_layout(G, dim=3, scale=30.0, iterations=100)
+            pos_physique = await run_in_threadpool(nx.spring_layout, G, dim=3, scale=30.0, iterations=100)
 
             for node_id, coords in pos_physique.items():
                 new_positions.append(
@@ -96,7 +97,7 @@ class LayoutService:
                     break
 
             # Calculer un layout 2D pour organiser les branches spatialement sans qu'elles se croisent trop
-            pos_2d = nx.spring_layout(G, dim=2, scale=40.0, iterations=100)
+            pos_2d = await run_in_threadpool(nx.spring_layout, G, dim=2, scale=40.0, iterations=100)
 
             spacing_y = 15.0  # Espacement vertical
             for node_id, coords in pos_2d.items():
