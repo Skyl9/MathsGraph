@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID as PyUUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.utils.db_utils import get_id_by_field
@@ -24,7 +25,7 @@ class StatisticsService:
         else:
             return {"total_views": 0, "unique_viewers": 0}
 
-    async def add_concept_view(self, concept_id: int, user_id: int | None = None, ip_address: str | None = None):
+    async def add_concept_view(self, concept_id: int, user_id: PyUUID | None = None, ip_address: str | None = None):
         # Vérifier que le concept existe
         await get_id_by_field(self.db, "concepts", "id", concept_id, "Concept not found")
 

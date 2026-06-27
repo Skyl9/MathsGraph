@@ -2,7 +2,7 @@ import logging
 from functools import lru_cache
 
 # load_dotenv() n'est plus nécessaire car pydantic_settings lit le .env nativement !
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,17 @@ class Settings(BaseSettings):
             return self.DB_URL_ENV
 
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        if self.ENVIRONMENT == "production":
+            if self.SECRET_KEY == "default_secret_key_for_dev_change_in_prod":
+                raise ValueError("SECRET_KEY must be overridden in production environment!")
+            if self.PASSWORD_SALT == "dev_password_salt":
+                raise ValueError("PASSWORD_SALT must be overridden in production environment!")
+            if "*" in self.BACKEND_CORS_ORIGINS:
+                raise ValueError("BACKEND_CORS_ORIGINS cannot contain '*' in production environment!")
+        return self
 
 
 @lru_cache()

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
+from uuid import UUID
 from typing import Optional
 from .base import TimestampModel
 
@@ -21,7 +22,9 @@ class UserUpdate(UserBase):
 
 
 class UserResponse(UserBase, TimestampModel):
-    id: int = Field(..., description="Identifiant unique de l'utilisateur", examples=[1])
+    id: UUID = Field(
+        ..., description="Identifiant unique de l'utilisateur", examples=["123e4567-e89b-12d3-a456-426614174000"]
+    )
     preferred_language: Optional[str] = Field(None, description="Langue préférée de l'utilisateur", examples=["fr"])
     avatar_url: Optional[str] = Field(None, description="URL de l'avatar", examples=["https://example.com/avatar.jpg"])
     bio: Optional[str] = Field(None, description="Courte biographie", examples=["Passionné de maths"])
@@ -32,7 +35,7 @@ class UserInDB(UserResponse):
 
 
 class UserId(BaseModel):
-    id: int = Field(..., description="Identifiant de l'utilisateur", examples=[1])
+    id: UUID = Field(..., description="Identifiant de l'utilisateur", examples=["123e4567-e89b-12d3-a456-426614174000"])
 
 
 class UpdateUser(BaseModel):

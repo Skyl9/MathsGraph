@@ -2,6 +2,7 @@ from __future__ import annotations  # Activer les annotations différées (Pytho
 
 from datetime import datetime
 from typing import Optional, Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -9,7 +10,10 @@ from pydantic import BaseModel, Field
 class History(BaseModel):
     id: int = Field(description="L'identifiant unique de l'entrée d'historique.", examples=[1])
     concept_id: int = Field(description="L'identifiant du concept modifié.", examples=[42])
-    modified_by: int = Field(description="L'identifiant de l'utilisateur ayant fait la modification.", examples=[3])
+    modified_by: UUID = Field(
+        description="L'identifiant de l'utilisateur ayant fait la modification.",
+        examples=["123e4567-e89b-12d3-a456-426614174000"],
+    )
     modified_at: datetime = Field(
         description="La date et l'heure de la modification.", examples=["2026-06-25T14:30:00Z"]
     )

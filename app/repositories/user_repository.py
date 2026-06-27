@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
+from uuid import UUID as PyUUID
 from app.db.models import User, UserFavorite, Concept, Mathematicien, Category, Type, ConceptVersion
 
 
@@ -8,7 +9,7 @@ class UserRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_user_by_id(self, id_user: int):
+    async def get_user_by_id(self, id_user: PyUUID):
         return await self.db.get(User, id_user)
 
     async def get_id_by_username(self, username: str):
@@ -16,12 +17,12 @@ class UserRepository:
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    async def check_user_exists(self, id_user: int):
+    async def check_user_exists(self, id_user: PyUUID):
         query = select(User.id).where(User.id == id_user)
         result = await self.db.execute(query)
         return result.scalars().first() is not None
 
-    async def get_favorite_user(self, user_id: int):
+    async def get_favorite_user(self, user_id: PyUUID):
         query_fav = (
             select(UserFavorite)
             .where(UserFavorite.user_id == user_id)
@@ -51,7 +52,7 @@ class UserRepository:
         res = await self.db.execute(select(model.id).where(model.id == entity_id))
         return res.scalars().first() is not None
 
-    async def delete_favorite_user(self, user_id: int, entity_type: str, general_id: int):
+    async def delete_favorite_user(self, user_id: PyUUID, entity_type: str, general_id: int):
         stmt = delete(UserFavorite).where(UserFavorite.user_id == user_id)
         if entity_type == "concept":
             stmt = stmt.where(UserFavorite.concept_id == general_id)
@@ -69,7 +70,7 @@ class UserRepository:
         self.db.add(fav)
         await self.db.commit()
 
-    async def get_history_user(self, user_id: int, limit: int):
+    async def get_history_user(self, user_id: PyUUID, limit: int):
         query = (
             select(ConceptVersion)
             .where(ConceptVersion.modified_by == user_id)

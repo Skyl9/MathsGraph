@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from uuid import UUID as PyUUID
 from app.db.models import User, PasswordResetToken, UserSession
 
 
@@ -27,8 +28,9 @@ class AuthRepository:
         await self.db.flush()
         return user
 
-    async def get_user_by_id(self, user_id: int):
-        return await self.db.get(User, user_id)
+    async def get_user_by_id(self, user_id: PyUUID):
+        result = await self.db.execute(select(User).filter(User.id == user_id))
+        return result.scalars().first()
 
     async def add_session(self, session: UserSession):
         self.db.add(session)

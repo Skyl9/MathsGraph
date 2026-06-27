@@ -6,6 +6,7 @@ from app.db.models import UserFavorite
 from app.repositories.user_repository import UserRepository
 
 import logging
+from uuid import UUID as PyUUID
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.repo = UserRepository(db)
 
-    async def get_user_by_id(self, id_user: int):
+    async def get_user_by_id(self, id_user: PyUUID):
         user = await self.repo.get_user_by_id(id_user)
 
         if user is None:
@@ -38,7 +39,7 @@ class UserService:
             raise NotFoundException(detail="User not found")
         return UserId(id=user_id)
 
-    async def patch_user(self, id: int, data: UpdateUser, current_user: dict) -> None:
+    async def patch_user(self, id: PyUUID, data: UpdateUser, current_user: dict) -> None:
         """Met à jour un champ utilisateur. Un utilisateur ne peut modifier que son propre profil.
         Les admins peuvent modifier n'importe quel profil."""
         data_dict = data.model_dump() if isinstance(data, UpdateUser) else data
@@ -69,7 +70,7 @@ class UserService:
         setattr(user, field, data_dict["value"])
         await self.repo.commit()
 
-    async def get_favorite_user(self, user_id: int):
+    async def get_favorite_user(self, user_id: PyUUID):
         exists = await self.repo.check_user_exists(user_id)
 
         if not exists:
@@ -91,7 +92,7 @@ class UserService:
 
     async def delete_favorite_user(self, general_id: int, data: Favorite, current_user: dict) -> None:
         data_dict = data.model_dump() if isinstance(data, Favorite) else data
-        user_id = int(data_dict["user_id"])
+        user_id = data_dict["user_id"]
 
         caller_id = current_user.get("id")
         caller_role = current_user.get("role", "").lower()
@@ -116,7 +117,7 @@ class UserService:
 
     async def add_favorite_user(self, general_id: int, data: Favorite, current_user: dict) -> None:
         data_dict = data.model_dump() if isinstance(data, Favorite) else data
-        user_id = int(data_dict["user_id"])
+        user_id = data_dict["user_id"]
 
         caller_id = current_user.get("id")
         caller_role = current_user.get("role", "").lower()
@@ -149,7 +150,7 @@ class UserService:
 
         await self.repo.add_favorite_user(new_fav)
 
-    async def get_history_user(self, user_id: int, limit: int = 20) -> list[dict]:
+    async def get_history_user(self, user_id: PyUUID, limit: int = 20) -> list[dict]:
         exists = await self.repo.check_user_exists(user_id)
         if not exists:
             raise NotFoundException(detail="User not found")

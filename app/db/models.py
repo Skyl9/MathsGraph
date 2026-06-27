@@ -1,5 +1,7 @@
 from datetime import datetime, date
 from typing import List, Optional
+import uuid
+from uuid import UUID as PyUUID
 
 from sqlalchemy import (
     String,
@@ -260,7 +262,7 @@ class Relation(Base):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[PyUUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -289,7 +291,7 @@ class Comment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     concept_id: Mapped[Optional[int]] = mapped_column(ForeignKey("concepts.id", onupdate="CASCADE", ondelete="CASCADE"))
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[Optional[PyUUID]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -319,7 +321,7 @@ class ConceptView(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     concept_id: Mapped[Optional[int]] = mapped_column(ForeignKey("concepts.id"))
-    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[Optional[PyUUID]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     viewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     ip_address: Mapped[Optional[str]] = mapped_column(INET)
 
@@ -327,12 +329,17 @@ class ConceptView(Base):
     concept: Mapped[Optional["Concept"]] = relationship("Concept", back_populates="views")
     user: Mapped[Optional["User"]] = relationship("User", back_populates="views")
 
+    __table_args__ = (
+        Index("idx_concept_views_user_id", "user_id"),
+        Index("idx_concept_views_concept_id", "concept_id"),
+    )
+
 
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[Optional[PyUUID]] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -341,12 +348,14 @@ class PasswordResetToken(Base):
     # Relations
     user: Mapped[Optional["User"]] = relationship("User", back_populates="reset_tokens")
 
+    __table_args__ = (Index("idx_password_reset_tokens_user_id", "user_id"),)
+
 
 class UserContribution(Base):
     __tablename__ = "user_contributions"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[Optional[PyUUID]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     concept_id: Mapped[Optional[int]] = mapped_column(ForeignKey("concepts.id"))
     action_type: Mapped[Optional[str]] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -356,14 +365,17 @@ class UserContribution(Base):
     user: Mapped[Optional["User"]] = relationship("User", back_populates="contributions")
     concept: Mapped[Optional["Concept"]] = relationship("Concept", back_populates="contributions")
 
-    __table_args__ = (Index("idx_user_contributions_created_at", "created_at"),)
+    __table_args__ = (
+        Index("idx_user_contributions_created_at", "created_at"),
+        Index("idx_user_contributions_user_id", "user_id"),
+    )
 
 
 class UserFavorite(Base):
     __tablename__ = "user_favorites"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[PyUUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     concept_id: Mapped[Optional[int]] = mapped_column(ForeignKey("concepts.id"))
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
     mathematicien_id: Mapped[Optional[int]] = mapped_column(ForeignKey("mathematiciens.id"))
@@ -385,6 +397,7 @@ class UserFavorite(Base):
             "CASE WHEN type_id IS NOT NULL THEN 1 ELSE 0 END) = 1",
             name="chk_single_favorite_target",
         ),
+        Index("idx_user_favorites_user_id", "user_id"),
     )
 
 
@@ -392,7 +405,7 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[Optional[PyUUID]] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -400,13 +413,15 @@ class UserSession(Base):
     # Relations
     user: Mapped[Optional["User"]] = relationship("User", back_populates="sessions")
 
+    __table_args__ = (Index("idx_user_sessions_user_id", "user_id"),)
+
 
 class ConceptVersion(Base):
     __tablename__ = "concept_versions"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     concept_id: Mapped[int] = mapped_column(ForeignKey("concepts.id", ondelete="CASCADE"), nullable=False)
-    modified_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    modified_by: Mapped[Optional[PyUUID]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     modified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     field_modified: Mapped[str] = mapped_column(String(50), nullable=False)
     old_value: Mapped[Optional[str]] = mapped_column(Text)
@@ -423,6 +438,7 @@ class ConceptVersion(Base):
     __table_args__ = (
         Index("idx_concept_versions_concept_id", "concept_id"),
         Index("idx_concept_versions_modified_at", "modified_at"),
+        Index("idx_concept_versions_modified_by", "modified_by"),
     )
 
 

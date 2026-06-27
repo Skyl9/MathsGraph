@@ -78,8 +78,8 @@ class CommentsService:
         if not comment or comment.is_deleted:
             raise NotFoundException(detail="Commentaire introuvable ou supprimé")
 
-        comment_user_id = int(comment.user_id) if comment.user_id else 0
-        token_user_id = int(current_user.get("id", 0))
+        comment_user_id = str(comment.user_id) if comment.user_id else ""
+        token_user_id = str(current_user.get("id", ""))
 
         is_author = token_user_id == comment_user_id
         is_admin = current_user.get("role") in ["admin", "moderator"]
@@ -118,8 +118,8 @@ class CommentsService:
         if comment.is_deleted:
             raise NotFoundException("Commentaire déjà supprimé")
 
-        comment_user_id = int(comment.user_id) if comment.user_id else 0
-        token_user_id = int(current_user.get("id", 0))
+        comment_user_id = str(comment.user_id) if comment.user_id else ""
+        token_user_id = str(current_user.get("id", ""))
 
         is_author = token_user_id == comment_user_id
         is_admin = current_user.get("role") in ["admin", "moderator"]

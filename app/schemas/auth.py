@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, field_validator, Field
 
@@ -33,7 +34,9 @@ class UserCreate(BaseModel):
 
 
 class User(BaseModel):
-    id: int = Field(description="Identifiant unique de l'utilisateur", examples=[1])
+    id: UUID = Field(
+        description="Identifiant unique de l'utilisateur", examples=["123e4567-e89b-12d3-a456-426614174000"]
+    )
     username: str = Field(description="Nom d'utilisateur", examples=["johndoe"])
     email: str = Field(description="Adresse email", examples=["john.doe@example.com"])
     is_active: bool = Field(description="Indique si le compte est actif", examples=[True])

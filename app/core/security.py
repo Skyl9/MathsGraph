@@ -40,7 +40,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: TokenPayload, expires_delta: Optional[timedelta] = None) -> str:
     """Crée un token JWT"""
-    to_encode = data.model_dump()
+    to_encode = data.model_dump(mode="json")
     now = datetime.now(timezone.utc)  # Obtenez un datetime avec timezone UTC
     if expires_delta:
         expire = now + expires_delta

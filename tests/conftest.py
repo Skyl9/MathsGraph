@@ -1,5 +1,6 @@
 import datetime
 import logging
+import uuid
 from logging.config import dictConfig
 
 import pytest
@@ -139,9 +140,10 @@ async def setup_test_user(db_session: AsyncSession):
     password_hash = get_password_hash(TEST_PASSWORD)
     result = await db_session.execute(
         text(
-            "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role) RETURNING *"
+            "INSERT INTO users (id, username, email, password_hash, is_active, role) VALUES (:id, :username, :email, :password_hash, :is_active, :role) RETURNING *"
         ),
         {
+            "id": uuid.uuid4(),
             "username": TEST_USER_NAME,
             "email": TEST_USER_EMAIL,
             "password_hash": password_hash,
@@ -452,9 +454,10 @@ async def setup_user_token_admin(db_session: AsyncSession):
 
     await db_session.execute(
         text(
-            "INSERT INTO users (username, email, password_hash, is_active, role) VALUES (:username, :email, :password_hash, :is_active, :role)"
+            "INSERT INTO users (id, username, email, password_hash, is_active, role) VALUES (:id, :username, :email, :password_hash, :is_active, :role)"
         ),
         {
+            "id": uuid.uuid4(),
             "username": ADMIN_USER_NAME,
             "email": ADMIN_EMAIL,
             "password_hash": password_hash,

@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
+from uuid import UUID
 
 
 class CommentIn(BaseModel):
@@ -18,7 +19,11 @@ class CommentIn(BaseModel):
 class CommentResponse(BaseModel):
     id: int = Field(description="Identifiant unique du commentaire", examples=[1])
     concept_id: Optional[int] = Field(default=None, description="Identifiant du concept lié", examples=[10])
-    user_id: int = Field(description="Identifiant de l'utilisateur ayant posté", examples=[2])
+    user_id: UUID | None = Field(
+        default=None,
+        description="Identifiant de l'utilisateur ayant posté",
+        examples=["123e4567-e89b-12d3-a456-426614174000"],
+    )
     content: str = Field(description="Contenu du commentaire", examples=["Très bonne explication du théorème."])
     parent_id: int | None = Field(default=None, description="Identifiant du commentaire parent", examples=[5])
     created_at: datetime = Field(description="Date de création", examples=["2023-10-25T14:30:00Z"])
