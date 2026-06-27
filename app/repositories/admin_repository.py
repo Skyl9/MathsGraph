@@ -35,14 +35,16 @@ class AdminRepository:
         }
 
     async def get_users(self, skip: int, limit: int):
+        total = await self.db.scalar(select(func.count()).select_from(User))
         query = select(User).offset(skip).limit(limit)
         result = await self.db.execute(query)
-        return result.scalars().all()
+        return {"items": result.scalars().all(), "total": total or 0}
 
     async def get_concepts_admin(self, skip: int, limit: int):
+        total = await self.db.scalar(select(func.count()).select_from(Concept))
         query = select(Concept).options(selectinload(Concept.type)).offset(skip).limit(limit)
         result = await self.db.execute(query)
-        return result.scalars().all()
+        return {"items": result.scalars().all(), "total": total or 0}
 
     async def get_api_analytics(self):
         query_top = (

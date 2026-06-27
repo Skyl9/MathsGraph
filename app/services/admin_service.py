@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,31 +16,37 @@ class AdminService:
         return await self.repo.get_stats()
 
     async def get_users(self, skip: int = 0, limit: int = 50):
-        users = await self.repo.get_users(skip, limit)
+        result = await self.repo.get_users(skip, limit)
 
-        return [
-            {
-                "id": u.id,
-                "username": u.username,
-                "email": u.email,
-                "role": u.role,
-                "is_active": u.is_active,
-                "created_at": u.created_at,
-            }
-            for u in users
-        ]
+        return {
+            "items": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "email": u.email,
+                    "role": u.role,
+                    "is_active": u.is_active,
+                    "created_at": u.created_at,
+                }
+                for u in result["items"]
+            ],
+            "total": result["total"],
+        }
 
     async def get_concepts_admin(self, skip: int = 0, limit: int = 50):
-        concepts = await self.repo.get_concepts_admin(skip, limit)
+        result = await self.repo.get_concepts_admin(skip, limit)
 
-        return [
-            {
-                "id": c.id,
-                "nom": c.nom,
-                "type": c.type.type if c.type else None,
-            }
-            for c in concepts
-        ]
+        return {
+            "items": [
+                {
+                    "id": c.id,
+                    "nom": c.nom,
+                    "type": c.type.type if c.type else None,
+                }
+                for c in result["items"]
+            ],
+            "total": result["total"],
+        }
 
     async def get_api_analytics(self):
         data = await self.repo.get_api_analytics()
@@ -58,8 +65,9 @@ class AdminService:
         }
 
     async def get_recent_activity(self, limit: int = 10):
-        concepts = await self.repo.get_recent_activity_concepts(limit)
-        users = await self.repo.get_recent_activity_users(limit)
+        concepts, users = await asyncio.gather(
+            self.repo.get_recent_activity_concepts(limit), self.repo.get_recent_activity_users(limit)
+        )
 
         activity = []
         for c in concepts:

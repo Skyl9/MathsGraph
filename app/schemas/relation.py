@@ -28,3 +28,18 @@ class RelationResponse(RelationType):
     type_relation: Literal["reciproque", "equivalence", "implication", "utilise"] = Field(
         ..., description="Le type de la relation", examples=["implication"]
     )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": 1,
+                    "description": "Corollaire direct",
+                    "date_relation": "19ème siècle",
+                    "concept_source": {"id": 10, "nom": "Théorème de Pythagore"},
+                    "concept_cible": {"id": 12, "nom": "Distance euclidienne"},
+                    "type_relation": "implication",
+                }
+            ]
+        }
+    }

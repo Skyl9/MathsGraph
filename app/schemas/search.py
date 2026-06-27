@@ -31,3 +31,24 @@ class SearchFilters(BaseModel):
 class AdvancedSearchPayload(BaseModel):
     q: str = Field(..., description="La requête de recherche principale (texte libre)", examples=["Géométrie"])
     filters: SearchFilters = Field(..., description="Filtres avancés à appliquer à la recherche")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "q": "Géométrie non euclidienne",
+                    "filters": {
+                        "concept": True,
+                        "mathematicien": False,
+                        "category": False,
+                        "verifiedOnly": True,
+                        "categorie_id": 5,
+                        "type_id": 2,
+                        "mathematicien_id": None,
+                        "date_start": "1800-01-01",
+                        "date_end": "1900-12-31",
+                    },
+                }
+            ]
+        }
+    }

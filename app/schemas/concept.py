@@ -96,12 +96,18 @@ class ConceptResponse(ConceptBase):
                     "type": "Théorème",
                     "mathematicien": {"id": 1, "mathematicien": "Pythagore de Samos"},
                     "categorie": {"id": 5, "category": "Géométrie"},
-                    "sources": [],
+                    "sources": [{"id": 1, "source": "Livre I des Éléments d'Euclide"}],
                     "aliases": ["Théorème de la corde"],
-                    "relations": [],
-                    "noms_etrangers": [],
+                    "relations": [
+                        {
+                            "id": 10,
+                            "type_relation": "implication",
+                            "concept_cible": {"id": 8, "nom": "Axiome d'Euclide"},
+                        }
+                    ],
+                    "noms_etrangers": [{"nom": "Pythagorean theorem", "langue": "en", "pays": "UK"}],
                     "date_modification": "2026-06-25T14:30:00Z",
-                    "tags": [],
+                    "tags": [{"id": 1, "tag": "Géométrie"}],
                 }
             ]
         }

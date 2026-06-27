@@ -1,4 +1,5 @@
 from app.core.redis_client import invalidate_graph_cache
+import asyncio
 import copy
 import json
 import logging
@@ -226,21 +227,15 @@ class ConceptService:
                     pass
 
         # Prefetching
-        math_dict = {}
-        if math_ids:
-            math_dict = await self.repo.get_math_dict(math_ids)
+        async def fetch_if(ids, fetch_func):
+            return await fetch_func(ids) if ids else {}
 
-        cat_dict = {}
-        if cat_ids:
-            cat_dict = await self.repo.get_cat_dict(cat_ids)
-
-        type_dict = {}
-        if type_ids:
-            type_dict = await self.repo.get_type_dict(type_ids)
-
-        concept_dict = {}
-        if concept_ids:
-            concept_dict = await self.repo.get_concept_dict(concept_ids)
+        math_dict, cat_dict, type_dict, concept_dict = await asyncio.gather(
+            fetch_if(math_ids, self.repo.get_math_dict),
+            fetch_if(cat_ids, self.repo.get_cat_dict),
+            fetch_if(type_ids, self.repo.get_type_dict),
+            fetch_if(concept_ids, self.repo.get_concept_dict),
+        )
 
         res_versions = []
         for v in versions:

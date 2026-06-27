@@ -46,8 +46,8 @@ class ApiAnalytics(BaseModel):
                 {
                     "daily_hits": 1200,
                     "top_routes": [
-                        {"route": "/api/v1/concepts", "hits": 450, "avg_duration": 45.2},
-                        {"route": "/api/v1/search", "hits": 300, "avg_duration": 12.5},
+                        {"method": "GET", "endpoint": "/api/v1/concepts", "total_hits": 450, "avg_duration": 45.2},
+                        {"method": "POST", "endpoint": "/api/v1/search", "total_hits": 300, "avg_duration": 12.5},
                     ],
                     "weekly_hits": [{"date": "2023-10-25", "hits": 350}, {"date": "2023-10-24", "hits": 400}],
                 }

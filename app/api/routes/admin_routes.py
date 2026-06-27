@@ -40,9 +40,16 @@ async def get_users(
     db: AsyncSession = Depends(get_db),
     _payload: dict = Depends(get_current_admin_payload),
 ):
-    data: List[User] = await AdminService(db).get_users(skip=skip, limit=limit)
-    logger.debug(f"Route GET /{router.prefix}/users a été appelée avec succès, {len(data)} utilisateurs trouvés")
-    return {"error": None, "data": data, "success": True, "meta": None}
+    result = await AdminService(db).get_users(skip=skip, limit=limit)
+    logger.debug(
+        f"Route GET /{router.prefix}/users a été appelée avec succès, {len(result['items'])} utilisateurs trouvés"
+    )
+    return {
+        "error": None,
+        "data": result["items"],
+        "success": True,
+        "meta": {"total": result["total"], "skip": skip, "limit": limit},
+    }
 
 
 @router.get(
@@ -57,9 +64,16 @@ async def get_contents(
     db: AsyncSession = Depends(get_db),
     _payload: dict = Depends(get_current_admin_payload),
 ):
-    data: List[ConceptForAdmin] = await AdminService(db).get_concepts_admin(skip=skip, limit=limit)
-    logger.debug(f"Route GET /{router.prefix}/contents a été appelée avec succès, {len(data)} concepts trouvés")
-    return {"error": None, "data": data, "success": True, "meta": None}
+    result = await AdminService(db).get_concepts_admin(skip=skip, limit=limit)
+    logger.debug(
+        f"Route GET /{router.prefix}/contents a été appelée avec succès, {len(result['items'])} concepts trouvés"
+    )
+    return {
+        "error": None,
+        "data": result["items"],
+        "success": True,
+        "meta": {"total": result["total"], "skip": skip, "limit": limit},
+    }
 
 
 @router.post(
