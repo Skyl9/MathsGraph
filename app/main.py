@@ -29,6 +29,7 @@ from app.api.routes import (
     statistics_routes,
     search_routes,
     seo_routes,
+    notification_routes,
 )
 from app.core.config import settings
 from app.core.exceptions import (
@@ -237,6 +238,7 @@ app.include_router(admin_routes.router)
 
 app.include_router(search_routes.router)
 app.include_router(seo_routes.router)
+app.include_router(notification_routes.router)
 
 
 @app.get("/health", tags=["Diagnostics"])

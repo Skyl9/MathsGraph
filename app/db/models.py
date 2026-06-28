@@ -166,6 +166,9 @@ class Concept(Base):
     )
     contributions: Mapped[List["UserContribution"]] = relationship("UserContribution", back_populates="concept")
     user_favorites: Mapped[List["UserFavorite"]] = relationship("UserFavorite", back_populates="concept")
+    notifications: Mapped[List["Notification"]] = relationship(
+        "Notification", back_populates="concept", cascade="all, delete-orphan"
+    )
 
     # Relations (Self-referencing through Relation table)
     outgoing_relations: Mapped[List["Relation"]] = relationship(
@@ -282,6 +285,9 @@ class User(Base):
     sessions: Mapped[List["UserSession"]] = relationship("UserSession", back_populates="user")
     reset_tokens: Mapped[List["PasswordResetToken"]] = relationship("PasswordResetToken", back_populates="user")
     modified_versions: Mapped[List["ConceptVersion"]] = relationship("ConceptVersion", back_populates="modifier")
+    notifications: Mapped[List["Notification"]] = relationship(
+        "Notification", back_populates="user", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (CheckConstraint("role = ANY (ARRAY['admin', 'user', 'moderator'])", name="users_role_check"),)
 
@@ -381,6 +387,7 @@ class UserFavorite(Base):
     mathematicien_id: Mapped[Optional[int]] = mapped_column(ForeignKey("mathematiciens.id"))
     type_id: Mapped[Optional[int]] = mapped_column(ForeignKey("type.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    notify_on_change: Mapped[bool] = mapped_column(Boolean, server_default="false")
 
     # Relations
     user: Mapped["User"] = relationship("User", back_populates="favorites")
@@ -456,3 +463,20 @@ class ApiLog(Base):
         Index("idx_api_logs_created_at", "created_at"),
         Index("idx_api_logs_endpoint", "endpoint"),
     )
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[PyUUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    concept_id: Mapped[Optional[int]] = mapped_column(ForeignKey("concepts.id", ondelete="CASCADE"))
+
+    # Relations
+    user: Mapped["User"] = relationship("User", back_populates="notifications")
+    concept: Mapped[Optional["Concept"]] = relationship("Concept", back_populates="notifications")
+
+    __table_args__ = (Index("idx_notifications_user_id_is_read", "user_id", "is_read"),)

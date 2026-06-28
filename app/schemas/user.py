@@ -46,9 +46,11 @@ class UpdateUser(BaseModel):
 class Favorite(BaseModel):
     type: str = Field(..., description="Type de favori", examples=["theoreme"])
     user_id: str = Field(..., description="Identifiant de l'utilisateur", examples=["1"])
+    notify_on_change: bool = Field(False, description="Activer les notifications", examples=[True])
 
 
 class FavoriteResponse(BaseModel):
     id: int = Field(..., description="Identifiant du favori", examples=[42])
     nom: str = Field(..., description="Nom du favori", examples=["Théorème de Pythagore"])
     category: str = Field(..., description="Catégorie du favori", examples=["Géométrie"])
+    notify_on_change: bool = Field(False, description="Notifications activées", examples=[True])

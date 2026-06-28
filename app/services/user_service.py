@@ -81,13 +81,41 @@ class UserService:
         dictList = []
         for fav in favorites:
             if fav.concept:
-                dictList.append({"id": fav.concept.id, "nom": fav.concept.nom, "category": "concept"})
+                dictList.append(
+                    {
+                        "id": fav.concept.id,
+                        "nom": fav.concept.nom,
+                        "category": "concept",
+                        "notify_on_change": fav.notify_on_change,
+                    }
+                )
             elif fav.mathematicien:
-                dictList.append({"id": fav.mathematicien.id, "nom": fav.mathematicien.nom, "category": "mathematicien"})
+                dictList.append(
+                    {
+                        "id": fav.mathematicien.id,
+                        "nom": fav.mathematicien.nom,
+                        "category": "mathematicien",
+                        "notify_on_change": fav.notify_on_change,
+                    }
+                )
             elif fav.category:
-                dictList.append({"id": fav.category.id, "nom": fav.category.nom, "category": "category"})
+                dictList.append(
+                    {
+                        "id": fav.category.id,
+                        "nom": fav.category.nom,
+                        "category": "category",
+                        "notify_on_change": fav.notify_on_change,
+                    }
+                )
             elif fav.type:
-                dictList.append({"id": fav.type.id, "nom": fav.type.type, "category": "type"})
+                dictList.append(
+                    {
+                        "id": fav.type.id,
+                        "nom": fav.type.type,
+                        "category": "type",
+                        "notify_on_change": fav.notify_on_change,
+                    }
+                )
         return dictList
 
     async def delete_favorite_user(self, general_id: int, data: Favorite, current_user: dict) -> None:
@@ -139,6 +167,7 @@ class UserService:
                 raise BadRequestException(detail=f"Type de favori inconnu : {entity_type}")
 
         new_fav = UserFavorite(user_id=user_id)
+        new_fav.notify_on_change = data_dict.get("notify_on_change", False)
         if entity_type == "concept":
             new_fav.concept_id = general_id
         elif entity_type == "mathematicien":

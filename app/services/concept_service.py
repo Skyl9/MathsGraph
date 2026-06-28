@@ -15,6 +15,9 @@ from app.schemas.history import History
 from app.services.tags_service import TagsService
 from app.repositories.concept_repository import ConceptRepository
 from app.core.redis_client import redis_db
+from sqlalchemy import select
+from app.db.models import UserFavorite
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -441,6 +444,21 @@ class ConceptService:
             await redis_db.delete(f"mathgraph:concept:{concept_id}")
         except Exception as e:
             logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")
+
+        # Notifications pour les abonnés
+        try:
+            query = select(UserFavorite.user_id).where(
+                UserFavorite.concept_id == concept_id, UserFavorite.notify_on_change.is_(True)
+            )
+            result = await self.db.execute(query)
+            user_ids = result.scalars().all()
+            if user_ids:
+                message = f"Le concept a été modifié ({field_name}) par {data_dict['username']}."
+                notif_service = NotificationService(self.db)
+                for u_id in user_ids:
+                    await notif_service.create_notification(u_id, message, concept_id)
+        except Exception as e:
+            logger.warning(f"Erreur lors de la création des notifications: {e}")
 
     async def _update_type(self, concept: Concept, new_value_raw: str):
         old_value = concept.type_id
