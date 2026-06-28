@@ -30,6 +30,7 @@ from app.api.routes import (
     search_routes,
     seo_routes,
     notification_routes,
+    draft_routes,
 )
 from app.core.config import settings
 from app.core.exceptions import (
@@ -239,6 +240,7 @@ app.include_router(admin_routes.router)
 app.include_router(search_routes.router)
 app.include_router(seo_routes.router)
 app.include_router(notification_routes.router)
+app.include_router(draft_routes.router, prefix="/api/drafts", tags=["Drafts"])
 
 
 @app.get("/health", tags=["Diagnostics"])

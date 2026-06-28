@@ -169,6 +169,9 @@ class Concept(Base):
     notifications: Mapped[List["Notification"]] = relationship(
         "Notification", back_populates="concept", cascade="all, delete-orphan"
     )
+    drafts: Mapped[List["ConceptDraft"]] = relationship(
+        "ConceptDraft", back_populates="concept", cascade="all, delete-orphan"
+    )
 
     # Relations (Self-referencing through Relation table)
     outgoing_relations: Mapped[List["Relation"]] = relationship(
@@ -287,6 +290,9 @@ class User(Base):
     modified_versions: Mapped[List["ConceptVersion"]] = relationship("ConceptVersion", back_populates="modifier")
     notifications: Mapped[List["Notification"]] = relationship(
         "Notification", back_populates="user", cascade="all, delete-orphan"
+    )
+    drafts: Mapped[List["ConceptDraft"]] = relationship(
+        "ConceptDraft", back_populates="user", cascade="all, delete-orphan"
     )
 
     __table_args__ = (CheckConstraint("role = ANY (ARRAY['admin', 'user', 'moderator'])", name="users_role_check"),)
@@ -480,3 +486,20 @@ class Notification(Base):
     concept: Mapped[Optional["Concept"]] = relationship("Concept", back_populates="notifications")
 
     __table_args__ = (Index("idx_notifications_user_id_is_read", "user_id", "is_read"),)
+
+
+class ConceptDraft(Base):
+    __tablename__ = "concept_drafts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[PyUUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    concept_id: Mapped[Optional[int]] = mapped_column(ForeignKey("concepts.id", ondelete="CASCADE"))
+    draft_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relations
+    user: Mapped["User"] = relationship("User", back_populates="drafts")
+    concept: Mapped[Optional["Concept"]] = relationship("Concept", back_populates="drafts")
