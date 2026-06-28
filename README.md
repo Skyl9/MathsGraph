@@ -4,12 +4,14 @@ Bienvenue dans le dépôt backend du projet **MathsGraph**. Il s'agit d'une API 
 
 ## 🛠 Stack Technique
 
-- **Framework :** [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12+)
-- **Base de Données :** PostgreSQL avec [SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/) (Mode Asynchrone `AsyncSession`)
+- **Framework :** [FastAPI](https://fastapi.tiangolo.com/) (Python 3.13+)
+- **Base de Données :** PostgreSQL 16 avec [SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/) (Mode Asynchrone `AsyncSession`) et driver `psycopg` (v3)
+- **Mise en cache & Rate-Limiting :** Redis 7
 - **Gestionnaire de paquets :** [`uv`](https://docs.astral.sh/uv/)
 - **Validation des données :** Pydantic v2
 - **Authentification :** JWT (JSON Web Tokens) & Bcrypt
 - **Tests :** `pytest`, `pytest-asyncio`, `pytest-cov`
+- **Qualité de code :** Ruff (linter/formatter), Mypy (typage)
 
 ---
 
@@ -21,17 +23,19 @@ L'architecture est découpée en couches distinctes pour séparer la logique mé
 app/
 ├── api/             # Couche présentation (Endpoints, Routeurs FastAPI)
 │   └── routes/      # Définition des routes (ex: concept_routes.py)
-├── core/            # Configuration et sécurité (JWT, CORS, Settings)
+├── core/            # Configuration globale, middleware, sécurité, exceptions et logs
 ├── db/              # Configuration DB, Session asynchrone et Modèles (SQLAlchemy)
+├── repositories/    # Couche d'accès aux données (Requêtes SQLAlchemy)
 ├── schemas/         # Modèles Pydantic pour la validation des requêtes et réponses
 ├── services/        # Couche logique métier (Business Logic)
 └── utils/           # Fonctions utilitaires diverses
-tests/               # Tests automatisés (Pytest)
+tests/               # Tests unitaires et d'intégration automatisés (Pytest)
 ```
 
-- **Routes (`app/api/routes`)** : Elles ne font que recevoir la requête, appeler le service correspondant et renvoyer la réponse formatée. Aucune logique métier complexe ne doit s'y trouver.
-- **Services (`app/services`)** : Contient toute la logique métier. Le service manipule les requêtes SQL (via SQLAlchemy) et retourne des objets ou lève des exceptions métier.
-- **Exceptions Métier** : Les erreurs doivent utiliser les exceptions personnalisées du dossier `core/exceptions.py` (ex: `NotFoundException`, `ForbiddenException`).
+- **Routes (`app/api/routes`)** : Elles ne font que recevoir la requête, valider les entrées avec Pydantic et appeler le service correspondant. Aucune logique métier complexe ne doit s'y trouver.
+- **Services (`app/services`)** : Contient toute l'orchestration métier.
+- **Repositories (`app/repositories`)** : Exécute les requêtes SQL (via SQLAlchemy).
+- **Exceptions Métier** : Les erreurs doivent utiliser les exceptions personnalisées du dossier `app/core/exceptions.py`.
 
 ---
 
