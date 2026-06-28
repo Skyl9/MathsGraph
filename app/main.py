@@ -240,7 +240,7 @@ app.include_router(admin_routes.router)
 app.include_router(search_routes.router)
 app.include_router(seo_routes.router)
 app.include_router(notification_routes.router)
-app.include_router(draft_routes.router, prefix="/api/drafts", tags=["Drafts"])
+app.include_router(draft_routes.router, prefix="/drafts", tags=["Drafts"])
 
 
 @app.get("/health", tags=["Diagnostics"])
