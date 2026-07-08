@@ -409,6 +409,14 @@ class ConceptService:
             old_value = getattr(concept, field_name)
             setattr(concept, field_name, new_value_raw)
             new_value = new_value_raw
+
+            # Mettre à jour l'embedding si nom ou enonce change
+            if field_name in ["nom", "enonce"]:
+                from app.services.embedding_service import embedding_service
+
+                text_to_embed = f"{concept.nom}. {concept.enonce}"
+                concept.embedding = embedding_service.get_embedding(text_to_embed)
+
         elif field_name == "type":
             old_value, new_value = await self._update_type(concept, new_value_raw)
         elif field_name == "categorie":
@@ -616,6 +624,12 @@ class ConceptService:
         if not type_id:
             type_id = await self.repo.get_type_id_by_name("théorème")
 
+        # Générer l'embedding
+        from app.services.embedding_service import embedding_service
+
+        text_to_embed = f"{data_dict['nom']}. {data_dict['enonce']}"
+        initial_embedding = embedding_service.get_embedding(text_to_embed)
+
         new_concept = Concept(
             nom=data_dict["nom"],
             enonce=data_dict["enonce"],
@@ -624,6 +638,7 @@ class ConceptService:
             categorie_id=data_dict.get("categorie_id"),
             mathematicien_id=data_dict.get("mathematicien_id"),
             verification=False,
+            embedding=initial_embedding,
         )
 
         await self.repo.add(new_concept)

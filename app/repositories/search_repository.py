@@ -8,7 +8,7 @@ class SearchRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def global_quick_search(self, search_pattern: str, limit: int):
+    async def global_quick_search(self, search_pattern: str, limit: int, query_embedding: list[float] | None = None):
         stmt_concepts = (
             select(Concept.id, Concept.nom, literal("concept").label("entity_type"))
             .where(Concept.nom.ilike(search_pattern))
@@ -29,8 +29,27 @@ class SearchRepository:
 
         union_stmt = union_all(stmt_concepts, stmt_maths, stmt_categories).order_by("nom").limit(limit * 2)
 
-        result = await self.db.execute(union_stmt)
-        return result.all()
+        results = list((await self.db.execute(union_stmt)).all())
+
+        # Si on a un embedding et qu'on a peu de résultats textuels stricts, on fait une recherche sémantique
+        if query_embedding:
+            existing_ids = {r.id for r in results if r.entity_type == "concept"}
+            semantic_limit = limit - len(results) if len(results) < limit else 3
+            if semantic_limit > 0:
+                stmt_semantic = select(Concept.id, Concept.nom, literal("concept").label("entity_type")).where(
+                    Concept.embedding.is_not(None)
+                )
+                if existing_ids:
+                    stmt_semantic = stmt_semantic.where(Concept.id.not_in(existing_ids))
+
+                # Tri par similarité cosinus <=>
+                stmt_semantic = stmt_semantic.order_by(Concept.embedding.cosine_distance(query_embedding)).limit(
+                    semantic_limit
+                )
+                semantic_results = (await self.db.execute(stmt_semantic)).all()
+                results.extend(semantic_results)
+
+        return results
 
     async def search_concepts(self, search_term: str, pattern: str, filters: SearchFilters):
         ts_vector = func.to_tsvector("french", Concept.nom + " " + Concept.enonce)

@@ -17,6 +17,8 @@ class Nodes(BaseModel):
     )
     typeMath: Optional[str] = Field(None, description="Type de mathématique associé", examples=["theoreme"])
     domaine: Optional[str] = Field(None, description="Domaine sémantique associé", examples=["Topologie"])
+    annee: Optional[int] = Field(None, description="Année de création ou de découverte", examples=[1650])
+    epoque: Optional[str] = Field(None, description="Époque de découverte", examples=["17e siècle"])
     position: Dict[str, Position] = Field(
         ..., description="Positions du nœud (ex: 2d, 3d)", examples=[{"2d": {"x": 10.5, "y": 20.0}}]
     )

@@ -43,6 +43,11 @@ async def setup_test_schema():
     identique à models.py en créant les tables manquantes à la volée.
     """
     async with test_engine.begin() as conn:
+        # Nettoyage brutal et total du schéma pour s'assurer que create_all recrée bien toutes les tables avec les nouvelles colonnes
+        await conn.execute(text("DROP SCHEMA public CASCADE;"))
+        await conn.execute(text("CREATE SCHEMA public;"))
+        # Création de l'extension vector nécessaire pour pgvector
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
         # run_sync permet d'exécuter une méthode synchrone (create_all) dans le moteur async
         await conn.run_sync(Base.metadata.create_all)
 

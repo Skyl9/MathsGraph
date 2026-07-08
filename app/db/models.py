@@ -23,6 +23,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
 from app.schemas.enums import VueLayout
 
@@ -147,6 +148,7 @@ class Concept(Base):
     mathematicien_id: Mapped[Optional[int]] = mapped_column(ForeignKey("mathematiciens.id"))
     categorie_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
     type_id: Mapped[int] = mapped_column(ForeignKey("type.id"), server_default="1")
+    embedding: Mapped[Optional[list[float]]] = mapped_column(Vector(384))
 
     # Relations
     mathematicien: Mapped[Optional["Mathematicien"]] = relationship("Mathematicien", back_populates="concepts")

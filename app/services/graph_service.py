@@ -33,6 +33,16 @@ class GraphService:
                     x=pos.x, y=pos.y, z=pos.z
                 )
 
+            # Calcul de l'année et de l'époque
+            annee = None
+            epoque = None
+            if concept.mathematicien:
+                epoque = concept.mathematicien.epoque
+                if concept.mathematicien.date_deces:
+                    annee = concept.mathematicien.date_deces.year
+                elif concept.mathematicien.date_naissance:
+                    annee = concept.mathematicien.date_naissance.year + 40
+
             # Extraction du nœud au format attendu
             nodes.append(
                 Nodes(
@@ -41,6 +51,8 @@ class GraphService:
                     enonce=concept.enonce,
                     typeMath=concept.type.type if concept.type else None,
                     domaine=concept.category.nom if concept.category else "Non classé",
+                    annee=annee,
+                    epoque=epoque,
                     position=pos_dict,
                 )
             )

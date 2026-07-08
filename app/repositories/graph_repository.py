@@ -14,6 +14,7 @@ class GraphRepository:
             .options(
                 joinedload(Concept.type),
                 joinedload(Concept.category),
+                joinedload(Concept.mathematicien),
                 selectinload(Concept.positions),
                 selectinload(Concept.outgoing_relations),
             )
