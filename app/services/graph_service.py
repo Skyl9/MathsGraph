@@ -40,6 +40,7 @@ class GraphService:
                     nom=concept.nom,
                     enonce=concept.enonce,
                     typeMath=concept.type.type if concept.type else None,
+                    domaine=concept.category.nom if concept.category else "Non classé",
                     position=pos_dict,
                 )
             )

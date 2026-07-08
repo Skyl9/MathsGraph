@@ -6,3 +6,4 @@ class VueLayout(str, Enum):
     grille = "grille"
     arbre = "arbre"
     timeline = "timeline"
+    domaines = "domaines"

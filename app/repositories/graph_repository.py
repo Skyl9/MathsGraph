@@ -12,7 +12,10 @@ class GraphRepository:
         stmt = (
             select(Concept)
             .options(
-                joinedload(Concept.type), selectinload(Concept.positions), selectinload(Concept.outgoing_relations)
+                joinedload(Concept.type),
+                joinedload(Concept.category),
+                selectinload(Concept.positions),
+                selectinload(Concept.outgoing_relations),
             )
             .order_by(Concept.id)
         )
