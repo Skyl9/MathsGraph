@@ -662,3 +662,23 @@ class ConceptService:
             logger.warning(f"Erreur lors de l'invalidation du cache Redis: {e}")
 
         return {"id": new_concept.id, "nom": new_concept.nom}
+
+    async def get_wanted_concepts(self) -> list[dict]:
+        concepts = await self.repo.get_wanted_concepts()
+        result = []
+        for c in concepts:
+            missing = []
+            if not c.demonstration or c.demonstration == "<p><br></p>":
+                missing.append("demonstration")
+            if not c.sources:
+                missing.append("sources")
+
+            result.append(
+                {
+                    "id": c.id,
+                    "nom": c.nom,
+                    "categorie": c.category.nom if c.category else None,
+                    "missing_fields": missing,
+                }
+            )
+        return result

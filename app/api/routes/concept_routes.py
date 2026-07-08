@@ -7,7 +7,7 @@ from app.core.deps import get_current_user_payload
 from app.db.database import get_db
 from app.schemas import Response
 from app.schemas.EditableClass import EditableField
-from app.schemas.concept import ConceptResponse, ConceptName, RollbackConcept, ConceptCreate
+from app.schemas.concept import ConceptResponse, ConceptName, RollbackConcept, ConceptCreate, WantedConcept
 from app.schemas.history import History
 from app.schemas.patchClass import UpdateConceptDict
 from app.services.concept_service import ConceptService, logger
@@ -104,6 +104,18 @@ async def get_recent_history_route(limit: int = 20, db: AsyncSession = Depends(g
     history = await ConceptService(db).get_recent_history(limit)
     logger.debug("Route /recent-history a renvoyé correctement la liste : <data_omitted>")
     return {"error": None, "data": history, "success": True, "meta": None}
+
+
+@router.get(
+    "/wanted",
+    summary="Récupère les concepts en manque d'informations (ébauches, sans sources)",
+    description="Retourne une liste de concepts qui nécessitent des contributions de la communauté.",
+    response_model=Response[List[WantedConcept]],
+)
+async def get_wanted_concepts(db: AsyncSession = Depends(get_db)):
+    concepts = await ConceptService(db).get_wanted_concepts()
+    logger.debug("Route GET /wanted a renvoyé correctement la liste des concepts demandés.")
+    return {"error": None, "data": concepts, "success": True, "meta": None}
 
 
 @router.get(

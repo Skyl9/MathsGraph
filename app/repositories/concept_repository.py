@@ -186,3 +186,19 @@ class ConceptRepository:
 
     async def commit(self):
         await self.db.commit()
+
+    async def get_wanted_concepts(self):
+        query = (
+            select(Concept)
+            .options(joinedload(Concept.category), selectinload(Concept.sources))
+            .where(
+                or_(
+                    Concept.demonstration.is_(None),
+                    Concept.demonstration == "",
+                    Concept.demonstration == "<p><br></p>",
+                    ~Concept.sources.any(),
+                )
+            )
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()

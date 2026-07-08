@@ -112,3 +112,10 @@ class ConceptResponse(ConceptBase):
             ]
         }
     }
+
+
+class WantedConcept(BaseModel):
+    id: int = Field(description="L'identifiant unique du concept.")
+    nom: str = Field(description="Le nom du concept.")
+    categorie: Optional[str] = Field(default=None, description="La catégorie du concept.")
+    missing_fields: List[str] = Field(description="Liste des champs manquants (ex: demonstration, sources).")
